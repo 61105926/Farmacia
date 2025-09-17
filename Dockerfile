@@ -4,7 +4,7 @@ FROM php:8.2-apache
 # Set working directory
 WORKDIR /var/www/html
 
-# Install system dependencies and PHP extensions including MySQL
+# Install system dependencies and PHP extensions including MariaDB
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -16,8 +16,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nodejs \
     npm \
-    mysql-server \
-    mysql-client \
+    mariadb-server \
+    mariadb-client \
     supervisor \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
     && apt-get clean \

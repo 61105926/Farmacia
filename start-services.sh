@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Initialize MySQL
-echo "Initializing MySQL..."
-service mysql start
+# Initialize MariaDB
+echo "Initializing MariaDB..."
+service mariadb start
 
-# Wait for MySQL to be ready
+# Wait for MariaDB to be ready
 until mysqladmin ping -h "localhost" --silent; do
-    echo "Waiting for MySQL to be ready..."
+    echo "Waiting for MariaDB to be ready..."
     sleep 2
 done
 
@@ -16,7 +16,7 @@ mysql -e "CREATE USER IF NOT EXISTS 'farmacia'@'localhost' IDENTIFIED BY 'farmac
 mysql -e "GRANT ALL PRIVILEGES ON farmacia.* TO 'farmacia'@'localhost';"
 mysql -e "FLUSH PRIVILEGES;"
 
-echo "MySQL initialized successfully"
+echo "MariaDB initialized successfully"
 
 # Run Laravel migrations and seeders
 echo "Running Laravel setup..."
