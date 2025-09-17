@@ -27,7 +27,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN a2enmod rewrite
 
 # Copy Apache configuration
-RUN echo '<VirtualHost *:80>\n\
+RUN echo '<VirtualHost *:82>\n\
     DocumentRoot /var/www/html/public\n\
     <Directory /var/www/html/public>\n\
         AllowOverride All\n\
@@ -55,8 +55,11 @@ RUN npm install && npm run build
 RUN cp .env.docker .env \
     && php artisan key:generate
 
-# Expose port 80
-EXPOSE 80
+# Configure Apache to listen on port 82
+RUN echo "Listen 82" >> /etc/apache2/ports.conf
+
+# Expose port 82
+EXPOSE 82
 
 # Start Apache
 CMD ["apache2-foreground"]
