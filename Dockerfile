@@ -27,7 +27,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN a2enmod rewrite
 
 # Copy Apache configuration
-RUN echo '<VirtualHost *:82>\n\
+RUN echo '<VirtualHost *8001>\n\
     DocumentRoot /var/www/html/public\n\
     <Directory /var/www/html/public>\n\
         AllowOverride All\n\
