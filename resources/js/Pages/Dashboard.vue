@@ -1,61 +1,35 @@
 <template>
-  <div class="min-h-screen bg-gray-100">
-    <!-- Header -->
-    <header class="bg-white shadow">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-6">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p class="text-gray-600">Farmacia ERP - Sistema de Gestión</p>
-          </div>
-          <div class="flex items-center space-x-4">
-            <div class="text-right">
-              <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
-              <p class="text-xs text-gray-500">{{ user.roles[0]?.name }}</p>
-            </div>
-            <Button variant="outline" @click="logout">
-              <LogOut class="h-4 w-4 mr-2" />
-              Cerrar Sesión
-            </Button>
-          </div>
+  <AdminLayout>
+    <!-- Page Header -->
+    <template #header>
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p class="text-gray-600 mt-1">Bienvenido al sistema de gestión farmacéutica</p>
+        </div>
+        <div class="flex items-center space-x-4">
+          <Badge variant="success" size="md">
+            <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+            Sistema Activo
+          </Badge>
         </div>
       </div>
-    </header>
+    </template>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div class="px-4 py-6 sm:px-0">
-        <!-- Welcome Message -->
-        <div class="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Bienvenido al Sistema ERP</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p class="text-gray-600 mb-4">
-                Fase 1 completada exitosamente. El sistema base está listo con:
-              </p>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="flex items-center text-green-600">
-                  <CheckIcon class="h-5 w-5 mr-2" />
-                  <span>Sistema de usuarios y roles configurado</span>
-                </div>
-                <div class="flex items-center text-green-600">
-                  <CheckIcon class="h-5 w-5 mr-2" />
-                  <span>Autenticación con Inertia.js funcionando</span>
-                </div>
-                <div class="flex items-center text-green-600">
-                  <CheckIcon class="h-5 w-5 mr-2" />
-                  <span>Layout base implementado</span>
-                </div>
-                <div class="flex items-center text-green-600">
-                  <CheckIcon class="h-5 w-5 mr-2" />
-                  <span>Permisos y middleware activos</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+    <!-- Dashboard Content -->
+    <div class="space-y-6">
+      <!-- Welcome Message -->
+      <Card>
+        <CardHeader>
+          <CardTitle>Bienvenido al Sistema ERP</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <!-- <p class="text-gray-600 mb-4">
+            Sistema completamente funcional con diseño profesional. Funcionalidades implementadas:
+          </p> -->
+    
+        </CardContent>
+      </Card>
 
         <!-- Quick Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -108,42 +82,16 @@
           </Card>
         </div>
 
-        <!-- Next Steps -->
-        <Card>
-          <CardHeader>
-            <CardTitle>Próximos Pasos - Fase 2</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p class="text-gray-600 mb-4">
-              Estás listo para continuar con la Fase 2: Gestión de Clientes y Productos
-            </p>
-            <div class="space-y-2">
-              <div class="flex items-center text-gray-600">
-                <Circle class="h-4 w-4 mr-2" />
-                <span>Módulo de gestión de clientes</span>
-              </div>
-              <div class="flex items-center text-gray-600">
-                <Circle class="h-4 w-4 mr-2" />
-                <span>Catálogo de productos</span>
-              </div>
-              <div class="flex items-center text-gray-600">
-                <Circle class="h-4 w-4 mr-2" />
-                <span>CRUD completo para ambos módulos</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
-  </div>
+     
+    </div>
+  </AdminLayout>
 </template>
 
 <script setup>
-import { useForm } from '@inertiajs/vue3'
-import { Card, CardHeader, CardTitle, CardContent, Button } from '@/Components/ui'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
+import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from '@/Components/ui'
 import {
   Check as CheckIcon,
-  LogOut,
   Users,
   Package,
   ShoppingCart,
@@ -155,9 +103,9 @@ defineProps({
   user: Object,
 })
 
-const logoutForm = useForm({})
-
-const logout = () => {
-  logoutForm.post('/logout')
+const testNotification = () => {
+  if (window.$notify) {
+    window.$notify.success('¡Éxito!', 'El sistema de notificaciones está funcionando correctamente.')
+  }
 }
 </script>

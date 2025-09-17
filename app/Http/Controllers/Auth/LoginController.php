@@ -17,6 +17,9 @@ class LoginController extends Controller
 
     public function store(Request $request)
     {
+        // Debug: Ver qué datos están llegando
+        // \Log::info('Login attempt data:', $request->all());
+
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',

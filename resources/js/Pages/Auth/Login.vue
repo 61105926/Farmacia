@@ -17,34 +17,34 @@
         <CardContent>
           <form class="space-y-6" @submit.prevent="submit">
             <div>
-              <Label for="email">Correo Electrónico</Label>
-              <Input
+              <label for="email" class="text-sm font-medium leading-none">Correo Electrónico</label>
+              <input
                 id="email"
                 v-model="form.email"
                 type="email"
                 autocomplete="email"
                 required
-                class="mt-1"
-                :class="{ 'border-red-500': errors.email }"
+                class="mt-1 flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                :class="{ 'border-red-500': form.errors.email }"
               />
-              <div v-if="errors.email" class="mt-1 text-sm text-red-600">
-                {{ errors.email }}
+              <div v-if="form.errors.email" class="mt-1 text-sm text-red-600">
+                {{ form.errors.email }}
               </div>
             </div>
 
             <div>
-              <Label for="password">Contraseña</Label>
-              <Input
+              <label for="password" class="text-sm font-medium leading-none">Contraseña</label>
+              <input
                 id="password"
                 v-model="form.password"
                 type="password"
                 autocomplete="current-password"
                 required
-                class="mt-1"
-                :class="{ 'border-red-500': errors.password }"
+                class="mt-1 flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                :class="{ 'border-red-500': form.errors.password }"
               />
-              <div v-if="errors.password" class="mt-1 text-sm text-red-600">
-                {{ errors.password }}
+              <div v-if="form.errors.password" class="mt-1 text-sm text-red-600">
+                {{ form.errors.password }}
               </div>
             </div>
 
@@ -56,21 +56,21 @@
                   type="checkbox"
                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
-                <Label for="remember" class="ml-2 block text-sm text-gray-900">
+                <label for="remember" class="ml-2 block text-sm text-gray-900">
                   Recordarme
-                </Label>
+                </label>
               </div>
             </div>
 
             <div>
-              <Button
+              <button
                 type="submit"
-                class="w-full"
+                class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-slate-50 hover:bg-slate-900/90 h-10 px-4 py-2"
                 :disabled="processing"
               >
                 <span v-if="processing">Iniciando sesión...</span>
                 <span v-else>Iniciar Sesión</span>
-              </Button>
+              </button>
             </div>
           </form>
         </CardContent>
@@ -86,11 +86,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Label } from '@/Components/ui'
-
-defineProps({
-  errors: Object,
-})
+import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 
 const form = useForm({
   email: '',
@@ -102,11 +98,21 @@ const processing = ref(false)
 
 const submit = () => {
   processing.value = true
+
+  console.log('Form data before submit:', {
+    email: form.email,
+    password: form.password,
+    remember: form.remember
+  })
+
   form.post('/login', {
     onFinish: () => {
       processing.value = false
       form.reset('password')
     },
+    onError: (errors) => {
+      console.log('Form errors:', errors)
+    }
   })
 }
 </script>
