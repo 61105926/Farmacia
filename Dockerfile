@@ -4,7 +4,7 @@ FROM php:8.2-apache
 # Set working directory
 WORKDIR /var/www/html
 
-# Install system dependencies and PHP extensions
+# Install system dependencies and PHP extensions including MySQL
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nodejs \
     npm \
+    mysql-server \
+    mysql-client \
+    supervisor \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -27,7 +30,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN a2enmod rewrite
 
 # Copy Apache configuration
-RUN echo '<VirtualHost *8001>\n\
+RUN echo '<VirtualHost *:8001>\n\
     DocumentRoot /var/www/html/public\n\
     <Directory /var/www/html/public>\n\
         AllowOverride All\n\
@@ -51,15 +54,18 @@ RUN composer install --no-dev --optimize-autoloader
 # Install Node.js dependencies and build assets
 RUN npm install --legacy-peer-deps && npm run build
 
-# Copy Docker environment file and generate app key
-RUN cp .env.docker .env \
-    && php artisan key:generate
+# Copy startup script and make executable
+COPY start-services.sh /usr/local/bin/start-services.sh
+RUN chmod +x /usr/local/bin/start-services.sh
 
-# Configure Apache to listen on port 82
-RUN echo "Listen 82" >> /etc/apache2/ports.conf
+# Copy Docker environment file
+RUN cp .env.docker .env
 
-# Expose port 82
-EXPOSE 82
+# Configure Apache to listen on port 8001
+RUN echo "Listen 8001" >> /etc/apache2/ports.conf
 
-# Start Apache
-CMD ["apache2-foreground"]
+# Expose port 8001
+EXPOSE 8001
+
+# Start services
+CMD ["/usr/local/bin/start-services.sh"]

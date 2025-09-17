@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  farmacia-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - storage-data:/var/www/html/storage
+      - mysql-data:/var/lib/mysql
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=http://localhost:8001
+    networks:
+      - farmacia-network
+
+volumes:
+  storage-data:
+  mysql-data:
+
+networks:
+  farmacia-network:
+    driver: bridge
