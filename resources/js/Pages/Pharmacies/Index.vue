@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-3xl font-bold text-gray-900">Gestión de Clientes</h1>
-          <p class="text-gray-600 mt-1">Administra las farmacias que son clientes de la distribuidora</p>
+          <p class="text-gray-600 mt-1">Administra los clientes de la distribuidora</p>
         </div>
         <div class="flex items-center space-x-4">
           <Button @click="exportData" variant="outline">
