@@ -7,13 +7,14 @@ echo "Initializing MariaDB..."
 echo "[mysqld]
 bind-address = 0.0.0.0
 socket = /var/run/mysqld/mysqld.sock
-port = 3306" >> /etc/mysql/mariadb.conf.d/50-server.cnf
+port = 3306
+skip-grant-tables" >> /etc/mysql/mariadb.conf.d/50-server.cnf
 
 # Create socket directory
 mkdir -p /var/run/mysqld
 chown mysql:mysql /var/run/mysqld
 
-# Start MariaDB
+# Start MariaDB with skip-grant-tables
 service mariadb start
 
 # Wait for MariaDB to be ready
@@ -22,19 +23,52 @@ until mysqladmin ping -h "127.0.0.1" --silent; do
     sleep 2
 done
 
-# Create database and user
-mysql -h 127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS farmacia;"
-mysql -h 127.0.0.1 -e "CREATE USER IF NOT EXISTS 'farmacia'@'%' IDENTIFIED BY 'farmacia';"
-mysql -h 127.0.0.1 -e "GRANT ALL PRIVILEGES ON farmacia.* TO 'farmacia'@'%';"
-mysql -h 127.0.0.1 -e "FLUSH PRIVILEGES;"
+# Create database and user without authentication
+mysql -h 127.0.0.1 << EOF
+FLUSH PRIVILEGES;
+CREATE DATABASE IF NOT EXISTS farmacia;
+CREATE USER IF NOT EXISTS 'farmacia'@'%' IDENTIFIED BY 'farmacia';
+CREATE USER IF NOT EXISTS 'farmacia'@'localhost' IDENTIFIED BY 'farmacia';
+CREATE USER IF NOT EXISTS 'farmacia'@'127.0.0.1' IDENTIFIED BY 'farmacia';
+GRANT ALL PRIVILEGES ON farmacia.* TO 'farmacia'@'%';
+GRANT ALL PRIVILEGES ON farmacia.* TO 'farmacia'@'localhost';
+GRANT ALL PRIVILEGES ON farmacia.* TO 'farmacia'@'127.0.0.1';
+FLUSH PRIVILEGES;
+EOF
+
+# Restart MariaDB without skip-grant-tables
+echo "Restarting MariaDB with authentication..."
+sed -i '/skip-grant-tables/d' /etc/mysql/mariadb.conf.d/50-server.cnf
+service mariadb restart
+
+# Wait for restart
+until mysqladmin ping -h "127.0.0.1" --silent; do
+    echo "Waiting for MariaDB restart..."
+    sleep 2
+done
 
 echo "MariaDB initialized successfully"
 
-# Run Laravel migrations and seeders
+# Run Laravel setup
 echo "Running Laravel setup..."
+
+# Generate app key first
 php artisan key:generate --force
+echo "App key generated successfully"
+
+# Test database connection before migrations
+echo "Testing database connection..."
+php artisan tinker --execute="DB::connection()->getPdo(); echo 'Database connected successfully';"
+
+# Run migrations and seeders
 php artisan migrate --force
 php artisan db:seed --force
+
+# Set proper permissions
+chown -R www-data:www-data /var/www/html/storage
+chown -R www-data:www-data /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage
+chmod -R 775 /var/www/html/bootstrap/cache
 
 echo "Laravel setup completed"
 
