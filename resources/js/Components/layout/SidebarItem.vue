@@ -5,8 +5,8 @@
       class="group flex items-center rounded-lg text-sm font-medium transition-colors"
       :class="[
         active
-          ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
-          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900',
+          ? 'bg-accent-500 text-primary-900 border-r-4 border-accent-600'
+          : 'text-white hover:bg-primary-600 hover:text-accent-200',
         collapsed ? 'px-2 py-2 justify-center' : 'px-3 py-2'
       ]"
     >
@@ -14,7 +14,7 @@
         :is="iconComponent"
         class="flex-shrink-0 transition-colors"
         :class="[
-          active ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500',
+          active ? 'text-primary-900' : 'text-accent-300 group-hover:text-accent-400',
           collapsed ? 'w-6 h-6' : 'w-5 h-5 mr-3'
         ]"
       />
@@ -23,7 +23,7 @@
       <!-- Tooltip for collapsed state -->
       <div
         v-if="collapsed"
-        class="absolute left-full ml-6 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50"
+        class="absolute left-full ml-6 px-2 py-1 bg-primary-900 text-accent-300 text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50"
       >
         {{ label }}
       </div>
@@ -34,7 +34,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import { usePermissions } from '@/composables/usePermissions'
+import { usePermissions } from '@/Composables/usePermissions'
 import {
   LayoutDashboard,
   Users,

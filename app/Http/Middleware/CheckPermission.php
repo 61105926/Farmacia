@@ -8,27 +8,21 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckPermission
 {
-    public function handle(Request $request, Closure $next, ...$permissions): Response
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     */
+    public function handle(Request $request, Closure $next, string $permission): Response
     {
-        if (!auth()->check()) {
-            return redirect('/login');
+        if (!$request->user()) {
+            return redirect()->route('login');
         }
 
-        $user = auth()->user();
-
-        // Si el usuario es administrador, permitir acceso a todo
-        if ($user->hasRole('Administrador')) {
-            return $next($request);
+        if (!$request->user()->hasPermissionTo($permission)) {
+            abort(403, 'No tienes permiso para realizar esta acción.');
         }
 
-        // Verificar si el usuario tiene al menos uno de los permisos requeridos
-        foreach ($permissions as $permission) {
-            if ($user->can($permission)) {
-                return $next($request);
-            }
-        }
-
-        // Si no tiene permisos, redirigir a página de error
-        return redirect()->route('error.403');
+        return $next($request);
     }
 }

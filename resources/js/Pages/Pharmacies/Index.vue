@@ -449,7 +449,7 @@ const deletePharmacy = (pharmacy) => {
     type: 'danger',
     confirmText: 'Eliminar',
     action: () => {
-      router.delete(route('pharmacies.destroy', pharmacy.id), {
+      router.delete($route('pharmacies.destroy', pharmacy.id), {
         preserveScroll: true,
         onSuccess: () => {
           window.$notify?.success(
@@ -479,7 +479,7 @@ const toggleStatus = (pharmacy) => {
     type: pharmacy.activo ? 'warning' : 'success',
     confirmText: action.charAt(0).toUpperCase() + action.slice(1),
     action: () => {
-      router.post(route('pharmacies.toggle-status', pharmacy.id), {}, {
+      router.post($route('pharmacies.toggle-status', pharmacy.id), {}, {
         preserveScroll: true,
         onSuccess: () => {
           window.$notify?.success(

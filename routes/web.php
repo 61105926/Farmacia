@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
     Route::redirect('/clientes', '/pharmacies');
 });
 
+// Rutas de Clientes y Usuarios
+require __DIR__.'/web_clients_users.php';
+
 // Ruta para errores de permisos
 Route::get('/403', function () {
     return Inertia::render('Error403');

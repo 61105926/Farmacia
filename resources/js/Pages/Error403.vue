@@ -1,48 +1,61 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="text-center">
-        <ShieldX class="mx-auto h-16 w-16 text-red-500" />
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Acceso Denegado
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600">
-          No tienes permisos para acceder a esta página
-        </p>
-      </div>
-
-      <Card class="mt-8">
-        <CardContent class="py-8 text-center">
-          <p class="text-gray-700 mb-6">
-            Tu rol actual no tiene los permisos necesarios para ver este contenido.
-            Si crees que esto es un error, contacta al administrador del sistema.
-          </p>
-          <div class="space-y-3">
-            <Button @click="goBack" variant="outline" class="w-full">
-              <ArrowLeft class="h-4 w-4 mr-2" />
-              Volver Atrás
-            </Button>
-            <Button @click="goToDashboard" class="w-full">
-              <Home class="h-4 w-4 mr-2" />
-              Ir al Dashboard
-            </Button>
+  <AdminLayout>
+    <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div class="max-w-md w-full space-y-8 text-center">
+        <div>
+          <div class="mx-auto h-24 w-24 text-red-500">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
           </div>
-        </CardContent>
-      </Card>
+          <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+            Acceso Denegado
+          </h2>
+          <p class="mt-2 text-sm text-gray-600">
+            No tienes permisos para acceder a esta página.
+          </p>
+        </div>
+        
+        <div class="mt-8 space-y-4">
+          <div class="bg-red-50 border border-red-200 rounded-md p-4">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800">
+                  Error 403 - Prohibido
+                </h3>
+                <div class="mt-2 text-sm text-red-700">
+                  <p>Tu cuenta no tiene los permisos necesarios para realizar esta acción.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Link
+              href="/dashboard"
+              class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-700 hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
+              Volver al Dashboard
+            </Link>
+            <Link
+              href="/usuarios"
+              class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
+              Contactar Administrador
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
+  </AdminLayout>
 </template>
 
 <script setup>
-import { router } from '@inertiajs/vue3'
-import { Card, CardContent, Button } from '@/Components/ui'
-import { ShieldX, ArrowLeft, Home } from 'lucide-vue-next'
-
-const goBack = () => {
-  window.history.back()
-}
-
-const goToDashboard = () => {
-  router.visit('/dashboard')
-}
+import { Link } from '@inertiajs/vue3'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 </script>

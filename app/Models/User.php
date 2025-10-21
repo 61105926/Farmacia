@@ -4,6 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -11,7 +13,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -22,6 +24,15 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',
+        'document_number',
+        'branch_id',
+        'status',
+        'last_login_at',
+        'last_login_ip',
+        'failed_login_attempts',
+        'blocked_at',
+        // Compatibilidad con campos antiguos
         'telefono',
         'cedula',
         'direccion',
@@ -49,7 +60,71 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'last_login_at' => 'datetime',
+            'blocked_at' => 'datetime',
+            'failed_login_attempts' => 'integer',
+            // Compatibilidad con campos antiguos
             'ultimo_acceso' => 'datetime',
         ];
+    }
+
+    /**
+     * Relación con clientes asignados como vendedor
+     */
+    public function assignedClients(): HasMany
+    {
+        return $this->hasMany(Client::class, 'salesperson_id');
+    }
+
+    /**
+     * Relación con clientes asignados como cobrador
+     */
+    public function clientsAsCollector(): HasMany
+    {
+        return $this->hasMany(Client::class, 'collector_id');
+    }
+
+    /**
+     * Verificar si el usuario tiene un permiso específico
+     * Compatible con Spatie Permission (usa hasPermissionTo)
+     */
+    public function hasPermission(string $permission): bool
+    {
+        return $this->hasPermissionTo($permission);
+    }
+
+    /**
+     * Verificar si el usuario está activo
+     */
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    /**
+     * Verificar si el usuario está bloqueado
+     */
+    public function isBlocked(): bool
+    {
+        return $this->status === 'blocked';
+    }
+
+    /**
+     * Scope para filtrar solo usuarios activos
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Scope para búsqueda por nombre o email
+     */
+    public function scopeSearch($query, string $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('email', 'like', "%{$search}%");
+        });
     }
 }

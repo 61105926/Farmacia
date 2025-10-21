@@ -38,12 +38,24 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user() ? $request->user()->load('roles') : null,
+                'user' => $request->user() ? [
+                    'id' => $request->user()->id,
+                    'name' => $request->user()->name,
+                    'email' => $request->user()->email,
+                ] : null,
+                'permissions' => $request->user()
+                    ? $request->user()->getAllPermissions()->pluck('name')->toArray()
+                    : [],
+                'roles' => $request->user()
+                    ? $request->user()->roles->pluck('name')->toArray()
+                    : [],
             ],
             'flash' => [
+                'success' => fn () => $request->session()->get('success'),
                 'message' => fn () => $request->session()->get('message'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            'csrf_token' => csrf_token(),
         ];
     }
 }

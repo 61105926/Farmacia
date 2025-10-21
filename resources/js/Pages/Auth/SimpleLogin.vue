@@ -1,6 +1,13 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-50">
     <div class="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+      <div class="flex justify-center mb-6">
+        <img
+          :src="logoNombre"
+          alt="Farmacia Pando Central"
+          class="h-16 object-contain"
+        />
+      </div>
       <h2 class="text-2xl font-bold mb-6 text-center">Login Simple</h2>
 
       <form @submit.prevent="handleSubmit">
@@ -56,6 +63,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import logoNombreImg from '@/../assets/images/logo-nombre.jpeg'
+
+const logoNombre = logoNombreImg
 
 const email = ref('admin@farmacia.com')
 const password = ref('admin123')

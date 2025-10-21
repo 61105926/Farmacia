@@ -246,7 +246,7 @@ const toggleStatus = () => {
     type: props.pharmacy.activo ? 'warning' : 'success',
     confirmText: action.charAt(0).toUpperCase() + action.slice(1),
     action: () => {
-      router.post(route('pharmacies.toggle-status', props.pharmacy.id), {}, {
+      router.post($route('pharmacies.toggle-status', props.pharmacy.id), {}, {
         preserveScroll: true,
         onSuccess: () => {
           window.$notify?.success(

@@ -1,7 +1,14 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-accent-50 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
       <div>
+        <div class="flex justify-center mb-6">
+          <img
+            :src="logoNombre"
+            alt="Farmacia Pando Central"
+            class="h-20 object-contain"
+          />
+        </div>
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Farmacia ERP
         </h2>
@@ -65,7 +72,7 @@
             <div>
               <button
                 type="submit"
-                class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-slate-50 hover:bg-slate-900/90 h-10 px-4 py-2"
+                class="w-full inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary-700 text-white hover:bg-primary-800 h-10 px-4 py-2"
                 :disabled="processing"
               >
                 <span v-if="processing">Iniciando sesión...</span>
@@ -87,6 +94,9 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
+import logoNombreImg from '@/../assets/images/logo-nombre.jpeg'
+
+const logoNombre = logoNombreImg
 
 const form = useForm({
   email: '',

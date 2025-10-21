@@ -370,7 +370,7 @@ const form = useForm({
 })
 
 const submit = () => {
-  form.post(route('pharmacies.store'), {
+  form.post($route('pharmacies.store'), {
     onSuccess: () => {
       window.$notify?.success(
         'Farmacia creada',

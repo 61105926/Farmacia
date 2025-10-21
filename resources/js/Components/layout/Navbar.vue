@@ -1,26 +1,35 @@
 <template>
-  <header class="bg-white shadow-sm border-b border-gray-200">
+  <header class="bg-gradient-to-r from-accent-500 to-accent-600 shadow-sm border-b border-accent-700">
     <div class="flex items-center justify-between px-6 py-4">
       <!-- Left Section -->
       <div class="flex items-center space-x-4">
         <!-- Sidebar Toggle -->
         <button
           @click="$emit('toggleSidebar')"
-          class="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+          class="p-2 rounded-lg text-primary-800 hover:text-primary-900 hover:bg-accent-400 focus:outline-none focus:ring-2 focus:ring-primary-700 transition-colors"
         >
           <Menu class="w-5 h-5" />
         </button>
+
+        <!-- Logo Branding (hidden on mobile) -->
+        <div class="hidden lg:flex items-center">
+          <img
+            :src="logoIcon"
+            alt="Farmacia Logo"
+            class="h-8 w-8 object-contain rounded-lg"
+          />
+        </div>
 
         <!-- Breadcrumb -->
         <nav class="hidden sm:flex items-center space-x-2 text-sm">
           <Link
             href="/dashboard"
-            class="text-gray-500 hover:text-gray-700 transition-colors"
+            class="text-primary-800 hover:text-primary-900 transition-colors font-medium"
           >
             Dashboard
           </Link>
-          <ChevronRight class="w-4 h-4 text-gray-400" v-if="breadcrumb" />
-          <span class="text-gray-900 font-medium" v-if="breadcrumb">{{ breadcrumb }}</span>
+          <ChevronRight class="w-4 h-4 text-primary-700" v-if="breadcrumb" />
+          <span class="text-primary-900 font-semibold" v-if="breadcrumb">{{ breadcrumb }}</span>
         </nav>
       </div>
 
@@ -252,6 +261,9 @@ import {
 } from 'lucide-vue-next'
 import Avatar from '@/Components/ui/Avatar.vue'
 import Modal from '@/Components/ui/Modal.vue'
+import logoIconImg from '@/../assets/images/logo.jpeg'
+
+const logoIcon = logoIconImg
 
 defineProps({
   sidebarCollapsed: {

@@ -9,4 +9,52 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Farmacia Pando Central Brand Colors */
+    --color-brand-yellow: #ffd700;
+    --color-brand-yellow-50: #fffef0;
+    --color-brand-yellow-100: #fffbd6;
+    --color-brand-yellow-200: #fff7ad;
+    --color-brand-yellow-300: #fff284;
+    --color-brand-yellow-400: #ffed5b;
+    --color-brand-yellow-500: #ffd700;
+    --color-brand-yellow-600: #d4af00;
+    --color-brand-yellow-700: #a88800;
+    --color-brand-yellow-800: #7d6100;
+    --color-brand-yellow-900: #523a00;
+
+    --color-brand-green: #006838;
+    --color-brand-green-50: #e6f5ed;
+    --color-brand-green-100: #cceadc;
+    --color-brand-green-200: #99d5b9;
+    --color-brand-green-300: #66c096;
+    --color-brand-green-400: #33ab73;
+    --color-brand-green-500: #009650;
+    --color-brand-green-600: #006838;
+    --color-brand-green-700: #00522c;
+    --color-brand-green-800: #003c20;
+    --color-brand-green-900: #002614;
+
+    /* Aliases for easier use */
+    --color-primary-50: var(--color-brand-green-50);
+    --color-primary-100: var(--color-brand-green-100);
+    --color-primary-200: var(--color-brand-green-200);
+    --color-primary-300: var(--color-brand-green-300);
+    --color-primary-400: var(--color-brand-green-400);
+    --color-primary-500: var(--color-brand-green-500);
+    --color-primary-600: var(--color-brand-green-600);
+    --color-primary-700: var(--color-brand-green-700);
+    --color-primary-800: var(--color-brand-green-800);
+    --color-primary-900: var(--color-brand-green-900);
+
+    --color-accent-50: var(--color-brand-yellow-50);
+    --color-accent-100: var(--color-brand-yellow-100);
+    --color-accent-200: var(--color-brand-yellow-200);
+    --color-accent-300: var(--color-brand-yellow-300);
+    --color-accent-400: var(--color-brand-yellow-400);
+    --color-accent-500: var(--color-brand-yellow-500);
+    --color-accent-600: var(--color-brand-yellow-600);
+    --color-accent-700: var(--color-brand-yellow-700);
+    --color-accent-800: var(--color-brand-yellow-800);
+    --color-accent-900: var(--color-brand-yellow-900);
 }

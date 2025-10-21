@@ -386,7 +386,7 @@ const form = useForm({
 })
 
 const submit = () => {
-  form.put(route('pharmacies.update', props.pharmacy.id), {
+  form.put($route('pharmacies.update', props.pharmacy.id), {
     onSuccess: () => {
       window.$notify?.success(
         'Farmacia actualizada',
