@@ -266,7 +266,7 @@ import { Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui'
 import Pagination from '@/Components/Pagination.vue'
-import { useDebouncedRef } from '@/Composables/useDebouncedRef'
+import { useDebouncedRef } from '@/composables/useDebouncedRef'
 import { Package, TrendingUp, TrendingDown, Activity } from 'lucide-vue-next'
 
 const props = defineProps({

@@ -370,7 +370,7 @@ import { Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 import Pagination from '@/Components/Pagination.vue'
-import { useDebouncedRef } from '@/Composables/useDebouncedRef'
+import { useDebouncedRef } from '@/composables/useDebouncedRef'
 import {
   Package,
   CheckCircle,

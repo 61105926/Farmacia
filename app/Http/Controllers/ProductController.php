@@ -71,9 +71,15 @@ class ProductController extends Controller
 
             $products = $query->latest()->paginate(15)->withQueryString();
 
+            // Agregar acciones disponibles a cada producto
+            $products->getCollection()->transform(function ($product) {
+                $product->availableActions = $this->getAvailableActions($product);
+                return $product;
+            });
+
             // Cargar categorías para filtros
-            $categories = Schema::hasTable('categories') ? 
-                Category::select('id', 'name')->get() : 
+            $categories = Schema::hasTable('categories') ?
+                Category::select('id', 'name')->get() :
                 collect();
 
             // Estadísticas de productos
@@ -208,7 +214,7 @@ class ProductController extends Controller
     {
         try {
             $product->load(['category', 'createdBy:id,name']);
-            
+
             // Estadísticas del producto
             $stats = [
                 'total_sales' => 0,
@@ -221,7 +227,7 @@ class ProductController extends Controller
                 $stats['total_sales'] = DB::table('sale_items')
                     ->where('product_id', $product->id)
                     ->sum('quantity');
-                    
+
                 $stats['total_revenue'] = DB::table('sale_items')
                     ->where('product_id', $product->id)
                     ->sum('total');
@@ -233,14 +239,18 @@ class ProductController extends Controller
                     ->sum('quantity');
             }
 
+            // Obtener acciones disponibles para el producto
+            $availableActions = $this->getAvailableActions($product);
+
             return Inertia::render('Products/Show', [
                 'product' => $product,
                 'stats' => $stats,
+                'availableActions' => $availableActions,
             ]);
 
         } catch (\Exception $e) {
             \Log::error('ProductController show error: ' . $e->getMessage());
-            
+
             return redirect()->route('products.index')
                 ->with('error', 'Error al cargar el producto: ' . $e->getMessage());
         }
@@ -649,11 +659,56 @@ class ProductController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('ProductController categories error: ' . $e->getMessage());
-            
+
             return Inertia::render('Products/Categories', [
                 'categories' => [],
                 'error' => 'Error al cargar categorías: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Determinar las acciones disponibles para un producto
+     *
+     * @param Product $product
+     * @return array
+     */
+    private function getAvailableActions(Product $product): array
+    {
+        // Verificar si el producto está siendo usado en ventas o preventas
+        $hasSales = Schema::hasTable('sale_items') ?
+            DB::table('sale_items')->where('product_id', $product->id)->exists() : false;
+
+        $hasPresales = Schema::hasTable('presale_items') ?
+            DB::table('presale_items')->where('product_id', $product->id)->exists() : false;
+
+        $isUsedInTransactions = $hasSales || $hasPresales;
+
+        return [
+            // Ver siempre está disponible (ya estamos en la vista)
+            'canView' => true,
+
+            // Editar: siempre disponible
+            'canEdit' => true,
+
+            // Activar/Desactivar: siempre disponible
+            // Si está activo, se puede desactivar; si está inactivo, se puede activar
+            'canToggleStatus' => true,
+            'currentStatus' => $product->is_active,
+            'toggleAction' => $product->is_active ? 'deactivate' : 'activate',
+            'toggleLabel' => $product->is_active ? 'Desactivar' : 'Activar',
+
+            // Eliminar: NO está disponible si el producto se usa en transacciones
+            // (El usuario pidió quitar el botón de eliminar, pero dejamos la lógica por si acaso)
+            'canDelete' => false, // Usuario pidió explícitamente que NO haya botón eliminar
+            'deleteDisabledReason' => $isUsedInTransactions
+                ? 'El producto está siendo usado en ventas o preventas'
+                : null,
+
+            // Información adicional
+            'isUsedInTransactions' => $isUsedInTransactions,
+            'hasSales' => $hasSales,
+            'hasPresales' => $hasPresales,
+        ];
     }
 }

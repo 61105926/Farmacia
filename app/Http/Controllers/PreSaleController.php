@@ -533,11 +533,56 @@ class PresaleController extends Controller
             'salesperson',
             'items.product',
             'creator:id,name',
+            'confirmedBy:id,name',
+            'convertedBy:id,name',
         ]);
+
+        // Determinar acciones disponibles según el estado
+        $availableActions = $this->getAvailableActions($presale);
 
         return Inertia::render('PreSales/Show', [
             'presale' => $presale,
+            'availableActions' => $availableActions,
         ]);
+    }
+
+    /**
+     * Obtener acciones disponibles para una preventa
+     */
+    private function getAvailableActions(Presale $presale): array
+    {
+        $actions = [
+            'canEdit' => false,
+            'canConfirm' => false,
+            'canConvert' => false,
+            'canCancel' => false,
+            'canPrint' => true, // Siempre se puede imprimir
+            'canDelete' => false,
+        ];
+
+        switch ($presale->status) {
+            case 'draft':
+                $actions['canEdit'] = true;
+                $actions['canConfirm'] = true;
+                $actions['canCancel'] = true;
+                $actions['canDelete'] = true; // Solo en draft se puede eliminar
+                break;
+
+            case 'confirmed':
+                $actions['canConvert'] = true;
+                $actions['canCancel'] = true;
+                break;
+
+            case 'converted':
+                // Solo ver y imprimir
+                break;
+
+            case 'cancelled':
+                // Solo ver y imprimir
+                break;
+        }
+
+        return $actions;
     }
 
     /**

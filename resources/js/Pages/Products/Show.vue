@@ -13,19 +13,32 @@
           <p class="text-sm text-gray-600 mt-1">Código: {{ product.code }}</p>
         </div>
         <div class="flex items-center gap-2">
+          <!-- Editar -->
           <Link
             v-if="can('products.update')"
             :href="`/productos/${product.id}/editar`"
-            class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            title="Editar producto"
           >
-            Editar
+            <Edit class="w-4 h-4" />
+            <span>Editar</span>
           </Link>
+
+          <!-- Activar/Desactivar -->
           <button
-            v-if="can('products.delete')"
-            @click="deleteProduct(product)"
-            class="px-4 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50 transition-colors"
+            v-if="can('products.update')"
+            @click="toggleStatus"
+            :class="[
+              'inline-flex items-center gap-2 px-4 py-2 rounded-md transition-colors',
+              product.is_active
+                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            ]"
+            :title="product.is_active ? 'Desactivar producto' : 'Activar producto'"
           >
-            Eliminar
+            <Power v-if="product.is_active" class="w-4 h-4" />
+            <CheckCircle v-else class="w-4 h-4" />
+            <span>{{ product.is_active ? 'Desactivar' : 'Activar' }}</span>
           </button>
         </div>
       </div>
@@ -142,10 +155,12 @@
   </template>
 
 <script setup>
+import { computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
-import { usePermissions } from '@/Composables/usePermissions'
+import { Edit, Power, CheckCircle } from 'lucide-vue-next'
+import { usePermissions } from '@/composables/usePermissions'
 
 const { can } = usePermissions()
 
@@ -166,9 +181,27 @@ const stockColorClass = computed(() => {
   return 'text-gray-900'
 })
 
-const deleteProduct = (product) => {
-  if (confirm(`¿Está seguro de eliminar el producto ${product.name}?`)) {
-    router.delete(`/productos/${product.id}`)
+const toggleStatus = () => {
+  const action = props.product.is_active ? 'desactivar' : 'activar'
+
+  if (confirm(`¿Estás seguro de ${action} este producto?`)) {
+    router.post(`/productos/${props.product.id}/toggle-status`, {}, {
+      preserveState: true,
+      preserveScroll: true,
+      onSuccess: () => {
+        const actionPast = props.product.is_active ? 'activado' : 'desactivado'
+        window.$notify?.success(
+          'Producto actualizado',
+          `El producto "${props.product.name}" ha sido ${actionPast} exitosamente.`
+        )
+      },
+      onError: () => {
+        window.$notify?.error(
+          'Error',
+          `No se pudo ${action} el producto. Por favor, inténtalo de nuevo.`
+        )
+      }
+    })
   }
 }
 </script>

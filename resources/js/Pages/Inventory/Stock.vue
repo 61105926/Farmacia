@@ -262,7 +262,7 @@ import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui'
 import Pagination from '@/Components/Pagination.vue'
-import { useDebouncedRef } from '@/Composables/useDebouncedRef'
+import { useDebouncedRef } from '@/composables/useDebouncedRef'
 import { Package } from 'lucide-vue-next'
 
 const props = defineProps({

@@ -330,7 +330,7 @@ import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
-import { usePermissions } from '@/Composables/usePermissions'
+import { usePermissions } from '@/composables/usePermissions'
 
 
 const { can } = usePermissions()

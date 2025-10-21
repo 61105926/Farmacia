@@ -32,15 +32,11 @@
     </template>
 
     <!-- Error Message -->
-    <div v-if="error" class="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-      <div class="flex">
-        <AlertCircle class="h-5 w-5 text-red-400" />
-        <div class="ml-3">
-          <h3 class="text-sm font-medium text-red-800">Error</h3>
-          <div class="mt-2 text-sm text-red-700">{{ error }}</div>
-        </div>
-      </div>
-    </div>
+    <Alert v-if="error" variant="destructive" class="mb-6">
+      <AlertCircle class="h-4 w-4" />
+      <AlertTitle>Error</AlertTitle>
+      <AlertDescription>{{ error }}</AlertDescription>
+    </Alert>
 
     <!-- Statistics Cards -->
     <div v-if="stats" class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
@@ -247,33 +243,40 @@
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div class="flex items-center justify-end gap-2">
+                  <div class="flex items-center justify-end gap-1">
+                    <!-- Ver -->
                     <Link
                       :href="`/productos/${product.id}`"
-                      class="text-primary-600 hover:text-primary-900"
+                      class="inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                      title="Ver detalles"
                     >
-                      Ver
+                      <Eye class="w-4 h-4" />
                     </Link>
+
+                    <!-- Editar -->
                     <Link
                       v-if="can('products.update')"
                       :href="`/productos/${product.id}/editar`"
-                      class="text-blue-600 hover:text-blue-900"
+                      class="inline-flex items-center justify-center w-8 h-8 rounded-md text-blue-600 hover:text-blue-900 hover:bg-blue-50 transition-colors"
+                      title="Editar producto"
                     >
-                      Editar
+                      <Edit class="w-4 h-4" />
                     </Link>
+
+                    <!-- Activar/Desactivar -->
                     <button
                       v-if="can('products.update')"
                       @click="toggleStatus(product)"
-                      class="text-yellow-600 hover:text-yellow-900"
+                      :class="[
+                        'inline-flex items-center justify-center w-8 h-8 rounded-md transition-colors',
+                        product.is_active
+                          ? 'text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50'
+                          : 'text-green-600 hover:text-green-900 hover:bg-green-50'
+                      ]"
+                      :title="product.is_active ? 'Desactivar' : 'Activar'"
                     >
-                      {{ product.is_active ? 'Desactivar' : 'Activar' }}
-                    </button>
-                    <button
-                      v-if="can('products.delete')"
-                      @click="deleteProduct(product)"
-                      class="text-red-600 hover:text-red-900"
-                    >
-                      Eliminar
+                      <Power v-if="product.is_active" class="w-4 h-4" />
+                      <CheckCircle v-else class="w-4 h-4" />
                     </button>
                   </div>
                 </td>
@@ -332,22 +335,19 @@ import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
 import Badge from '@/Components/ui/Badge.vue'
-import { 
-  Package, 
-  AlertCircle, 
-  CheckCircle, 
-  AlertTriangle, 
-  XCircle, 
-  DollarSign, 
-  Search, 
-  Filter, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  TrendingUp, 
-  TrendingDown, 
-  Minus 
+import Alert from '@/Components/ui/Alert.vue'
+import AlertTitle from '@/Components/ui/AlertTitle.vue'
+import AlertDescription from '@/Components/ui/AlertDescription.vue'
+import {
+  Package,
+  AlertCircle,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  DollarSign,
+  Eye,
+  Edit,
+  Power
 } from 'lucide-vue-next'
 import { usePermissions } from '@/composables/usePermissions'
 
@@ -415,14 +415,26 @@ const clearFilters = () => {
 }
 
 const toggleStatus = (product) => {
-  if (confirm(`¿Estás seguro de ${product.is_active ? 'desactivar' : 'activar'} este producto?`)) {
-    router.post(`/productos/${product.id}/toggle-status`)
-  }
-}
+  const action = product.is_active ? 'desactivar' : 'activar'
 
-const deleteProduct = (product) => {
-  if (confirm(`¿Estás seguro de eliminar el producto "${product.name}"?`)) {
-    router.delete(`/productos/${product.id}`)
+  if (confirm(`¿Estás seguro de ${action} este producto?`)) {
+    router.post(`/productos/${product.id}/toggle-status`, {}, {
+      preserveState: true,
+      preserveScroll: true,
+      onSuccess: () => {
+        const actionPast = product.is_active ? 'activado' : 'desactivado'
+        window.$notify?.success(
+          'Producto actualizado',
+          `El producto "${product.name}" ha sido ${actionPast} exitosamente.`
+        )
+      },
+      onError: () => {
+        window.$notify?.error(
+          'Error',
+          `No se pudo ${action} el producto. Por favor, inténtalo de nuevo.`
+        )
+      }
+    })
   }
 }
 </script>

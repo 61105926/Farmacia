@@ -310,8 +310,8 @@ import { Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui'
 import Pagination from '@/Components/Pagination.vue'
-import { usePermissions } from '@/Composables/usePermissions'
-import { useDebouncedRef } from '@/Composables/useDebouncedRef'
+import { usePermissions } from '@/composables/usePermissions'
+import { useDebouncedRef } from '@/composables/useDebouncedRef'
 import { DollarSign, AlertTriangle, Clock, CheckCircle, Receipt } from 'lucide-vue-next'
 
 const { can } = usePermissions()

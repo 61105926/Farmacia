@@ -34,7 +34,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
-import { usePermissions } from '@/Composables/usePermissions'
+import { usePermissions } from '@/composables/usePermissions'
 import {
   LayoutDashboard,
   Users,
