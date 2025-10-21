@@ -16,54 +16,73 @@ class RolePermissionSeeder extends Seeder
         // Crear permisos para el ERP de farmacia
         $permissions = [
             // Gestión de usuarios
+            'users.index',
             'users.view',
             'users.create',
             'users.edit',
             'users.delete',
+            'users.update',
 
             // Gestión de clientes
+            'clients.index',
             'clients.view',
             'clients.create',
             'clients.edit',
             'clients.delete',
+            'clients.update',
 
             // Gestión de productos
+            'products.index',
             'products.view',
             'products.create',
             'products.edit',
             'products.delete',
+            'products.update',
 
             // Gestión de inventario
+            'inventory.index',
             'inventory.view',
             'inventory.create',
             'inventory.edit',
             'inventory.delete',
+            'inventory.update',
 
             // Preventas
+            'presales.index',
             'presales.view',
             'presales.create',
             'presales.edit',
             'presales.delete',
+            'presales.update',
 
             // Ventas
+            'sales.index',
             'sales.view',
             'sales.create',
             'sales.edit',
             'sales.delete',
+            'sales.update',
 
             // Cuentas por cobrar
+            'receivables.index',
             'receivables.view',
             'receivables.create',
             'receivables.edit',
             'receivables.delete',
+            'receivables.update',
 
             // Reportes
+            'reports.index',
             'reports.view',
             'reports.export',
 
             // Configuración del sistema
+            'config.index',
             'settings.view',
             'settings.edit',
+
+            // Monitor del sistema
+            'system.monitor',
         ];
 
         foreach ($permissions as $permission) {
@@ -83,27 +102,27 @@ class RolePermissionSeeder extends Seeder
 
         // Vendedor: puede ver y manejar clientes, productos, preventas y ventas
         $vendedorRole->givePermissionTo([
-            'clients.view', 'clients.create', 'clients.edit',
-            'products.view',
-            'presales.view', 'presales.create', 'presales.edit',
-            'sales.view', 'sales.create', 'sales.edit',
-            'inventory.view',
-            'reports.view'
+            'clients.index', 'clients.view', 'clients.create', 'clients.edit', 'clients.update',
+            'products.index', 'products.view',
+            'presales.index', 'presales.view', 'presales.create', 'presales.edit', 'presales.update',
+            'sales.index', 'sales.view', 'sales.create', 'sales.edit', 'sales.update',
+            'inventory.index', 'inventory.view',
+            'reports.index', 'reports.view'
         ]);
 
         // Inventario: maneja productos e inventario
         $inventarioRole->givePermissionTo([
-            'products.view', 'products.create', 'products.edit',
-            'inventory.view', 'inventory.create', 'inventory.edit',
-            'reports.view'
+            'products.index', 'products.view', 'products.create', 'products.edit', 'products.update',
+            'inventory.index', 'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.update',
+            'reports.index', 'reports.view'
         ]);
 
         // Contador: ve reportes y cuentas por cobrar
         $contadorRole->givePermissionTo([
-            'receivables.view', 'receivables.create', 'receivables.edit',
-            'reports.view', 'reports.export',
-            'clients.view',
-            'sales.view'
+            'receivables.index', 'receivables.view', 'receivables.create', 'receivables.edit', 'receivables.update',
+            'reports.index', 'reports.view', 'reports.export',
+            'clients.index', 'clients.view',
+            'sales.index', 'sales.view'
         ]);
     }
 }
