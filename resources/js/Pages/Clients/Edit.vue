@@ -51,7 +51,7 @@
                 <!-- Tax ID -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">
-                    NIT/RUT <span class="text-red-500">*</span>
+                    NIT <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="form.tax_id"
@@ -155,11 +155,21 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                       Departamento
                     </label>
-                    <input
+                    <select
                       v-model="form.state"
-                      type="text"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    />
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="Chuquisaca">Chuquisaca</option>
+                      <option value="La Paz">La Paz</option>
+                      <option value="Cochabamba">Cochabamba</option>
+                      <option value="Oruro">Oruro</option>
+                      <option value="Potosí">Potosí</option>
+                      <option value="Tarija">Tarija</option>
+                      <option value="Santa Cruz">Santa Cruz</option>
+                      <option value="Beni">Beni</option>
+                      <option value="Pando">Pando</option>
+                    </select>
                   </div>
                 </div>
 
@@ -308,7 +318,8 @@
 </template>
 
 <script setup>
-import { useForm, Link } from '@inertiajs/vue3'
+import { watch } from 'vue'
+import { useForm, Link, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 
@@ -350,4 +361,33 @@ const form = useForm({
 const submit = () => {
   form.put(`/clientes/${props.client.id}`)
 }
+
+// Watch for flash messages
+const page = usePage()
+let lastFlashSuccess = null
+let lastFlashError = null
+
+watch(
+  () => page.props.flash,
+  (flash) => {
+    if (flash?.success && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
+      lastFlashSuccess = flash.success
+      window.$notify?.success('Éxito', flash.success)
+    }
+
+    // Filtrar errores vacíos, arrays vacíos, objetos vacíos, y strings vacíos
+    const hasValidError = flash?.error
+      && flash.error !== lastFlashError
+      && flash.error !== '[]'
+      && flash.error !== '{}'
+      && typeof flash.error === 'string'
+      && flash.error.trim() !== ''
+
+    if (hasValidError) {
+      lastFlashError = flash.error
+      window.$notify?.error('Error', flash.error)
+    }
+  },
+  { deep: true }
+)
 </script>

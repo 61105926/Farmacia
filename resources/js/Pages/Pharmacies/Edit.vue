@@ -86,7 +86,7 @@
                 class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                 :class="{ 'border-red-500': form.errors.tipo_documento }"
               >
-                <option value="RUC">RUC</option>
+                <option value="RUC">NIT</option>
                 <option value="CI">Cédula</option>
                 <option value="PASAPORTE">Pasaporte</option>
               </select>

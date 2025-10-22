@@ -103,7 +103,7 @@
                   Unidad *
                 </label>
                 <select
-                  v-model="form.unit"
+                  v-model="form.unit_type"
                   required
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   :class="{ 'border-red-500': errors.unit }"
@@ -138,16 +138,16 @@
                 <div class="relative">
                   <span class="absolute left-3 top-2 text-gray-500">Bs</span>
                   <input
-                    v-model="form.purchase_price"
+                    v-model="form.cost_price"
                     type="number"
                     step="0.01"
                     min="0"
                     required
                     class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    :class="{ 'border-red-500': errors.purchase_price }"
+                    :class="{ 'border-red-500': errors.cost_price }"
                   />
                 </div>
-                <p v-if="errors.purchase_price" class="mt-1 text-sm text-red-600">{{ errors.purchase_price }}</p>
+                <p v-if="errors.cost_price" class="mt-1 text-sm text-red-600">{{ errors.cost_price }}</p>
               </div>
               
               <div>
@@ -170,7 +170,7 @@
               </div>
             </div>
             
-            <div v-if="form.purchase_price && form.sale_price" class="bg-blue-50 p-4 rounded-md">
+            <div v-if="form.cost_price && form.sale_price" class="bg-blue-50 p-4 rounded-md">
               <div class="text-sm">
                 <div class="flex justify-between">
                   <span>Margen de ganancia:</span>
@@ -178,7 +178,7 @@
                 </div>
                 <div class="flex justify-between">
                   <span>Ganancia por unidad:</span>
-                  <span class="font-semibold">{{ formatCurrency(form.sale_price - form.purchase_price) }}</span>
+                  <span class="font-semibold">{{ formatCurrency(form.sale_price - form.cost_price) }}</span>
                 </div>
               </div>
             </div>
@@ -313,6 +313,7 @@ import CardHeader from '@/Components/ui/CardHeader.vue'
 import CardTitle from '@/Components/ui/CardTitle.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
 import { AlertCircle } from 'lucide-vue-next'
+import { showAlert } from '@/composables/useAlert'
 
 const props = defineProps({
   categories: Array,
@@ -327,7 +328,7 @@ const form = reactive({
   code: '',
   description: '',
   category_id: '',
-  purchase_price: '',
+  cost_price: '',
   sale_price: '',
   stock_quantity: '',
   min_stock: '',
@@ -347,8 +348,8 @@ const formatCurrency = (amount) => {
 }
 
 const calculateMargin = () => {
-  if (!form.purchase_price || !form.sale_price) return 0
-  const margin = ((form.sale_price - form.purchase_price) / form.purchase_price) * 100
+  if (!form.cost_price || !form.sale_price) return 0
+  const margin = ((form.sale_price - form.cost_price) / form.cost_price) * 100
   return margin.toFixed(2)
 }
 
@@ -372,6 +373,16 @@ const submitForm = () => {
   isSubmitting.value = true
   
   router.post('/productos', form, {
+    onSuccess: () => {
+      isSubmitting.value = false
+      showAlert('success', 'Producto creado', 'El producto ha sido creado exitosamente.')
+    },
+    onError: (errors) => {
+      isSubmitting.value = false
+      if (errors) {
+        showAlert('error', 'Error', 'No se pudo crear el producto. Verifica los datos.')
+      }
+    },
     onFinish: () => {
       isSubmitting.value = false
     }

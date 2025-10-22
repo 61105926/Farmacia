@@ -236,8 +236,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { computed, watch } from 'vue'
+import { Link, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 
@@ -280,4 +280,32 @@ const formatPrice = (price) => {
     maximumFractionDigits: 2,
   }).format(price)
 }
+
+// Watch for flash messages
+const page = usePage()
+let lastFlashSuccess = null
+let lastFlashError = null
+
+watch(
+  () => page.props.flash,
+  (flash) => {
+    if (flash?.success && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
+      lastFlashSuccess = flash.success
+      window.$notify?.success('Éxito', flash.success)
+    }
+
+    const hasValidError = flash?.error
+      && flash.error !== lastFlashError
+      && flash.error !== '[]'
+      && flash.error !== '{}'
+      && typeof flash.error === 'string'
+      && flash.error.trim() !== ''
+
+    if (hasValidError) {
+      lastFlashError = flash.error
+      window.$notify?.error('Error', flash.error)
+    }
+  },
+  { deep: true }
+)
 </script>

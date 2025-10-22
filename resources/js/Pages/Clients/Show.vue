@@ -131,7 +131,7 @@
               </CardHeader>
               <CardContent class="space-y-3">
                 <div>
-                  <p class="text-sm text-gray-600">NIT/RUT</p>
+                  <p class="text-sm text-gray-600">NIT</p>
                   <p class="font-medium">{{ client.tax_id }}</p>
                 </div>
                 <div>

@@ -69,3 +69,15 @@ export function useAlert() {
     handleConfirm
   }
 }
+
+// Exportar showAlert directamente para uso simple
+export const showAlert = (type, title, message) => {
+  alertState.value = {
+    show: true,
+    type: type || 'info',
+    title: title || 'Información',
+    message: message || '',
+    confirmText: 'Aceptar',
+    onConfirm: null
+  }
+}

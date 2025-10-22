@@ -95,7 +95,7 @@
               <input
                 v-model="filters.search"
                 type="text"
-                placeholder="Nombre, RUT/NIT..."
+                placeholder="Nombre, NIT..."
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                 @input="debouncedSearch"
               />

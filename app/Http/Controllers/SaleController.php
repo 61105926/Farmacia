@@ -348,7 +348,7 @@ class SaleController extends Controller
                 'user_id' => auth()->id()
             ]);
 
-            return redirect()->route('sales.show', $sale)
+            return redirect()->route('sales.index')
                 ->with('success', "Venta {$code} creada exitosamente.");
 
         } catch (ValidationException $e) {
@@ -726,7 +726,7 @@ class SaleController extends Controller
     /**
      * Print sale
      */
-    public function print(Sale $sale): Response
+    public function print(Sale $sale)
     {
         $sale->load([
             'client:id,business_name,trade_name,email,phone',
@@ -734,9 +734,104 @@ class SaleController extends Controller
             'items.product:id,name,code,description'
         ]);
 
-        return Inertia::render('Sales/Print', [
-            'sale' => $sale
+        // Generar ticket térmico
+        $ticket = $this->generateThermalTicket($sale);
+
+        return response($ticket, 200, [
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'Content-Disposition' => 'inline'
         ]);
+    }
+
+    /**
+     * Generate thermal printer ticket for sale
+     */
+    private function generateThermalTicket($sale): string
+    {
+        $lineWidth = 32; // Ancho típico para impresoras térmicas
+
+        $ticket = "";
+
+        // Encabezado
+        $ticket .= $this->centerText("FARMACIA CENTRAL", $lineWidth) . "\n";
+        $ticket .= $this->centerText("TICKET DE VENTA", $lineWidth) . "\n";
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $ticket .= "\n";
+
+        // Información de la venta
+        $ticket .= "Venta #: " . $sale->code . "\n";
+        $ticket .= "Fecha: " . $sale->created_at->format('d/m/Y H:i') . "\n";
+        $ticket .= "Vendedor: " . ($sale->salesperson->name ?? 'N/A') . "\n";
+
+        if ($sale->client) {
+            $ticket .= "Cliente: " . $this->truncateText(($sale->client->business_name ?? $sale->client->trade_name ?? 'N/A'), 30) . "\n";
+        }
+
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $ticket .= $this->centerText("DETALLE DE PRODUCTOS", $lineWidth) . "\n";
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+
+        // Items
+        foreach ($sale->items as $item) {
+            $ticket .= $this->formatItem($item, $lineWidth) . "\n";
+        }
+
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+
+        // Totales
+        $ticket .= $this->formatTotal("SUBTOTAL", $sale->subtotal, $lineWidth) . "\n";
+        if ($sale->total_discount > 0) {
+            $ticket .= $this->formatTotal("DESCUENTO", $sale->total_discount, $lineWidth) . "\n";
+        }
+        $ticket .= $this->formatTotal("TOTAL", $sale->total, $lineWidth) . "\n";
+
+        // Método de pago
+        $ticket .= "Metodo de pago: " . ucfirst($sale->payment_method) . "\n";
+
+        if ($sale->payment_method === 'credit') {
+            $ticket .= "Estado: PENDIENTE DE PAGO\n";
+        } else {
+            $ticket .= "Estado: PAGADO\n";
+        }
+
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $ticket .= $this->centerText("¡Gracias por su compra!", $lineWidth) . "\n";
+        $ticket .= "\n";
+        $ticket .= "\n";
+        $ticket .= "\x1B" . "m"; // Corte de papel (ESC m para algunas impresoras)
+        $ticket .= "\n";
+
+        return $ticket;
+    }
+
+    private function centerText($text, $width): string
+    {
+        $padding = max(0, ($width - strlen($text)) / 2);
+        return str_repeat(" ", (int)$padding) . $text;
+    }
+
+    private function truncateText($text, $length): string
+    {
+        if (strlen($text) <= $length) {
+            return $text;
+        }
+        return substr($text, 0, $length - 3) . '...';
+    }
+
+    private function formatItem($item, $width): string
+    {
+        $name = $this->truncateText($item->product->name, 20);
+        $quantity = $item->quantity;
+        $price = number_format($item->unit_price, 2);
+        $total = number_format($item->total, 2);
+
+        return sprintf("%-20s %3dx %6s %6s", $name, $quantity, $price, $total);
+    }
+
+    private function formatTotal($label, $amount, $width): string
+    {
+        $formattedAmount = number_format($amount, 2);
+        return sprintf("%-20s %10s", $label . ":", $formattedAmount);
     }
 
     /**

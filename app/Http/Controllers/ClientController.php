@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
-// use App\Models\PriceList; // TODO: Create model
-// use App\Models\PaymentTerm; // TODO: Create model
+use App\Models\PriceList;
+use App\Models\PaymentTerm;
 use App\Models\User;
 use App\Helpers\InertiaHelper;
 use Illuminate\Http\Request;
@@ -58,8 +58,8 @@ class ClientController extends Controller
     public function create(): Response
     {
         return Inertia::render('Clients/Create', [
-            'priceLists' => [], // PriceList::where('is_active', true)->get(['id', 'name']),
-            'paymentTerms' => [], // PaymentTerm::where('is_active', true)->get(['id', 'name', 'days']),
+            'priceLists' => PriceList::active()->get(['id', 'name']),
+            'paymentTerms' => PaymentTerm::active()->get(['id', 'name', 'days']),
             'salespeople' => User::active()
                 ->whereHas('roles', fn($q) => $q->where('name', 'vendedor-preventas'))
                 ->select('id', 'name')
@@ -101,17 +101,22 @@ class ClientController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Generar código automático
-        $lastClient = Client::latest('id')->first();
-        $nextNumber = $lastClient ? intval(substr($lastClient->code, 3)) + 1 : 1;
-        $validated['code'] = 'CLI' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        // Generar código automático único
+        do {
+            $lastClient = Client::orderBy('code', 'desc')->first();
+            $nextNumber = $lastClient ? intval(substr($lastClient->code, 3)) + 1 : 1;
+            $code = 'CLI' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+            $exists = Client::where('code', $code)->exists();
+        } while ($exists);
+
+        $validated['code'] = $code;
 
         $validated['created_by'] = auth()->id();
         $validated['status'] = 'active';
 
         $client = Client::create($validated);
 
-        return redirect()->route('clients.show', $client)
+        return redirect()->route('clients.index')
             ->with('success', 'Cliente creado exitosamente.');
     }
 
@@ -155,8 +160,8 @@ class ClientController extends Controller
 
         return Inertia::render('Clients/Edit', [
             'client' => $client,
-            'priceLists' => [], // PriceList::where('is_active', true)->get(['id', 'name']),
-            'paymentTerms' => [], // PaymentTerm::where('is_active', true)->get(['id', 'name', 'days']),
+            'priceLists' => PriceList::active()->get(['id', 'name']),
+            'paymentTerms' => PaymentTerm::active()->get(['id', 'name', 'days']),
             'salespeople' => User::active()
                 ->whereHas('roles', fn($q) => $q->where('name', 'vendedor-preventas'))
                 ->select('id', 'name')

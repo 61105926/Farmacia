@@ -86,7 +86,7 @@
       <!-- Filters -->
       <Card class="mb-6">
         <CardContent class="p-4">
-          <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-7 gap-4">
             <!-- Search -->
             <div class="md:col-span-2">
               <input
@@ -94,8 +94,22 @@
                 type="text"
                 placeholder="Buscar por producto..."
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                @input="debouncedSearch"
+                @input="applyFilters"
               />
+            </div>
+
+            <!-- Product Filter -->
+            <div>
+              <select
+                v-model="filters.product_id"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                @change="applyFilters"
+              >
+                <option value="">Todos los productos</option>
+                <option v-for="product in products" :key="product.id" :value="product.id">
+                  {{ product.name }} ({{ product.code }})
+                </option>
+              </select>
             </div>
 
             <!-- Movement Type -->
@@ -144,6 +158,24 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                 @change="applyFilters"
               />
+            </div>
+
+            <!-- Filter Actions -->
+            <div class="flex gap-2">
+              <button
+                @click="clearFilters"
+                class="px-3 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                title="Limpiar filtros"
+              >
+                🧹
+              </button>
+              <button
+                @click="applyFilters"
+                class="px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                title="Aplicar filtros"
+              >
+                🔍
+              </button>
             </div>
           </div>
         </CardContent>
@@ -224,13 +256,16 @@
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {{ movement.creator.name }}
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link
-                      :href="`/inventario/${movement.id}`"
-                      class="text-primary-700 hover:text-primary-900"
+                  <td class="px-6 py-4 whitespace-nowrap text-right">
+                    <Button
+                      @click="$inertia.visit(`/inventario/${movement.id}`)"
+                      variant="outline"
+                      size="sm"
+                      class="h-8 w-8 p-0"
+                      title="Ver Detalles"
                     >
-                      Ver
-                    </Link>
+                      <Eye class="h-4 w-4" />
+                    </Button>
                   </td>
                 </tr>
               </tbody>
@@ -264,14 +299,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { reactive, watch } from 'vue'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui'
+import Button from '@/Components/ui/Button.vue'
 import Pagination from '@/Components/Pagination.vue'
 import { usePermissions } from '@/composables/usePermissions'
-import { useDebouncedRef } from '@/composables/useDebouncedRef'
-import { Package, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-vue-next'
+import { Package, TrendingUp, TrendingDown, AlertTriangle, Eye } from 'lucide-vue-next'
 
 const { can } = usePermissions()
 
@@ -287,20 +322,54 @@ const props = defineProps({
   }
 })
 
-const filters = ref({
-  search: props.filters.search || '',
-  movement_type: props.filters.movement_type || '',
-  transaction_type: props.filters.transaction_type || '',
-  date_from: props.filters.date_from || '',
-  date_to: props.filters.date_to || '',
+// Initialize filters with reactive
+const filters = reactive({
+  search: props.filters?.search || '',
+  product_id: props.filters?.product_id || '',
+  movement_type: props.filters?.movement_type || '',
+  transaction_type: props.filters?.transaction_type || '',
+  date_from: props.filters?.date_from || '',
+  date_to: props.filters?.date_to || '',
 })
 
-const debouncedSearch = useDebouncedRef(() => {
-  applyFilters()
-}, 500)
+console.log('Initial filters:', props.filters)
+console.log('Reactive filters:', filters)
+
+// Watch for props changes to sync filters
+watch(() => props.filters, (newFilters) => {
+  if (newFilters) {
+    Object.keys(filters).forEach(key => {
+      if (newFilters[key] !== undefined) {
+        filters[key] = newFilters[key]
+      }
+    })
+  }
+}, { deep: true, immediate: true })
 
 const applyFilters = () => {
-  router.get('/inventario', filters.value, {
+  console.log('Applying filters:', filters)
+  const params = {}
+
+  // Only include non-empty filters
+  Object.keys(filters).forEach(key => {
+    if (filters[key] && filters[key] !== '') {
+      params[key] = filters[key]
+    }
+  })
+
+  router.get('/inventario', params, {
+    preserveState: true,
+    preserveScroll: true,
+  })
+}
+
+const clearFilters = () => {
+  console.log('Clearing filters')
+  Object.keys(filters).forEach(key => {
+    filters[key] = ''
+  })
+
+  router.get('/inventario', {}, {
     preserveState: true,
     preserveScroll: true,
   })
@@ -313,4 +382,32 @@ const formatDate = (date) => {
     day: '2-digit',
   })
 }
+
+// Watch for flash messages
+const page = usePage()
+let lastFlashSuccess = null
+let lastFlashError = null
+
+watch(
+  () => page.props.flash,
+  (flash) => {
+    if (flash?.success && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
+      lastFlashSuccess = flash.success
+      window.$notify?.success('Éxito', flash.success)
+    }
+
+    const hasValidError = flash?.error
+      && flash.error !== lastFlashError
+      && flash.error !== '[]'
+      && flash.error !== '{}'
+      && typeof flash.error === 'string'
+      && flash.error.trim() !== ''
+
+    if (hasValidError) {
+      lastFlashError = flash.error
+      window.$notify?.error('Error', flash.error)
+    }
+  },
+  { deep: true }
+)
 </script>

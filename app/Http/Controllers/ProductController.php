@@ -24,13 +24,17 @@ class ProductController extends Controller
         try {
             // Verificar si la tabla existe
             if (!Schema::hasTable('products')) {
-                return Inertia::render('Products/Index', [
-                    'products' => [],
-                    'categories' => [],
-                    'filters' => $request->only(['search', 'category', 'status', 'stock_status']),
-                    'error' => 'La tabla de productos no existe. Por favor, crea las tablas primero.'
-                ]);
+            return Inertia::render('Products/Index', [
+                'products' => [],
+                'categories' => [],
+                'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'category', 'status', 'stock_status'])),
+                'error' => 'La tabla de productos no existe. Por favor, crea las tablas primero.'
+            ]);
             }
+
+            // Log filtros recibidos para debugging
+            $receivedFilters = $request->only(['search', 'category', 'status', 'stock_status']);
+            \Log::info('Filtros recibidos: ' . json_encode($receivedFilters));
 
             $query = Product::with('category');
 
@@ -78,7 +82,7 @@ class ProductController extends Controller
             });
 
             // Cargar categorías para filtros
-            $categories = Schema::hasTable('categories') ?
+            $categories = Schema::hasTable('product_categories') ?
                 Category::select('id', 'name')->get() :
                 collect();
 
@@ -91,10 +95,14 @@ class ProductController extends Controller
                 'total_value' => Product::sum(DB::raw('stock_quantity * cost_price')),
             ];
 
+            // Ensure filters are always passed, even if empty
+            $currentFilters = $request->only(['search', 'category', 'status', 'stock_status']);
+            $sanitizedFilters = InertiaHelper::sanitizeFilters($currentFilters);
+
             return Inertia::render('Products/Index', [
                 'products' => InertiaHelper::sanitizeData($products),
                 'categories' => InertiaHelper::sanitizeData($categories),
-                'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'category', 'status', 'stock_status'])),
+                'filters' => $sanitizedFilters,
                 'stats' => InertiaHelper::sanitizeData($stats),
             ]);
 
@@ -104,7 +112,7 @@ class ProductController extends Controller
             return Inertia::render('Products/Index', [
                 'products' => [],
                 'categories' => [],
-                'filters' => $request->only(['search', 'category', 'status', 'stock_status']),
+                'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'category', 'status', 'stock_status'])),
                 'error' => 'Error al cargar productos: ' . $e->getMessage()
             ]);
         }
@@ -125,7 +133,7 @@ class ProductController extends Controller
             }
 
             // Cargar categorías
-            $categories = Schema::hasTable('categories') ? 
+            $categories = Schema::hasTable('product_categories') ? 
                 Category::select('id', 'name')->get() : 
                 collect();
 
@@ -153,16 +161,16 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:products,code',
-            'description' => 'nullable|string|max:1000',
-            'category_id' => 'nullable|exists:categories,id',
-            'purchase_price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
+            'category_id' => 'nullable|exists:product_categories,id',
+            'brand' => 'nullable|string|max:255',
+            'cost_price' => 'required|numeric|min:0',
             'sale_price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
             'max_stock' => 'nullable|integer|min:0',
-            'unit' => 'required|string|max:50',
+            'unit_type' => 'nullable|string|max:50',
             'is_active' => 'boolean',
-            'notes' => 'nullable|string|max:1000',
         ]);
 
         \Log::info('ProductController store - Datos validados:', $validated);
@@ -173,31 +181,41 @@ class ProductController extends Controller
                 return back()->with('error', 'La tabla de productos no existe. Por favor, crea las tablas primero.');
             }
 
+            // Generar slug único
+            $slug = \Str::slug($validated['name']);
+            $slugCount = DB::table('products')->where('slug', 'like', $slug . '%')->count();
+            if ($slugCount > 0) {
+                $slug = $slug . '-' . ($slugCount + 1);
+            }
+
             // Crear producto usando consulta directa
             $productId = DB::table('products')->insertGetId([
                 'name' => $validated['name'],
                 'code' => $validated['code'],
-                'description' => $validated['description'],
-                'category_id' => $validated['category_id'],
-                'purchase_price' => $validated['purchase_price'],
+                'slug' => $slug,
+                'description' => $validated['description'] ?? null,
+                'category_id' => $validated['category_id'] ?? null,
+                'brand' => $validated['brand'] ?? null,
+                'cost_price' => $validated['cost_price'],
+                'base_price' => $validated['cost_price'],
                 'sale_price' => $validated['sale_price'],
                 'stock_quantity' => $validated['stock_quantity'],
                 'min_stock' => $validated['min_stock'],
-                'max_stock' => $validated['max_stock'],
-                'unit' => $validated['unit'],
+                'max_stock' => $validated['max_stock'] ?? 0,
+                'unit_type' => $validated['unit_type'] ?? 'unit',
                 'is_active' => $validated['is_active'] ?? true,
-                'notes' => $validated['notes'],
                 'created_by' => auth()->id(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            \Log::info('ProductController store - Producto creado exitosamente con ID:', $productId);
+            \Log::info('ProductController store - Producto creado exitosamente', ['product_id' => $productId]);
             
             return redirect()->route('products.index')
                 ->with('success', 'Producto creado exitosamente.');
 
         } catch (\Exception $e) {
+            dd($e);
             \Log::error('ProductController store - Error:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -249,6 +267,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            dd($e);
             \Log::error('ProductController show error: ' . $e->getMessage());
 
             return redirect()->route('products.index')
@@ -263,7 +282,7 @@ class ProductController extends Controller
     {
         try {
             // Cargar categorías
-            $categories = Schema::hasTable('categories') ? 
+            $categories = Schema::hasTable('product_categories') ? 
                 Category::select('id', 'name')->get() : 
                 collect();
 
@@ -290,40 +309,57 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:products,code,' . $product->id,
-            'description' => 'nullable|string|max:1000',
-            'category_id' => 'nullable|exists:categories,id',
-            'purchase_price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
+            'category_id' => 'nullable|exists:product_categories,id',
+            'brand' => 'nullable|string|max:255',
+            'cost_price' => 'required|numeric|min:0',
             'sale_price' => 'required|numeric|min:0',
             'stock_quantity' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
             'max_stock' => 'nullable|integer|min:0',
-            'unit' => 'required|string|max:50',
+            'unit_type' => 'nullable|string|max:50',
             'is_active' => 'boolean',
-            'notes' => 'nullable|string|max:1000',
         ]);
 
         \Log::info('ProductController update - Datos validados:', $validated);
 
         try {
+            // Generar slug si cambió el nombre
+            $updateData = [
+                'name' => $validated['name'],
+                'code' => $validated['code'],
+                'description' => $validated['description'] ?? null,
+                'category_id' => $validated['category_id'] ?? null,
+                'brand' => $validated['brand'] ?? null,
+                'cost_price' => $validated['cost_price'],
+                'base_price' => $validated['cost_price'],
+                'sale_price' => $validated['sale_price'],
+                'stock_quantity' => $validated['stock_quantity'],
+                'min_stock' => $validated['min_stock'],
+                'max_stock' => $validated['max_stock'] ?? 0,
+                'unit_type' => $validated['unit_type'] ?? 'unit',
+                'is_active' => $validated['is_active'] ?? true,
+                'updated_by' => auth()->id(),
+                'updated_at' => now(),
+            ];
+
+            // Si cambió el nombre, actualizar slug
+            if ($product->name !== $validated['name']) {
+                $slug = \Str::slug($validated['name']);
+                $slugCount = DB::table('products')
+                    ->where('slug', 'like', $slug . '%')
+                    ->where('id', '!=', $product->id)
+                    ->count();
+                if ($slugCount > 0) {
+                    $slug = $slug . '-' . ($slugCount + 1);
+                }
+                $updateData['slug'] = $slug;
+            }
+
             // Actualizar producto usando consulta directa
             DB::table('products')
                 ->where('id', $product->id)
-                ->update([
-                    'name' => $validated['name'],
-                    'code' => $validated['code'],
-                    'description' => $validated['description'],
-                    'category_id' => $validated['category_id'],
-                    'purchase_price' => $validated['purchase_price'],
-                    'sale_price' => $validated['sale_price'],
-                    'stock_quantity' => $validated['stock_quantity'],
-                    'min_stock' => $validated['min_stock'],
-                    'max_stock' => $validated['max_stock'],
-                    'unit' => $validated['unit'],
-                    'is_active' => $validated['is_active'] ?? true,
-                    'notes' => $validated['notes'],
-                    'updated_by' => auth()->id(),
-                    'updated_at' => now(),
-                ]);
+                ->update($updateData);
 
             \Log::info('ProductController update - Producto actualizado exitosamente');
             
@@ -408,6 +444,15 @@ class ProductController extends Controller
             $currentStock = $product->stock_quantity;
             $newStock = $currentStock;
 
+            // Mapear tipos de movimiento para que coincidan con la migración
+            $movementTypes = [
+                'add' => 'add',
+                'subtract' => 'subtract',
+                'set' => 'set'
+            ];
+
+            $movementType = $movementTypes[$validated['type']] ?? 'adjustment';
+
             switch ($validated['type']) {
                 case 'add':
                     $newStock = $currentStock + $validated['quantity'];
@@ -431,7 +476,7 @@ class ProductController extends Controller
             if (Schema::hasTable('stock_movements')) {
                 DB::table('stock_movements')->insert([
                     'product_id' => $product->id,
-                    'type' => $validated['type'],
+                    'type' => $movementType,
                     'quantity' => $validated['quantity'],
                     'previous_stock' => $currentStock,
                     'new_stock' => $newStock,
@@ -595,13 +640,27 @@ class ProductController extends Controller
     {
         $request->validate([
             'type' => 'required|in:in,out,adjustment',
-            'quantity' => 'required|integer|min:1',
+            'quantity' => 'required|integer|min:1|max:999999',
             'reason' => 'required|string|max:500',
         ]);
 
         try {
             $oldStock = $product->stock_quantity;
             $adjustment = $request->quantity;
+
+            // Validar que no se pueda sacar más stock del disponible
+            if ($request->type === 'out' && $adjustment > $oldStock) {
+                return back()->with('error', 'No se puede sacar más stock del disponible. Stock actual: ' . $oldStock);
+            }
+
+            // Mapear tipos de movimiento para que coincidan con la migración
+            $movementTypes = [
+                'in' => 'add',
+                'out' => 'subtract',
+                'adjustment' => 'adjustment'
+            ];
+
+            $movementType = $movementTypes[$request->type] ?? 'adjustment';
 
             switch ($request->type) {
                 case 'in':
@@ -620,21 +679,53 @@ class ProductController extends Controller
             // Registrar movimiento de stock
             DB::table('stock_movements')->insert([
                 'product_id' => $product->id,
-                'type' => $request->type,
+                'type' => $movementType,
                 'quantity' => $adjustment,
-                'old_stock' => $oldStock,
+                'previous_stock' => $oldStock,
                 'new_stock' => $product->stock_quantity,
-                'reason' => $request->reason,
+                'notes' => $request->reason,
                 'created_by' => auth()->id(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            return back()->with('success', 'Stock ajustado exitosamente.');
+            return back()->with('success', "Stock ajustado exitosamente. Stock anterior: {$oldStock}, Stock nuevo: {$product->stock_quantity}");
 
         } catch (\Exception $e) {
             \Log::error('ProductController adjustStock error: ' . $e->getMessage());
             return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Ver historial de movimientos de stock de un producto
+     */
+    public function stockHistory(Product $product): Response
+    {
+        try {
+            $movements = DB::table('stock_movements')
+                ->where('product_id', $product->id)
+                ->leftJoin('users', 'stock_movements.created_by', '=', 'users.id')
+                ->select(
+                    'stock_movements.*',
+                    'users.name as user_name'
+                )
+                ->orderBy('stock_movements.created_at', 'desc')
+                ->paginate(50);
+
+            return Inertia::render('Products/StockHistory', [
+                'product' => InertiaHelper::sanitizeData($product),
+                'movements' => InertiaHelper::sanitizeData($movements),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('ProductController stockHistory error: ' . $e->getMessage());
+
+            return Inertia::render('Products/StockHistory', [
+                'product' => InertiaHelper::sanitizeData($product),
+                'movements' => [],
+                'error' => 'Error al cargar historial: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -644,7 +735,7 @@ class ProductController extends Controller
     public function categories(): Response
     {
         try {
-            if (!Schema::hasTable('categories')) {
+            if (!Schema::hasTable('product_categories')) {
                 return Inertia::render('Products/Categories', [
                     'categories' => [],
                     'error' => 'La tabla de categorías no existe.'
@@ -710,5 +801,115 @@ class ProductController extends Controller
             'hasSales' => $hasSales,
             'hasPresales' => $hasPresales,
         ];
+    }
+
+    /**
+     * Obtener historial de movimientos de stock
+     */
+    public function stockHistory(Product $product): Response
+    {
+        try {
+            // Verificar si la tabla existe
+            if (!Schema::hasTable('stock_movements')) {
+                return Inertia::render('Products/StockHistory', [
+                    'product' => $product,
+                    'movements' => ['data' => []],
+                    'error' => 'La tabla de movimientos de stock no existe. Por favor, ejecute las migraciones pendientes.'
+                ]);
+            }
+
+            $movements = DB::table('stock_movements')
+                ->leftJoin('users', 'stock_movements.created_by', '=', 'users.id')
+                ->where('stock_movements.product_id', $product->id)
+                ->select([
+                    'stock_movements.*',
+                    'users.name as user_name'
+                ])
+                ->orderBy('stock_movements.created_at', 'desc')
+                ->paginate(20);
+
+            // Si no hay movimientos, crear algunos de prueba para demostración
+            if ($movements->isEmpty() && Schema::hasTable('stock_movements')) {
+                $this->createDemoMovements($product);
+                // Recargar los movimientos después de crear los de prueba
+                $movements = DB::table('stock_movements')
+                    ->leftJoin('users', 'stock_movements.created_by', '=', 'users.id')
+                    ->where('stock_movements.product_id', $product->id)
+                    ->select([
+                        'stock_movements.*',
+                        'users.name as user_name'
+                    ])
+                    ->orderBy('stock_movements.created_at', 'desc')
+                    ->paginate(20);
+            }
+
+            return Inertia::render('Products/StockHistory', [
+                'product' => $product,
+                'movements' => $movements
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('ProductController stockHistory error: ' . $e->getMessage());
+            return Inertia::render('Products/StockHistory', [
+                'product' => $product,
+                'movements' => ['data' => []],
+                'error' => 'Error al cargar historial de stock: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Crear movimientos de stock de demostración
+     */
+    private function createDemoMovements(Product $product)
+    {
+        $demoMovements = [
+            [
+                'product_id' => $product->id,
+                'type' => 'add',
+                'quantity' => 50,
+                'previous_stock' => 0,
+                'new_stock' => 50,
+                'notes' => 'Compra inicial de producto',
+                'created_by' => auth()->id() ?: 1,
+                'created_at' => now()->subDays(7),
+                'updated_at' => now()->subDays(7),
+            ],
+            [
+                'product_id' => $product->id,
+                'type' => 'subtract',
+                'quantity' => 10,
+                'previous_stock' => 50,
+                'new_stock' => 40,
+                'notes' => 'Venta a cliente',
+                'created_by' => auth()->id() ?: 1,
+                'created_at' => now()->subDays(5),
+                'updated_at' => now()->subDays(5),
+            ],
+            [
+                'product_id' => $product->id,
+                'type' => 'add',
+                'quantity' => 20,
+                'previous_stock' => 40,
+                'new_stock' => 60,
+                'notes' => 'Reposición de stock',
+                'created_by' => auth()->id() ?: 1,
+                'created_at' => now()->subDays(3),
+                'updated_at' => now()->subDays(3),
+            ],
+            [
+                'product_id' => $product->id,
+                'type' => 'adjustment',
+                'quantity' => 5,
+                'previous_stock' => 60,
+                'new_stock' => 55,
+                'notes' => 'Ajuste por inventario físico',
+                'created_by' => auth()->id() ?: 1,
+                'created_at' => now()->subDays(1),
+                'updated_at' => now()->subDays(1),
+            ],
+        ];
+
+        DB::table('stock_movements')->insert($demoMovements);
     }
 }

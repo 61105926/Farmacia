@@ -15,12 +15,12 @@
           >
             Nuevo Usuario
           </Link>
-          <button
+          <!-- <button
             @click="exportUsers"
             class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
           >
             Exportar CSV
-          </button>
+          </button> -->
         </div>
       </div>
     </template>
@@ -140,12 +140,6 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Último Acceso
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actividad
-                </th>
                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
                 </th>
@@ -169,40 +163,31 @@
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <Badge :variant="getRoleVariant(user.roles?.[0]?.name || null)">
-                    {{ getRoleDescription(user.roles?.[0]?.name || null) }}
-                  </Badge>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <div 
-                      class="w-2 h-2 rounded-full mr-2"
-                      :class="(user.blocked_at && user.blocked_at !== null) ? 'bg-red-500' : 'bg-green-500'"
-                    ></div>
-                    <span class="text-sm" :class="(user.blocked_at && user.blocked_at !== null) ? 'text-red-600' : 'text-green-600'">
-                      {{ (user.blocked_at && user.blocked_at !== null) ? 'Bloqueado' : 'Activo' }}
+                  <div class="flex flex-wrap gap-1">
+                    <Badge 
+                      v-for="role in user.roles" 
+                      :key="role.id"
+                      :variant="getRoleVariant(role.name)"
+                    >
+                      {{ getRoleDescription(role.name) }}
+                    </Badge>
+                    <span v-if="!user.roles || user.roles.length === 0" class="text-sm text-gray-500">
+                      Sin roles
                     </span>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatDate(user.last_login_at) }}
-                </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-2">
-                    <Link
-                      :href="`/usuarios/${user.id}/estadisticas`"
-                      class="text-blue-600 hover:text-blue-900 text-sm"
-                    >
-                      Estadísticas
-                    </Link>
-                    <Link
-                      :href="`/usuarios/${user.id}/actividad`"
-                      class="text-green-600 hover:text-green-900 text-sm"
-                    >
-                      Actividad
-                    </Link>
+                  <div class="flex items-center">
+                    <div
+                      class="w-2 h-2 rounded-full mr-2"
+                      :class="user.status === 'blocked' ? 'bg-red-500' : 'bg-green-500'"
+                    ></div>
+                    <span class="text-sm" :class="user.status === 'blocked' ? 'text-red-600' : 'text-green-600'">
+                      {{ user.status === 'blocked' ? 'Bloqueado' : 'Activo' }}
+                    </span>
                   </div>
                 </td>
+            
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex items-center justify-end gap-2">
                     <Link
@@ -222,20 +207,12 @@
                     </Link>
                     <button
                       v-if="can('users.update')"
-                      @click="toggleBlock(user)"
-                      class="p-2 text-yellow-600 hover:text-yellow-900 hover:bg-yellow-50 rounded-md transition-colors"
-                      :title="user.blocked_at ? 'Desbloquear usuario' : 'Bloquear usuario'"
+                      @click="toggleUserStatus(user)"
+                      :class="getStatusButtonClass(user)"
+                      class="p-2 rounded-md transition-colors"
+                      :title="getStatusButtonTitle(user)"
                     >
-                      <Shield v-if="user.blocked_at" class="h-4 w-4" />
-                      <ShieldOff v-else class="h-4 w-4" />
-                    </button>
-                    <button
-                      v-if="can('users.delete')"
-                      @click="disableUser(user)"
-                      class="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded-md transition-colors"
-                      :title="'Deshabilitar ' + user.name"
-                    >
-                      <UserX class="h-4 w-4" />
+                      <component :is="getStatusIcon(user)" class="h-4 w-4" />
                     </button>
                   </div>
                 </td>
@@ -285,8 +262,6 @@
       </div>
     </Card>
 
-    <!-- User Statistics Summary -->
-
     <!-- Alert Dialog -->
     <AlertDialog
       :show="alertState.show"
@@ -301,13 +276,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { reactive, computed, watch } from 'vue'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
 import Badge from '@/Components/ui/Badge.vue'
-import { Users, UserCheck, UserX, Shield, Eye, Edit, ShieldOff } from 'lucide-vue-next'
+import { Users, UserCheck, UserX, Shield, Eye, Edit } from 'lucide-vue-next'
 import { usePermissions } from '@/composables/usePermissions'
 import { useAlert } from '@/composables/useAlert'
 import AlertDialog from '@/Components/ui/AlertDialog.vue'
@@ -414,35 +389,56 @@ const applyFilters = () => {
   })
 }
 
-const toggleBlock = (user) => {
-  const action = user.blocked_at ? 'desbloquear' : 'bloquear'
-  showConfirm({
-    title: `${action.charAt(0).toUpperCase() + action.slice(1)} Usuario`,
-    message: `¿Estás seguro de ${action} el usuario "${user.name}"?`,
-    confirmText: action.charAt(0).toUpperCase() + action.slice(1),
-    onConfirm: () => {
-      router.post(`/usuarios/${user.id}/toggle-block`, {}, {
-        preserveState: true,
-        preserveScroll: true,
-        onSuccess: () => {
-          router.reload({ only: ['users'] })
-        }
-      })
-    }
-  })
+// Removed - now using showConfirm from useAlert
+
+// Helper functions for user status
+const isUserActive = (user) => {
+  return user.status === 'active'
 }
 
-const disableUser = (user) => {
+const getStatusButtonClass = (user) => {
+  if (isUserActive(user)) {
+    return 'text-red-600 hover:text-red-900 hover:bg-red-50'
+  } else {
+    return 'text-green-600 hover:text-green-900 hover:bg-green-50'
+  }
+}
+
+const getStatusButtonTitle = (user) => {
+  if (isUserActive(user)) {
+    return `Deshabilitar ${user.name}`
+  } else {
+    return `Activar ${user.name}`
+  }
+}
+
+const getStatusIcon = (user) => {
+  if (isUserActive(user)) {
+    return UserX
+  } else {
+    return UserCheck
+  }
+}
+
+const toggleUserStatus = (user) => {
+  const isActive = isUserActive(user)
+  const action = isActive ? 'deshabilitar' : 'activar'
+  const actionCapitalized = action.charAt(0).toUpperCase() + action.slice(1)
+
   showConfirm({
-    title: 'Deshabilitar Usuario',
-    message: `¿Estás seguro de deshabilitar el usuario "${user.name}"? Esta acción no se puede deshacer.`,
-    confirmText: 'Deshabilitar',
+    title: `${actionCapitalized} Usuario`,
+    message: `¿Estás seguro de ${action} el usuario "${user.name}"?`,
+    confirmText: actionCapitalized,
     onConfirm: () => {
-      router.post(`/usuarios/${user.id}/disable`, {}, {
+      const endpoint = isActive ? 'disable' : 'activate'
+      router.post(`/usuarios/${user.id}/${endpoint}`, {}, {
         preserveState: true,
         preserveScroll: true,
         onSuccess: () => {
           router.reload({ only: ['users'] })
+        },
+        onError: (errors) => {
+          console.error('Error:', errors)
         }
       })
     }
@@ -452,4 +448,33 @@ const disableUser = (user) => {
 const exportUsers = () => {
   window.open('/usuarios/exportar/csv', '_blank')
 }
+
+// Watch for flash messages
+const page = usePage()
+let lastFlashSuccess = null
+let lastFlashError = null
+
+watch(
+  () => page.props.flash,
+  (flash) => {
+    if (flash?.success && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
+      lastFlashSuccess = flash.success
+      window.$notify?.success('Éxito', flash.success)
+    }
+
+    // Filtrar errores vacíos, arrays vacíos, objetos vacíos, y strings vacíos
+    const hasValidError = flash?.error
+      && flash.error !== lastFlashError
+      && flash.error !== '[]'
+      && flash.error !== '{}'
+      && typeof flash.error === 'string'
+      && flash.error.trim() !== ''
+
+    if (hasValidError) {
+      lastFlashError = flash.error
+      window.$notify?.error('Error', flash.error)
+    }
+  },
+  { deep: true }
+)
 </script>

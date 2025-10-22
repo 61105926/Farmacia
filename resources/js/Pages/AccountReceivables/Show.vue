@@ -94,7 +94,7 @@
                   <div class="text-sm text-gray-900">{{ invoice.client_name }}</div>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-500">RUT/NIT</label>
+                  <label class="block text-sm font-medium text-gray-500">NIT</label>
                   <div class="text-sm text-gray-900">{{ invoice.client_tax_id || 'N/A' }}</div>
                 </div>
               </div>

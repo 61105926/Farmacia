@@ -172,19 +172,6 @@
                     <option value="inactive">Inactivo</option>
                   </select>
                 </div>
-
-                <!-- Send Welcome Email -->
-                <div class="flex items-center">
-                  <input
-                    id="send-email"
-                    v-model="form.send_welcome_email"
-                    type="checkbox"
-                    class="h-4 w-4 text-primary-700 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <label for="send-email" class="ml-3 text-sm text-gray-700">
-                    Enviar email de bienvenida
-                  </label>
-                </div>
               </CardContent>
             </Card>
 
@@ -236,7 +223,6 @@ const form = useForm({
   branch_id: '',
   role_ids: [],
   status: 'active',
-  send_welcome_email: true,
 })
 
 const submit = () => {

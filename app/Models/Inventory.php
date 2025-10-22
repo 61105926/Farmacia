@@ -27,6 +27,11 @@ class Inventory extends Model
         'expiry_date',
     ];
 
+    protected $dates = [
+        'movement_date',
+        'expiry_date',
+    ];
+
     protected $casts = [
         'movement_date' => 'date',
         'expiry_date' => 'date',

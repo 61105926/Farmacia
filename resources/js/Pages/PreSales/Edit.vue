@@ -43,7 +43,7 @@
 
                 <div v-if="selectedClient" class="grid grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">RUT/NIT</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">NIT</label>
                     <div class="text-sm text-gray-900">{{ selectedClient.tax_id || 'N/A' }}</div>
                   </div>
                   <div>
@@ -338,7 +338,7 @@
                   <div class="text-sm text-gray-900">{{ selectedClient.trade_name }}</div>
                 </div>
                 <div v-if="selectedClient.tax_id">
-                  <div class="text-xs text-gray-500">RUT/NIT</div>
+                  <div class="text-xs text-gray-500">NIT</div>
                   <div class="text-sm text-gray-900">{{ selectedClient.tax_id }}</div>
                 </div>
               </CardContent>

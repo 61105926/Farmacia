@@ -16,12 +16,12 @@ class Product extends Model
         'name',
         'description',
         'category_id',
-        'purchase_price',
+        'cost_price',
         'sale_price',
         'stock_quantity',
         'min_stock',
         'max_stock',
-        'unit',
+        'unit_type',
         'is_active',
         'notes',
         'created_by',
@@ -29,7 +29,7 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'purchase_price' => 'decimal:2',
+        'cost_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
@@ -37,7 +37,12 @@ class Product extends Model
     // Relaciones
     public function category()
     {
-        return $this->belongsTo(Category::class, 'category_id');
+        return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
+
+    public function inventoryMovements()
+    {
+        return $this->hasMany(Inventory::class);
     }
 
     public function createdBy()

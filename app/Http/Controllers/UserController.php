@@ -105,7 +105,6 @@ class UserController extends Controller
             'document_number' => 'nullable|string|max:50',
             'role_ids' => 'required|array',
             'role_ids.*' => 'exists:roles,id',
-            'send_welcome_email' => 'nullable|boolean',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
@@ -276,10 +275,31 @@ class UserController extends Controller
 
         $user->update([
             'blocked_at' => now(),
-            'status' => 'inactive',
+            'status' => 'blocked',
         ]);
 
         return back()->with('success', 'Usuario deshabilitado exitosamente.');
+    }
+
+    /**
+     * Activate user
+     */
+    public function activate(User $user): RedirectResponse
+    {
+        try {
+            $user->update([
+                'blocked_at' => null,
+                'status' => 'active',
+                'failed_login_attempts' => 0,
+            ]);
+
+            return back()->with('success', 'Usuario activado exitosamente.');
+
+        } catch (\Exception $e) {
+            \Log::error('UserController activate error: ' . $e->getMessage());
+            
+            return back()->with('error', 'Error al activar el usuario: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -328,31 +348,6 @@ class UserController extends Controller
             
             return redirect()->route('users.index')
                 ->with('error', 'Error al cargar estadísticas: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Get user activity log
-     */
-    public function activityLog(User $user): Response
-    {
-        try {
-            $activities = \DB::table('activity_log')
-                ->where('causer_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->limit(50)
-                ->get();
-
-            return Inertia::render('Users/ActivityLog', [
-                'user' => $user,
-                'activities' => $activities,
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('UserController activityLog error: ' . $e->getMessage());
-            
-            return redirect()->route('users.index')
-                ->with('error', 'Error al cargar historial de actividad: ' . $e->getMessage());
         }
     }
 

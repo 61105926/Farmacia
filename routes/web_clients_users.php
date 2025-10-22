@@ -50,9 +50,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:users.update')->name('reset-password');
         Route::post('/{user}/unblock', [UserController::class, 'unblock'])->middleware('permission:users.update')->name('unblock');
         Route::get('/{user}/estadisticas', [UserController::class, 'statistics'])->middleware('permission:users.view')->name('statistics');
-        Route::get('/{user}/actividad', [UserController::class, 'activityLog'])->middleware('permission:users.view')->name('activity-log');
         Route::post('/{user}/toggle-block', [UserController::class, 'toggleBlock'])->middleware('permission:users.update')->name('toggle-block');
         Route::post('/{user}/disable', [UserController::class, 'disable'])->middleware('permission:users.delete')->name('disable');
+        Route::post('/{user}/activate', [UserController::class, 'activate'])->middleware('permission:users.update')->name('activate');
         Route::post('/{user}/assign-clients', [UserController::class, 'assignClients'])->middleware('permission:users.update')->name('assign-clients');
         Route::get('/exportar/csv', [UserController::class, 'export'])->middleware('permission:users.view')->name('export');
         
@@ -72,6 +72,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{product}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggle-status');
         Route::post('/{product}/update-stock', [ProductController::class, 'updateStock'])->name('update-stock');
         Route::post('/{product}/ajustar-stock', [ProductController::class, 'adjustStock'])->name('adjust-stock');
+        Route::get('/{product}/historial-stock', [ProductController::class, 'stockHistory'])->name('stock-history');
         Route::get('/inventario', [ProductController::class, 'inventory'])->name('inventory');
         Route::get('/stock-bajo', [ProductController::class, 'lowStock'])->name('low-stock');
         Route::get('/sin-stock', [ProductController::class, 'outOfStock'])->name('out-of-stock');
