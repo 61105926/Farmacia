@@ -28,18 +28,27 @@
                     <select
                       v-model="form.product_id"
                       required
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                      :disabled="!products || products.length === 0"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                       :class="{ 'border-red-500': form.errors.product_id }"
                       @change="onProductChange"
                     >
-                      <option value="">Seleccionar producto</option>
+                      <option value="">
+                        {{ !products || products.length === 0 ? 'No hay productos disponibles' : 'Seleccionar producto' }}
+                      </option>
                       <option v-for="product in products" :key="product.id" :value="product.id">
-                        {{ product.name }} ({{ product.code }}) - Stock: {{ product.stock_quantity }}
+                        {{ product.name }} ({{ product.code }}) - Stock: {{ product.stock_quantity || 0 }}
                       </option>
                     </select>
                     <span v-if="form.errors.product_id" class="text-sm text-red-600">
                       {{ form.errors.product_id }}
                     </span>
+                    <div v-if="!products || products.length === 0" class="mt-2 text-sm text-orange-600">
+                      ⚠️ No hay productos disponibles. Primero debe crear productos en el módulo de Productos.
+                    </div>
+                    <div v-if="error" class="mt-2 text-sm text-red-600">
+                      ⚠️ {{ error }}
+                    </div>
                   </div>
 
                   <div>
@@ -122,14 +131,22 @@
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                       Costo Unitario
+                      <span v-if="selectedProduct && selectedProduct.cost_price" class="text-xs text-gray-500 font-normal">
+                        (del producto: Bs. {{ formatPrice(selectedProduct.cost_price) }})
+                      </span>
                     </label>
                     <input
                       v-model.number="form.unit_cost"
                       type="number"
                       step="0.01"
                       min="0"
+                      @input="calculateTotalCost"
+                      placeholder="Se llena automáticamente con el costo del producto"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     />
+                    <span v-if="selectedProduct && selectedProduct.cost_price && parseFloat(form.unit_cost) != parseFloat(selectedProduct.cost_price)" class="text-xs text-gray-500 mt-1 block">
+                      ⚠️ Costo modificado (costo original: Bs. {{ formatPrice(selectedProduct.cost_price) }})
+                    </span>
                   </div>
                 </div>
 
@@ -278,11 +295,11 @@
                 </div>
                 <div v-if="form.unit_cost" class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Costo Unitario</span>
-                  <span class="text-sm text-gray-900">${{ formatPrice(form.unit_cost) }}</span>
+                  <span class="text-sm text-gray-900">Bs. {{ formatPrice(form.unit_cost) }}</span>
                 </div>
                 <div v-if="form.unit_cost && form.quantity" class="flex items-center justify-between border-t pt-2">
                   <span class="text-sm font-medium text-gray-900">Total</span>
-                  <span class="text-sm font-medium text-gray-900">${{ formatPrice(form.unit_cost * form.quantity) }}</span>
+                  <span class="text-sm font-medium text-gray-900">Bs. {{ formatPrice(form.unit_cost * form.quantity) }}</span>
                 </div>
               </CardContent>
             </Card>
@@ -318,10 +335,24 @@ import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 
 const props = defineProps({
-  products: Array,
-  movementTypes: Object,
-  transactionTypes: Object,
+  products: {
+    type: Array,
+    default: () => []
+  },
+  movementTypes: {
+    type: Object,
+    default: () => ({})
+  },
+  transactionTypes: {
+    type: Object,
+    default: () => ({})
+  },
+  error: String,
 })
+
+// Debug: mostrar productos recibidos
+console.log('Productos recibidos en props:', props.products)
+console.log('Cantidad de productos:', props.products?.length || 0)
 
 const form = useForm({
   product_id: '',
@@ -370,17 +401,61 @@ const onProductChange = () => {
   // Resetear campos relacionados cuando cambia el producto
   form.batch_number = ''
   form.expiry_date = ''
+  
+  // Establecer el costo unitario con el costo del producto seleccionado
+  if (selectedProduct.value && selectedProduct.value.cost_price) {
+    form.unit_cost = parseFloat(selectedProduct.value.cost_price) || 0
+    // Recalcular el total automáticamente
+    calculateTotalCost()
+  } else {
+    form.unit_cost = 0
+    form.total_cost = 0
+  }
 }
 
+const calculateTotalCost = () => {
+  if (form.unit_cost && form.quantity) {
+    form.total_cost = form.unit_cost * form.quantity
+  } else {
+    form.total_cost = 0
+  }
+}
+
+// Watch quantity changes to recalculate total
+watch(() => form.quantity, () => {
+  calculateTotalCost()
+})
+
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  if (!price) return '0.00'
+  return new Intl.NumberFormat('es-BO', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(price)
 }
 
 const submit = () => {
-  form.post('/inventario')
+  // Calcular total_cost si hay unit_cost y quantity pero no total_cost
+  if (form.unit_cost && form.quantity && !form.total_cost) {
+    form.total_cost = form.unit_cost * form.quantity
+  }
+  
+  // Convertir valores vacíos a null para campos opcionales
+  if (form.expiry_date === '') form.expiry_date = null
+  if (form.reference_id === '' || form.reference_id === 'null') form.reference_id = null
+  if (form.unit_cost === '' || form.unit_cost === 0) form.unit_cost = null
+  if (form.total_cost === '' || form.total_cost === 0) form.total_cost = null
+  
+  form.post('/inventario', {
+    preserveScroll: true,
+    onSuccess: () => {
+      // Éxito manejado por el watcher de flash messages
+    },
+    onError: (errors) => {
+      // Errores de validación se mostrarán automáticamente
+      console.error('Errores de validación:', errors)
+    }
+  })
 }
 
 // Watch for flash messages

@@ -91,11 +91,18 @@
                   :class="{ 'border-red-500': errors.category_id }"
                 >
                   <option value="">Seleccionar categoría</option>
+                  <option v-if="!categories || categories.length === 0" value="" disabled>
+                    No hay categorías disponibles
+                  </option>
                   <option v-for="category in categories" :key="category.id" :value="category.id">
                     {{ category.name }}
                   </option>
                 </select>
                 <p v-if="errors.category_id" class="mt-1 text-sm text-red-600">{{ errors.category_id }}</p>
+                <p v-if="(!categories || categories.length === 0) && !error" class="mt-1 text-sm text-amber-600">
+                  ⚠️ No hay categorías disponibles. Ejecuta el seeder: 
+                  <code class="bg-gray-100 px-2 py-1 rounded text-xs">php artisan db:seed --class=CategorySeeder</code>
+                </p>
               </div>
               
               <div>
@@ -305,8 +312,8 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { ref, reactive, watch } from 'vue'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardHeader from '@/Components/ui/CardHeader.vue'
@@ -328,15 +335,20 @@ const form = reactive({
   code: '',
   description: '',
   category_id: '',
+  brand: '',
   cost_price: '',
   sale_price: '',
   stock_quantity: '',
   min_stock: '',
   max_stock: '',
-  unit: '',
+  unit_type: 'unidad',
   is_active: true,
   notes: '',
 })
+
+// Debug: Log categories
+console.log('Categories recibidas:', props.categories)
+console.log('Número de categorías:', props.categories?.length || 0)
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('es-BO', {
@@ -375,17 +387,45 @@ const submitForm = () => {
   router.post('/productos', form, {
     onSuccess: () => {
       isSubmitting.value = false
-      showAlert('success', 'Producto creado', 'El producto ha sido creado exitosamente.')
+      // Flash message will be handled by watcher
+      router.visit('/productos')
     },
     onError: (errors) => {
       isSubmitting.value = false
-      if (errors) {
-        showAlert('error', 'Error', 'No se pudo crear el producto. Verifica los datos.')
-      }
+      // Flash message will be handled by watcher
     },
     onFinish: () => {
       isSubmitting.value = false
     }
   })
 }
+
+// Watch for flash messages
+const page = usePage()
+let lastFlashSuccess = null
+let lastFlashError = null
+
+watch(
+  () => page.props.flash,
+  (flash) => {
+    if (flash?.success && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
+      lastFlashSuccess = flash.success
+      window.$notify?.success('Éxito', flash.success)
+    }
+
+    // Filtrar errores vacíos, arrays vacíos, objetos vacíos, y strings vacíos
+    const hasValidError = flash?.error
+      && flash.error !== lastFlashError
+      && flash.error !== '[]'
+      && flash.error !== '{}'
+      && typeof flash.error === 'string'
+      && flash.error.trim() !== ''
+
+    if (hasValidError) {
+      lastFlashError = flash.error
+      window.$notify?.error('Error', flash.error)
+    }
+  },
+  { deep: true }
+)
 </script>

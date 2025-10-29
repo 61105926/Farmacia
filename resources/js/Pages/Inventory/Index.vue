@@ -195,7 +195,10 @@
                     Producto
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tipo
+                    Tipo Movimiento
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Entrada/Salida
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Cantidad
@@ -226,6 +229,11 @@
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                      {{ movement.movement_type_label || getMovementTypeLabel(movement.movement_type) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
                     <span
                       class="px-2 py-1 text-xs font-medium rounded-full"
                       :class="{
@@ -233,7 +241,7 @@
                         'bg-red-100 text-red-800': movement.transaction_type === 'out',
                       }"
                     >
-                      {{ movement.movement_type_label }}
+                      {{ movement.transaction_type === 'in' ? 'Entrada' : 'Salida' }}
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
@@ -381,6 +389,20 @@ const formatDate = (date) => {
     month: '2-digit',
     day: '2-digit',
   })
+}
+
+// Función auxiliar para obtener el label del tipo de movimiento
+const getMovementTypeLabel = (type) => {
+  const labels = {
+    'purchase': 'Compra',
+    'sale': 'Venta',
+    'return': 'Devolución',
+    'adjustment': 'Ajuste',
+    'transfer': 'Transferencia',
+    'damage': 'Daño',
+    'expiry': 'Vencimiento',
+  }
+  return labels[type] || type
 }
 
 // Watch for flash messages

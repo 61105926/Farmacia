@@ -12,7 +12,6 @@ use Inertia\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -32,9 +31,8 @@ class ProductController extends Controller
             ]);
             }
 
-            // Log filtros recibidos para debugging
             $receivedFilters = $request->only(['search', 'category', 'status', 'stock_status']);
-            \Log::info('Filtros recibidos: ' . json_encode($receivedFilters));
+            
 
             $query = Product::with('category');
 
@@ -47,20 +45,29 @@ class ProductController extends Controller
                 });
             }
 
-            if ($request->filled('category')) {
-                $query->where('category_id', $request->category);
+            // Filtro de categoría
+            $category = $request->input('category');
+            if ($category && $category !== '' && $category !== null) {
+                $categoryId = is_numeric($category) ? (int) $category : null;
+                if ($categoryId) {
+                    $query->where('category_id', $categoryId);
+                }
             }
 
-            if ($request->filled('status')) {
-                if ($request->status === 'active') {
+            // Filtro de estado
+            $status = $request->input('status');
+            if ($status && $status !== '' && $status !== null) {
+                if ($status === 'active') {
                     $query->where('is_active', true);
-                } elseif ($request->status === 'inactive') {
+                } elseif ($status === 'inactive') {
                     $query->where('is_active', false);
                 }
             }
 
-            if ($request->filled('stock_status')) {
-                switch ($request->stock_status) {
+            // Filtro de stock
+            $stockStatus = $request->input('stock_status');
+            if ($stockStatus && $stockStatus !== '' && $stockStatus !== null) {
+                switch ($stockStatus) {
                     case 'low_stock':
                         $query->where('stock_quantity', '<=', 10)->where('stock_quantity', '>', 0);
                         break;
@@ -81,9 +88,14 @@ class ProductController extends Controller
                 return $product;
             });
 
-            // Cargar categorías para filtros
+            // Cargar categorías para filtros (solo categorías activas, ordenadas)
             $categories = Schema::hasTable('product_categories') ?
-                Category::select('id', 'name')->get() :
+                Category::select('id', 'name')
+                    ->where('is_active', true)
+                    ->whereNull('parent_id') // Solo categorías principales para filtros
+                    ->orderBy('sort_order', 'asc')
+                    ->orderBy('name', 'asc')
+                    ->get() :
                 collect();
 
             // Estadísticas de productos
@@ -107,7 +119,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('ProductController index error: ' . $e->getMessage());
+            dd($e);
             
             return Inertia::render('Products/Index', [
                 'products' => [],
@@ -132,17 +144,32 @@ class ProductController extends Controller
                 ]);
             }
 
-            // Cargar categorías
-            $categories = Schema::hasTable('product_categories') ? 
-                Category::select('id', 'name')->get() : 
-                collect();
+            // Cargar categorías (solo categorías activas, ordenadas)
+            // Primero verificamos si la tabla existe y tiene datos
+            $categories = collect();
+            
+            if (Schema::hasTable('product_categories')) {
+                $categories = Category::select('id', 'name')
+                    ->where('is_active', true)
+                    ->orderBy('sort_order', 'asc')
+                    ->orderBy('name', 'asc')
+                    ->get();
+                
+                // Si no hay categorías activas, intentar cargar todas (por si acaso)
+                if ($categories->isEmpty()) {
+                    $categories = Category::select('id', 'name')
+                        ->orderBy('sort_order', 'asc')
+                        ->orderBy('name', 'asc')
+                        ->get();
+                }
+            }
 
             return Inertia::render('Products/Create', [
                 'categories' => $categories,
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('ProductController create error: ' . $e->getMessage());
+            dd($e);
             
             return Inertia::render('Products/Create', [
                 'categories' => [],
@@ -156,8 +183,6 @@ class ProductController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        \Log::info('ProductController store - Datos recibidos:', $request->all());
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:products,code',
@@ -173,7 +198,6 @@ class ProductController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        \Log::info('ProductController store - Datos validados:', $validated);
 
         try {
             // Verificar que la tabla existe
@@ -209,17 +233,11 @@ class ProductController extends Controller
                 'updated_at' => now(),
             ]);
 
-            \Log::info('ProductController store - Producto creado exitosamente', ['product_id' => $productId]);
-            
             return redirect()->route('products.index')
                 ->with('success', 'Producto creado exitosamente.');
 
         } catch (\Exception $e) {
             dd($e);
-            \Log::error('ProductController store - Error:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             
             return back()->with('error', 'Error al crear el producto: ' . $e->getMessage());
         }
@@ -268,7 +286,6 @@ class ProductController extends Controller
 
         } catch (\Exception $e) {
             dd($e);
-            \Log::error('ProductController show error: ' . $e->getMessage());
 
             return redirect()->route('products.index')
                 ->with('error', 'Error al cargar el producto: ' . $e->getMessage());
@@ -281,9 +298,13 @@ class ProductController extends Controller
     public function edit(Product $product): Response
     {
         try {
-            // Cargar categorías
+            // Cargar categorías (solo categorías activas, ordenadas)
             $categories = Schema::hasTable('product_categories') ? 
-                Category::select('id', 'name')->get() : 
+                Category::select('id', 'name')
+                    ->where('is_active', true)
+                    ->orderBy('sort_order', 'asc')
+                    ->orderBy('name', 'asc')
+                    ->get() : 
                 collect();
 
             return Inertia::render('Products/Edit', [
@@ -292,7 +313,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('ProductController edit error: ' . $e->getMessage());
+            dd($e);
             
             return redirect()->route('products.index')
                 ->with('error', 'Error al cargar el producto: ' . $e->getMessage());
@@ -304,40 +325,106 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product): RedirectResponse
     {
-        \Log::info('ProductController update - Datos recibidos:', $request->all());
-        
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:products,code,' . $product->id,
-            'description' => 'nullable|string',
-            'category_id' => 'nullable|exists:product_categories,id',
-            'brand' => 'nullable|string|max:255',
-            'cost_price' => 'required|numeric|min:0',
-            'sale_price' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
-            'min_stock' => 'required|integer|min:0',
-            'max_stock' => 'nullable|integer|min:0',
-            'unit_type' => 'nullable|string|max:50',
-            'is_active' => 'boolean',
-        ]);
-
-        \Log::info('ProductController update - Datos validados:', $validated);
-
+ 
         try {
+            // Preparar datos antes de validar (convertir nulls a strings vacíos para campos nullable)
+            $data = $request->all();
+            
+            // Convertir nulls a strings vacíos para campos nullable string
+            $nullableStringFields = ['brand', 'description', 'active_ingredient', 'dosage', 'presentation', 'barcode'];
+            foreach ($nullableStringFields as $field) {
+                // Si el campo no existe o es null, establecerlo como string vacío
+                if (!isset($data[$field]) || $data[$field] === null || $data[$field] === 'null') {
+                    $data[$field] = '';
+                } elseif (is_array($data[$field])) {
+                    // Si es un array, tomar el primer elemento o convertir a string vacío
+                    $data[$field] = !empty($data[$field]) ? (string) reset($data[$field]) : '';
+                } else {
+                    // Asegurarse de que sea string (convertir cualquier otro tipo)
+                    $data[$field] = (string) $data[$field];
+                }
+            }
+            
+            // Manejar category_id - puede ser null o string vacío
+            if (isset($data['category_id'])) {
+                if (is_array($data['category_id'])) {
+                    $data['category_id'] = !empty($data['category_id']) ? (int) reset($data['category_id']) : null;
+                } elseif ($data['category_id'] === null || $data['category_id'] === '' || $data['category_id'] === 'null') {
+                    $data['category_id'] = null;
+                } else {
+                    $data['category_id'] = (int) $data['category_id'];
+                }
+            }
+            
+            // Manejar campos numéricos nullable
+            $nullableNumericFields = ['tax_rate', 'max_stock'];
+            foreach ($nullableNumericFields as $field) {
+                if (isset($data[$field])) {
+                    if (is_array($data[$field])) {
+                        $data[$field] = !empty($data[$field]) && is_numeric(reset($data[$field])) ? (float) reset($data[$field]) : null;
+                    } elseif ($data[$field] === null || $data[$field] === '' || $data[$field] === 'null') {
+                        $data[$field] = null;
+                    } else {
+                        $data[$field] = is_numeric($data[$field]) ? (float) $data[$field] : null;
+                    }
+                }
+            }
+            
+            // Manejar campos booleanos - asegurar que sean boolean
+            $booleanFields = ['requires_prescription', 'is_controlled', 'is_active'];
+            foreach ($booleanFields as $field) {
+                if (isset($data[$field])) {
+                    if (is_array($data[$field])) {
+                        $data[$field] = filter_var(reset($data[$field]), FILTER_VALIDATE_BOOLEAN);
+                    } else {
+                        $data[$field] = filter_var($data[$field], FILTER_VALIDATE_BOOLEAN);
+                    }
+                }
+            }
+            
+            $validated = validator($data, [
+                'name' => 'required|string|max:255',
+                'code' => 'required|string|max:50|unique:products,code,' . $product->id,
+                'description' => 'nullable|string|max:65535',
+                'category_id' => 'nullable|exists:product_categories,id',
+                'brand' => 'nullable|string|max:255',
+                'active_ingredient' => 'nullable|string|max:255',
+                'dosage' => 'nullable|string|max:255',
+                'presentation' => 'nullable|string|max:255',
+                'barcode' => 'nullable|string|max:255|unique:products,barcode,' . $product->id,
+                'base_price' => 'required|numeric|min:0',
+                'cost_price' => 'required|numeric|min:0',
+                'sale_price' => 'required|numeric|min:0',
+                'tax_rate' => 'nullable|numeric|min:0|max:100',
+                'stock_quantity' => 'required|integer|min:0',
+                'min_stock' => 'required|integer|min:0',
+                'max_stock' => 'nullable|integer|min:0',
+                'unit_type' => 'nullable|string|max:50',
+                'requires_prescription' => 'sometimes|boolean',
+                'is_controlled' => 'sometimes|boolean',
+                'is_active' => 'sometimes|boolean',
+            ])->validate();
             // Generar slug si cambió el nombre
             $updateData = [
                 'name' => $validated['name'],
                 'code' => $validated['code'],
-                'description' => $validated['description'] ?? null,
+                'description' => !empty($validated['description']) ? $validated['description'] : null,
                 'category_id' => $validated['category_id'] ?? null,
-                'brand' => $validated['brand'] ?? null,
+                'brand' => !empty($validated['brand']) ? $validated['brand'] : null,
+                'active_ingredient' => !empty($validated['active_ingredient']) ? $validated['active_ingredient'] : null,
+                'dosage' => !empty($validated['dosage']) ? $validated['dosage'] : null,
+                'presentation' => !empty($validated['presentation']) ? $validated['presentation'] : null,
+                'barcode' => !empty($validated['barcode']) ? $validated['barcode'] : null,
                 'cost_price' => $validated['cost_price'],
-                'base_price' => $validated['cost_price'],
+                'base_price' => $validated['base_price'] ?? $validated['cost_price'],
                 'sale_price' => $validated['sale_price'],
+                'tax_rate' => $validated['tax_rate'] ?? 0,
                 'stock_quantity' => $validated['stock_quantity'],
                 'min_stock' => $validated['min_stock'],
                 'max_stock' => $validated['max_stock'] ?? 0,
-                'unit_type' => $validated['unit_type'] ?? 'unit',
+                'unit_type' => $validated['unit_type'] ?? 'unidad',
+                'requires_prescription' => $validated['requires_prescription'] ?? false,
+                'is_controlled' => $validated['is_controlled'] ?? false,
                 'is_active' => $validated['is_active'] ?? true,
                 'updated_by' => auth()->id(),
                 'updated_at' => now(),
@@ -361,16 +448,15 @@ class ProductController extends Controller
                 ->where('id', $product->id)
                 ->update($updateData);
 
-            \Log::info('ProductController update - Producto actualizado exitosamente');
-            
             return redirect()->route('products.show', $product)
                 ->with('success', 'Producto actualizado exitosamente.');
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            dd($e);
+
+            return back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
-            \Log::error('ProductController update - Error:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            dd($e);
             
             return back()->with('error', 'Error al actualizar el producto: ' . $e->getMessage());
         }
@@ -399,7 +485,7 @@ class ProductController extends Controller
                 ->with('success', 'Producto eliminado exitosamente.');
 
         } catch (\Exception $e) {
-            \Log::error('ProductController destroy error: ' . $e->getMessage());
+            dd($e);
             
             return back()->with('error', 'Error al eliminar el producto: ' . $e->getMessage());
         }
@@ -423,7 +509,7 @@ class ProductController extends Controller
             return back()->with('success', "Producto {$status} exitosamente.");
 
         } catch (\Exception $e) {
-            \Log::error('ProductController toggleStatus error: ' . $e->getMessage());
+            dd($e);
             
             return back()->with('error', 'Error al cambiar el estado del producto: ' . $e->getMessage());
         }
@@ -490,7 +576,7 @@ class ProductController extends Controller
             return back()->with('success', 'Stock actualizado exitosamente.');
 
         } catch (\Exception $e) {
-            \Log::error('ProductController updateStock error: ' . $e->getMessage());
+            dd($e);
             
             return back()->with('error', 'Error al actualizar el stock: ' . $e->getMessage());
         }
@@ -520,7 +606,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('ProductController lowStock error: ' . $e->getMessage());
+            dd($e);
             
             return Inertia::render('Products/LowStock', [
                 'products' => [],
@@ -552,7 +638,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('ProductController outOfStock error: ' . $e->getMessage());
+            dd($e);
             
             return Inertia::render('Products/OutOfStock', [
                 'products' => [],
@@ -616,13 +702,19 @@ class ProductController extends Controller
 
             return Inertia::render('Products/Inventory', [
                 'products' => InertiaHelper::sanitizeData($products),
-                'categories' => InertiaHelper::sanitizeData(Category::select('id', 'name')->get()),
+                'categories' => InertiaHelper::sanitizeData(
+                    Category::select('id', 'name')
+                        ->where('is_active', true)
+                        ->orderBy('sort_order', 'asc')
+                        ->orderBy('name', 'asc')
+                        ->get()
+                ),
                 'stats' => InertiaHelper::sanitizeData($stats),
                 'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'category', 'stock_status'])),
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('ProductController inventory error: ' . $e->getMessage());
+            dd($e);
             
             return Inertia::render('Products/Inventory', [
                 'products' => [],
@@ -692,40 +784,8 @@ class ProductController extends Controller
             return back()->with('success', "Stock ajustado exitosamente. Stock anterior: {$oldStock}, Stock nuevo: {$product->stock_quantity}");
 
         } catch (\Exception $e) {
-            \Log::error('ProductController adjustStock error: ' . $e->getMessage());
+            dd($e);
             return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Ver historial de movimientos de stock de un producto
-     */
-    public function stockHistory(Product $product): Response
-    {
-        try {
-            $movements = DB::table('stock_movements')
-                ->where('product_id', $product->id)
-                ->leftJoin('users', 'stock_movements.created_by', '=', 'users.id')
-                ->select(
-                    'stock_movements.*',
-                    'users.name as user_name'
-                )
-                ->orderBy('stock_movements.created_at', 'desc')
-                ->paginate(50);
-
-            return Inertia::render('Products/StockHistory', [
-                'product' => InertiaHelper::sanitizeData($product),
-                'movements' => InertiaHelper::sanitizeData($movements),
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('ProductController stockHistory error: ' . $e->getMessage());
-
-            return Inertia::render('Products/StockHistory', [
-                'product' => InertiaHelper::sanitizeData($product),
-                'movements' => [],
-                'error' => 'Error al cargar historial: ' . $e->getMessage()
-            ]);
         }
     }
 
@@ -749,7 +809,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('ProductController categories error: ' . $e->getMessage());
+            dd($e);
 
             return Inertia::render('Products/Categories', [
                 'categories' => [],
@@ -849,7 +909,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('ProductController stockHistory error: ' . $e->getMessage());
+            dd($e);
             return Inertia::render('Products/StockHistory', [
                 'product' => $product,
                 'movements' => ['data' => []],

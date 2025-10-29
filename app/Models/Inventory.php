@@ -42,6 +42,14 @@ class Inventory extends Model
         'new_stock' => 'integer',
     ];
 
+    /**
+     * Los accessors que deben agregarse al serializar el modelo
+     */
+    protected $appends = [
+        'movement_type_label',
+        'transaction_type_label',
+    ];
+
     // Relaciones
     public function product(): BelongsTo
     {

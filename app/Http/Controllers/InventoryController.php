@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\InertiaHelper;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -70,7 +71,7 @@ class InventoryController extends Controller
         ];
 
         return Inertia::render('Inventory/Index', [
-            'movements' => $movements,
+            'movements' => InertiaHelper::sanitizeData($movements),
             'products' => Product::active()->get(['id', 'name', 'code']),
             'movementTypes' => Inventory::getMovementTypes(),
             'transactionTypes' => Inventory::getTransactionTypes(),
@@ -145,53 +146,122 @@ class InventoryController extends Controller
 
     public function create()
     {
-        return Inertia::render('Inventory/Create', [
-            'products' => Product::active()->get(['id', 'name', 'code', 'stock_quantity']),
-            'movementTypes' => Inventory::getMovementTypes(),
-            'transactionTypes' => Inventory::getTransactionTypes(),
-        ]);
+        try {
+            // Verificar si la tabla existe
+            if (!Schema::hasTable('products')) {
+                return Inertia::render('Inventory/Create', [
+                    'products' => [],
+                    'movementTypes' => Inventory::getMovementTypes(),
+                    'transactionTypes' => Inventory::getTransactionTypes(),
+                    'error' => 'La tabla de productos no existe. Por favor, crea las tablas primero.'
+                ]);
+            }
+
+            // Cargar productos activos, si no hay, cargar todos
+            $products = Product::active()
+                ->select('id', 'name', 'code', 'stock_quantity', 'cost_price')
+                ->orderBy('name', 'asc')
+                ->get();
+            
+            // Si no hay productos activos, cargar todos los productos
+            if ($products->isEmpty()) {
+                $products = Product::select('id', 'name', 'code', 'stock_quantity', 'cost_price')
+                    ->orderBy('name', 'asc')
+                    ->get();
+            }
+            
+            return Inertia::render('Inventory/Create', [
+                'products' => InertiaHelper::sanitizeData($products),
+                'movementTypes' => Inventory::getMovementTypes(),
+                'transactionTypes' => Inventory::getTransactionTypes(),
+            ]);
+            
+        } catch (\Exception $e) {
+            dd($e);
+            
+            return Inertia::render('Inventory/Create', [
+                'products' => [],
+                'movementTypes' => Inventory::getMovementTypes(),
+                'transactionTypes' => Inventory::getTransactionTypes(),
+                'error' => 'Error al cargar productos: ' . $e->getMessage()
+            ]);
+        }
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'movement_type' => 'required|in:purchase,sale,return,adjustment,transfer,damage,expiry',
-            'transaction_type' => 'required|in:in,out',
-            'quantity' => 'required|integer|min:1',
-            'movement_date' => 'required|date',
-            'unit_cost' => 'nullable|numeric|min:0',
-            'total_cost' => 'nullable|numeric|min:0',
-            'notes' => 'nullable|string|max:1000',
-            'batch_number' => 'nullable|string|max:100',
-            'expiry_date' => 'nullable|date|after:today',
-            'reference_type' => 'nullable|string|max:100',
-            'reference_id' => 'nullable|integer',
-            'reference_number' => 'nullable|string|max:100',
-        ]);
+        try {
+            // Preprocesar datos antes de validar
+            $data = $request->all();
+            
+            // Convertir valores vacíos a null para campos opcionales
+            if (isset($data['expiry_date']) && $data['expiry_date'] === '') {
+                $data['expiry_date'] = null;
+            }
+            if (isset($data['reference_id']) && ($data['reference_id'] === '' || $data['reference_id'] === 'null')) {
+                $data['reference_id'] = null;
+            }
+            if (isset($data['unit_cost']) && ($data['unit_cost'] === '' || $data['unit_cost'] === null)) {
+                $data['unit_cost'] = null;
+            }
+            if (isset($data['total_cost']) && ($data['total_cost'] === '' || $data['total_cost'] === null)) {
+                $data['total_cost'] = null;
+            }
+            
+            // Validación
+            $validated = validator($data, [
+                'product_id' => 'required|exists:products,id',
+                'movement_type' => 'required|in:purchase,sale,return,adjustment,transfer,damage,expiry',
+                'transaction_type' => 'required|in:in,out',
+                'quantity' => 'required|integer|min:1',
+                'movement_date' => 'required|date',
+                'unit_cost' => 'nullable|numeric|min:0',
+                'total_cost' => 'nullable|numeric|min:0',
+                'notes' => 'nullable|string|max:1000',
+                'batch_number' => 'nullable|string|max:100',
+                'expiry_date' => 'nullable|date',
+                'reference_type' => 'nullable|string|max:100',
+                'reference_id' => 'nullable|integer',
+                'reference_number' => 'nullable|string|max:100',
+            ])->validate();
 
-        // Obtener producto y stock actual
-        $product = Product::findOrFail($validated['product_id']);
-        $previousStock = $product->stock_quantity;
+            // Obtener producto y stock actual
+            $product = Product::findOrFail($validated['product_id']);
+            $previousStock = $product->stock_quantity ?? 0;
 
-        // Calcular nuevo stock
-        $quantityChange = $validated['transaction_type'] === 'in' 
-            ? $validated['quantity'] 
-            : -$validated['quantity'];
+            // Calcular nuevo stock
+            $quantityChange = $validated['transaction_type'] === 'in' 
+                ? $validated['quantity'] 
+                : -$validated['quantity'];
 
-        $newStock = max(0, $previousStock + $quantityChange);
+            $newStock = max(0, $previousStock + $quantityChange);
 
-        // Crear movimiento de inventario
-        $movement = Inventory::create(array_merge($validated, [
-            'previous_stock' => $previousStock,
-            'new_stock' => $newStock,
-            'created_by' => Auth::id(),
-        ]));
+            // Calcular total_cost si no se proporciona pero hay unit_cost y quantity
+            if (!isset($validated['total_cost']) || $validated['total_cost'] === null) {
+                if (isset($validated['unit_cost']) && $validated['unit_cost'] !== null && $validated['unit_cost'] > 0) {
+                    $validated['total_cost'] = $validated['unit_cost'] * $validated['quantity'];
+                } else {
+                    $validated['total_cost'] = null;
+                }
+            }
 
-        // Actualizar stock del producto
-        $product->update(['stock_quantity' => $newStock]);
+            // Crear movimiento de inventario
+            $movement = Inventory::create(array_merge($validated, [
+                'previous_stock' => $previousStock,
+                'new_stock' => $newStock,
+                'created_by' => Auth::id(),
+            ]));
 
-        return redirect('/inventario')->with('success', 'Movimiento de inventario registrado exitosamente');
+            // Actualizar stock del producto
+            $product->update(['stock_quantity' => $newStock]);
+
+            return redirect('/inventario')->with('success', 'Movimiento de inventario registrado exitosamente');
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->validator)->withInput();
+        } catch (\Exception $e) {
+            dd($e);
+        }
     }
 
     public function show(Inventory $inventory)
@@ -200,7 +270,7 @@ class InventoryController extends Controller
         $inventory->load(['product', 'creator']);
 
         return Inertia::render('Inventory/Show', [
-            'movement' => $inventory,
+            'movement' => InertiaHelper::sanitizeData($inventory),
         ]);
     }
 

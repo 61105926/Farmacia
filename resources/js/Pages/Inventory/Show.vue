@@ -42,7 +42,7 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Tipo de Movimiento</label>
-                  <div class="text-sm text-gray-900">{{ movement.movement_type_label }}</div>
+                  <div class="text-sm text-gray-900">{{ movement.movement_type_label || getMovementTypeLabel(movement.movement_type) }}</div>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Tipo de Transacción</label>
@@ -165,11 +165,11 @@
             <CardContent class="space-y-3">
               <div v-if="movement.unit_cost" class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Costo Unitario</span>
-                <span class="text-sm text-gray-900">${{ formatPrice(movement.unit_cost) }}</span>
+                <span class="text-sm text-gray-900">Bs. {{ formatPrice(movement.unit_cost) }}</span>
               </div>
               <div v-if="movement.total_cost" class="flex items-center justify-between border-t pt-2">
                 <span class="text-sm font-medium text-gray-900">Costo Total</span>
-                <span class="text-sm font-medium text-gray-900">${{ formatPrice(movement.total_cost) }}</span>
+                <span class="text-sm font-medium text-gray-900">Bs. {{ formatPrice(movement.total_cost) }}</span>
               </div>
             </CardContent>
           </Card>
@@ -275,10 +275,25 @@ const formatDateTime = (date) => {
 }
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  if (!price) return '0.00'
+  return new Intl.NumberFormat('es-BO', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(price)
+}
+
+// Función auxiliar para obtener el label del tipo de movimiento
+const getMovementTypeLabel = (type) => {
+  const labels = {
+    'purchase': 'Compra',
+    'sale': 'Venta',
+    'return': 'Devolución',
+    'adjustment': 'Ajuste',
+    'transfer': 'Transferencia',
+    'damage': 'Daño',
+    'expiry': 'Vencimiento',
+  }
+  return labels[type] || type
 }
 
 // Watch for flash messages

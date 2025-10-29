@@ -116,6 +116,7 @@
             <select
               id="category"
               v-model="filters.category"
+              @change="applyFilters"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Todas las categorías</option>
@@ -129,6 +130,7 @@
             <select
               id="status"
               v-model="filters.status"
+              @change="applyFilters"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Todos</option>
@@ -141,6 +143,7 @@
             <select
               id="stock_status"
               v-model="filters.stock_status"
+              @change="applyFilters"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Todos</option>
@@ -558,21 +561,41 @@ const debouncedSearch = debounce(() => {
   })
 }, 300)
 
-// Apply filters immediately (manual override for real-time filtering)
+// Apply filters immediately (manual filtering)
 const applyFilters = () => {
   console.log('Aplicando filtros manualmente:', filters)
+  
+  isFiltering.value = true
 
   const currentFilters = {}
-  if (filters.search) currentFilters.search = filters.search
-  if (filters.category) currentFilters.category = filters.category
-  if (filters.status) currentFilters.status = filters.status
-  if (filters.stock_status) currentFilters.stock_status = filters.stock_status
+  
+  // Incluir filtros solo si tienen valor
+  if (filters.search && filters.search.trim()) {
+    currentFilters.search = filters.search.trim()
+  }
+  // Para category, convertir a número si existe
+  if (filters.category && filters.category !== '') {
+    const categoryNum = parseInt(filters.category, 10)
+    if (!isNaN(categoryNum)) {
+      currentFilters.category = categoryNum
+    }
+  }
+  // Para status y stock_status, enviar como string
+  if (filters.status && filters.status !== '') {
+    currentFilters.status = String(filters.status)
+  }
+  if (filters.stock_status && filters.stock_status !== '') {
+    currentFilters.stock_status = String(filters.stock_status)
+  }
 
   console.log('Filtros a enviar manualmente:', currentFilters)
 
   router.get('/productos', currentFilters, {
     preserveState: true,
-    replace: true
+    replace: true,
+    onFinish: () => {
+      isFiltering.value = false
+    }
   })
 }
 
@@ -593,26 +616,10 @@ const clearFilters = () => {
   })
 }
 
-// Apply all filters when any filter changes (real-time filtering)
-const applyFiltersNow = debounce(() => {
-  const searchParams = {}
-  if (filters.search) searchParams.search = filters.search
-  if (filters.category) searchParams.category = filters.category
-  if (filters.status) searchParams.status = filters.status
-  if (filters.stock_status) searchParams.stock_status = filters.stock_status
-
-  console.log('Aplicando filtros en tiempo real:', searchParams)
-
-  router.get('/productos', searchParams, {
-    preserveState: true,
-    replace: true
-  })
-}, 300)
-
-// Watch all filters for real-time filtering
-watch(filters, () => {
-  applyFiltersNow()
-}, { deep: true })
+// Removed automatic filter watcher - filters now only apply when:
+// 1. Button "Filtrar" is clicked
+// 2. Select dropdowns change (@change event)
+// 3. Search input changes (debounced)
 
 // Watch for flash messages
 const page = usePage()

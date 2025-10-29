@@ -312,7 +312,8 @@
 </template>
 
 <script setup>
-import { useForm, Link } from '@inertiajs/vue3'
+import { watch } from 'vue'
+import { useForm, Link, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 
@@ -343,6 +344,42 @@ const form = useForm({
 })
 
 const submit = () => {
-  form.put(`/productos/${props.product.id}`)
+  form.put(`/productos/${props.product.id}`, {
+    onSuccess: () => {
+      // Flash message will be handled by watcher
+    },
+    onError: () => {
+      // Flash message will be handled by watcher
+    }
+  })
 }
+
+// Watch for flash messages
+const page = usePage()
+let lastFlashSuccess = null
+let lastFlashError = null
+
+watch(
+  () => page.props.flash,
+  (flash) => {
+    if (flash?.success && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
+      lastFlashSuccess = flash.success
+      window.$notify?.success('Éxito', flash.success)
+    }
+
+    // Filtrar errores vacíos, arrays vacíos, objetos vacíos, y strings vacíos
+    const hasValidError = flash?.error
+      && flash.error !== lastFlashError
+      && flash.error !== '[]'
+      && flash.error !== '{}'
+      && typeof flash.error === 'string'
+      && flash.error.trim() !== ''
+
+    if (hasValidError) {
+      lastFlashError = flash.error
+      window.$notify?.error('Error', flash.error)
+    }
+  },
+  { deep: true }
+)
 </script>
