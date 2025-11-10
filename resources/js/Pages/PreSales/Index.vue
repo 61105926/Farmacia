@@ -124,7 +124,6 @@
               >
                 <option value="">Todos los estados</option>
                 <option value="draft">Borrador</option>
-                <option value="confirmed">Confirmada</option>
                 <option value="converted">Convertida</option>
                 <option value="cancelled">Cancelada</option>
               </select>
@@ -341,8 +340,17 @@
       </Card>
 
       <!-- Pagination -->
-      <div v-if="presales.links" class="mt-6">
-        <Pagination :links="presales.links" />
+      <div v-if="presales && presales.links && presales.links.length > 0" class="mt-6">
+        <Pagination 
+          :links="presales.links" 
+          :pagination-data="{
+            from: presales.from,
+            to: presales.to,
+            total: presales.total,
+            current_page: presales.current_page,
+            last_page: presales.last_page
+          }"
+        />
       </div>
     </div>
 

@@ -17,12 +17,6 @@
           >
             Exportar Excel
           </button>
-          <button
-            @click="exportCSV"
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            Exportar CSV
-          </button>
         </div>
       </div>
 
@@ -92,7 +86,7 @@
               </div>
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-500">Valor Total Stock</p>
-                <p class="text-xl font-bold text-gray-900">${{ formatPrice(inventoryStats.totalStockValue || 0) }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ formatPrice(inventoryStats.totalStockValue || 0) }}</p>
               </div>
             </div>
           </CardContent>
@@ -206,11 +200,11 @@
                         <div class="text-xs text-gray-500">Reorden: {{ product.reorder_point }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">${{ formatPrice(product.cost_price) }}</div>
+                        <div class="text-sm text-gray-900">{{ formatPrice(product.cost_price) }}</div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900">
-                          ${{ formatPrice(product.stock_quantity * product.cost_price) }}
+                          {{ formatPrice(product.stock_quantity * product.cost_price) }}
                         </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
@@ -350,12 +344,6 @@
               >
                 Exportar Excel
               </button>
-              <button
-                @click="exportCSV"
-                class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-center transition-colors"
-              >
-                Exportar CSV
-              </button>
             </CardContent>
           </Card>
         </div>
@@ -438,10 +426,12 @@ const formatDate = (date) => {
 }
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price || 0)
 }
 
 const getDaysUntilExpiry = (expiryDate) => {
@@ -461,12 +451,4 @@ const exportReport = () => {
   window.open(`/reportes/exportar?${params.toString()}`, '_blank')
 }
 
-const exportCSV = () => {
-  const params = new URLSearchParams({
-    type: 'inventory',
-    format: 'csv',
-    ...filters.value
-  })
-  window.open(`/reportes/exportar?${params.toString()}`, '_blank')
-}
 </script>

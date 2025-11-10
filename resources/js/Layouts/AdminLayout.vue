@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex">
+  <div :class="['min-h-screen flex', isDark ? 'bg-gray-900' : 'bg-white']">
     <!-- Sidebar -->
     <Sidebar
       :is-collapsed="sidebarCollapsed"
@@ -46,6 +46,9 @@ import Sidebar from '@/Components/layout/Sidebar.vue'
 import Navbar from '@/Components/layout/Navbar.vue'
 import NotificationContainer from '@/Components/layout/NotificationContainer.vue'
 
+// Theme state - usar ref para que sea reactivo
+const isDark = ref(document.documentElement.classList.contains('dark'))
+
 // Sidebar state
 const sidebarCollapsed = ref(false)
 
@@ -55,6 +58,21 @@ onMounted(() => {
   if (savedState !== null) {
     sidebarCollapsed.value = JSON.parse(savedState)
   }
+  
+  // Observar cambios en la clase dark del documento
+  const observer = new MutationObserver(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+  })
+  
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
+  })
+  
+  // Cleanup
+  onUnmounted(() => {
+    observer.disconnect()
+  })
 })
 
 // Toggle sidebar

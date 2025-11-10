@@ -55,6 +55,10 @@ class Invoice extends Model
         'cancelled_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'payment_status_label',
+    ];
+
     /**
      * Cliente al que pertenece la factura
      */
@@ -190,15 +194,43 @@ class Invoice extends Model
     }
 
     /**
+     * Estados disponibles
+     */
+    public static function getStatuses(): array
+    {
+        return [
+            'draft' => 'Borrador',
+            'pending' => 'Pendiente',
+            'approved' => 'Aprobada',
+            'paid' => 'Pagada',
+            'partially_paid' => 'Parcialmente Pagada',
+            'overdue' => 'Vencida',
+            'cancelled' => 'Cancelada',
+        ];
+    }
+
+    /**
      * Estados de pago disponibles
      */
     public static function getPaymentStatuses(): array
     {
         return [
-            'unpaid' => 'No Pagado',
+            'unpaid' => 'Sin Pagar',
             'partial' => 'Parcial',
             'paid' => 'Pagado',
         ];
+    }
+
+    /**
+     * Obtener el estado de pago formateado
+     */
+    public function getPaymentStatusLabelAttribute(): string
+    {
+        if (!$this->payment_status) {
+            return 'N/A';
+        }
+        $statuses = self::getPaymentStatuses();
+        return $statuses[$this->payment_status] ?? ucfirst($this->payment_status);
     }
 
     /**

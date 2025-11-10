@@ -17,6 +17,14 @@
             Nuevo Producto
           </Button>
           <Button
+            @click="showImportModal = true"
+            variant="outline"
+            class="border-green-500 text-green-600 hover:bg-green-50"
+          >
+            <Upload class="h-4 w-4 mr-2" />
+            Importar Excel
+          </Button>
+          <Button
             @click="openStockAdjustmentModal"
             variant="outline"
             class="border-orange-500 text-orange-600 hover:bg-orange-50"
@@ -182,7 +190,15 @@
         <p class="text-sm text-gray-600">Gestiona tu inventario de productos</p>
       </CardHeader>
       <CardContent>
-        <div class="overflow-x-auto">
+        <!-- Empty State -->
+        <div v-if="!products || !products.data || products.data.length === 0" class="text-center py-12">
+          <Package class="mx-auto h-12 w-12 text-gray-400" />
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No hay productos</h3>
+          <p class="mt-1 text-sm text-gray-500">No se encontraron productos con los filtros aplicados.</p>
+        </div>
+
+        <!-- Products Table -->
+        <div v-else class="overflow-x-auto">
           <table class="w-full">
             <thead>
               <tr class="border-b">
@@ -283,8 +299,17 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="products.links" class="mt-6">
-          <Pagination :links="products.links" />
+        <div v-if="products && products.links && products.links.length > 0" class="mt-6">
+          <Pagination 
+            :links="products.links" 
+            :pagination-data="{
+              from: products.from,
+              to: products.to,
+              total: products.total,
+              current_page: products.current_page,
+              last_page: products.last_page
+            }"
+          />
         </div>
       </CardContent>
     </Card>
@@ -363,6 +388,82 @@
       </div>
     </div>
 
+    <!-- Import Excel Modal -->
+    <div v-if="showImportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <h3 class="text-lg font-semibold mb-4">Importar Productos desde Excel</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          Sube un archivo Excel (.xlsx o .xls) con los productos a importar.
+        </p>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Archivo Excel
+            </label>
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".xlsx,.xls"
+              @change="handleFileSelect"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              Formatos soportados: .xlsx, .xls (máx. 10MB)
+            </p>
+          </div>
+          <div class="bg-blue-50 border border-blue-200 rounded-md p-3">
+            <p class="text-sm text-blue-800 mb-2">
+              <strong>Formato del Excel (columnas en orden):</strong>
+            </p>
+            <div class="text-xs text-blue-700 space-y-1">
+              <p><strong>Columna A:</strong> Nombre (requerido)</p>
+              <p><strong>Columna B:</strong> Código (requerido, único)</p>
+              <p><strong>Columna C:</strong> Descripción (opcional)</p>
+              <p><strong>Columna D:</strong> Categoría (opcional, nombre exacto)</p>
+              <p><strong>Columna E:</strong> Marca (opcional)</p>
+              <p><strong>Columna F:</strong> Precio Costo (numérico)</p>
+              <p><strong>Columna G:</strong> Precio Venta (numérico)</p>
+              <p><strong>Columna H:</strong> Stock (entero)</p>
+              <p><strong>Columna I:</strong> Stock Mínimo (entero)</p>
+              <p><strong>Columna J:</strong> Tipo Unidad (texto, ej: "unit")</p>
+              <p><strong>Columna K:</strong> Activo (1 para activo, 0 para inactivo)</p>
+              <p><strong>Columna L:</strong> Código de Barras (opcional, único)</p>
+              <p><strong>Columna M:</strong> Lote (opcional)</p>
+              <p><strong>Columna N:</strong> Presentación (opcional)</p>
+            </div>
+            <p class="text-xs text-blue-600 mt-2 italic">
+              La primera fila debe contener los encabezados. Los datos empiezan desde la fila 2.
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <Button
+              @click="downloadTemplate"
+              variant="outline"
+              class="flex-1"
+            >
+              <Download class="h-4 w-4 mr-2" />
+              Descargar Plantilla
+            </Button>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            @click="closeImportModal"
+            class="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="submitImport"
+            :disabled="!selectedFile || isImporting"
+            class="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ isImporting ? 'Importando...' : 'Importar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Alert Dialog -->
     <AlertDialog
       :show="alertState.show"
@@ -405,7 +506,9 @@ import {
   DollarSign,
   History,
   Search,
-  X
+  X,
+  Upload,
+  Download
 } from 'lucide-vue-next'
 import { usePermissions } from '@/composables/usePermissions'
 import { useAlert } from '@/composables/useAlert'
@@ -425,7 +528,11 @@ const { alertState, showConfirm, hideAlert, handleConfirm } = useAlert()
 
 // Reactive data
 const showStockAdjustment = ref(false)
+const showImportModal = ref(false)
 const isFiltering = ref(false)
+const isImporting = ref(false)
+const selectedFile = ref(null)
+const fileInput = ref(null)
 const stockAdjustment = reactive({
   product_id: '',
   type: '',
@@ -613,6 +720,83 @@ const clearFilters = () => {
   router.get('/productos', {}, {
     preserveState: true,
     replace: true
+  })
+}
+
+// Import Excel functions
+const handleFileSelect = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    // Validar tipo de archivo
+    const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']
+    const validExtensions = ['.xlsx', '.xls']
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase()
+    
+    if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
+      window.$notify?.error('Error', 'Por favor selecciona un archivo Excel válido (.xlsx o .xls)')
+      event.target.value = ''
+      selectedFile.value = null
+      return
+    }
+    
+    // Validar tamaño (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      window.$notify?.error('Error', 'El archivo es demasiado grande. Máximo 10MB')
+      event.target.value = ''
+      selectedFile.value = null
+      return
+    }
+    
+    selectedFile.value = file
+  }
+}
+
+const closeImportModal = () => {
+  showImportModal.value = false
+  selectedFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+const downloadTemplate = () => {
+  // Crear un enlace temporal para descargar el archivo
+  const link = document.createElement('a')
+  link.href = '/productos/descargar-plantilla'
+  link.download = 'plantilla_importacion_productos.xlsx'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+const submitImport = () => {
+  if (!selectedFile.value) {
+    window.$notify?.error('Error', 'Por favor selecciona un archivo')
+    return
+  }
+
+  isImporting.value = true
+  
+  const formData = new FormData()
+  formData.append('file', selectedFile.value)
+
+  router.post('/productos/importar-excel', formData, {
+    preserveState: true,
+    preserveScroll: true,
+    forceFormData: true,
+    onSuccess: () => {
+      isImporting.value = false
+      closeImportModal()
+      // Recargar productos para mostrar los nuevos
+      router.reload({ only: ['products', 'stats'] })
+    },
+    onError: (errors) => {
+      isImporting.value = false
+      console.error('Error:', errors)
+    },
+    onFinish: () => {
+      isImporting.value = false
+    }
   })
 }
 

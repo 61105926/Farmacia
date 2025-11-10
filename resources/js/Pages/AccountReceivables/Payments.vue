@@ -143,7 +143,7 @@
                     <div class="text-sm text-gray-900">{{ formatDate(payment.payment_date) }}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">${{ formatPrice(payment.amount) }}</div>
+                    <div class="text-sm font-medium text-gray-900">{{ formatPrice(payment.amount) }}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">{{ payment.payment_method_label }}</div>
@@ -196,7 +196,7 @@
       </Card>
 
       <!-- Pagination -->
-      <div v-if="payments.data.length > 0" class="mt-6">
+      <div v-if="payments && payments.links && payments.links.length > 3" class="mt-6">
         <Pagination :links="payments.links" />
       </div>
 
@@ -314,10 +314,12 @@ const formatDate = (date) => {
 }
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price || 0)
 }
 
 const approvePayment = (payment) => {

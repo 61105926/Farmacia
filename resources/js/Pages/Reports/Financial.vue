@@ -17,12 +17,6 @@
           >
             Exportar Excel
           </button>
-          <button
-            @click="exportCSV"
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            Exportar CSV
-          </button>
         </div>
       </div>
 
@@ -36,7 +30,7 @@
               </div>
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-500">Ingresos Totales</p>
-                <p class="text-xl font-bold text-gray-900">${{ formatPrice(financialStats.totalRevenue || 0) }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ formatPrice(financialStats.totalRevenue || 0) }}</p>
               </div>
             </div>
           </CardContent>
@@ -50,7 +44,7 @@
               </div>
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-500">Total Pagado</p>
-                <p class="text-xl font-bold text-gray-900">${{ formatPrice(financialStats.totalPaid || 0) }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ formatPrice(financialStats.totalPaid || 0) }}</p>
               </div>
             </div>
           </CardContent>
@@ -64,7 +58,7 @@
               </div>
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-500">Saldo Pendiente</p>
-                <p class="text-xl font-bold text-gray-900">${{ formatPrice(financialStats.totalOutstanding || 0) }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ formatPrice(financialStats.totalOutstanding || 0) }}</p>
               </div>
             </div>
           </CardContent>
@@ -78,7 +72,7 @@
               </div>
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-500">Vencido</p>
-                <p class="text-xl font-bold text-gray-900">${{ formatPrice(financialStats.overdueAmount || 0) }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ formatPrice(financialStats.overdueAmount || 0) }}</p>
               </div>
             </div>
           </CardContent>
@@ -159,7 +153,7 @@
                 </div>
                 <div class="text-right">
                   <div class="text-sm font-medium text-gray-900">
-                    ${{ formatPrice(flow.total_amount) }}
+                    {{ formatPrice(flow.total_amount) }}
                   </div>
                 </div>
               </div>
@@ -180,23 +174,23 @@
             <div class="space-y-3">
               <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
                 <div class="text-sm font-medium text-gray-900">Al día</div>
-                <div class="text-sm font-medium text-gray-900">${{ formatPrice(agingReport.current || 0) }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ formatPrice(agingReport.current || 0) }}</div>
               </div>
               <div class="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div class="text-sm font-medium text-gray-900">1-30 días</div>
-                <div class="text-sm font-medium text-gray-900">${{ formatPrice(agingReport['1-30'] || 0) }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ formatPrice(agingReport['1-30'] || 0) }}</div>
               </div>
               <div class="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
                 <div class="text-sm font-medium text-gray-900">31-60 días</div>
-                <div class="text-sm font-medium text-gray-900">${{ formatPrice(agingReport['31-60'] || 0) }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ formatPrice(agingReport['31-60'] || 0) }}</div>
               </div>
               <div class="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
                 <div class="text-sm font-medium text-gray-900">61-90 días</div>
-                <div class="text-sm font-medium text-gray-900">${{ formatPrice(agingReport['61-90'] || 0) }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ formatPrice(agingReport['61-90'] || 0) }}</div>
               </div>
               <div class="flex items-center justify-between p-3 bg-red-100 border border-red-300 rounded-lg">
                 <div class="text-sm font-medium text-gray-900">Más de 90 días</div>
-                <div class="text-sm font-medium text-gray-900">${{ formatPrice(agingReport.over_90 || 0) }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ formatPrice(agingReport.over_90 || 0) }}</div>
               </div>
             </div>
           </CardContent>
@@ -220,7 +214,7 @@
                 </div>
                 <div class="text-right">
                   <div class="text-sm font-medium text-gray-900">
-                    ${{ formatPrice(method.total_amount) }}
+                    {{ formatPrice(method.total_amount) }}
                   </div>
                 </div>
               </div>
@@ -249,7 +243,7 @@
                   <div class="text-xs text-gray-500">{{ invoice.client_name }}</div>
                 </div>
                 <div class="text-right">
-                  <div class="text-sm font-medium text-gray-900">${{ formatPrice(invoice.balance) }}</div>
+                  <div class="text-sm font-medium text-gray-900">{{ formatPrice(invoice.balance) }}</div>
                   <div class="text-xs text-gray-500">
                     {{ getDaysOverdue(invoice.due_date) }} días
                   </div>
@@ -276,12 +270,6 @@
               class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors"
             >
               Exportar Excel
-            </button>
-            <button
-              @click="exportCSV"
-              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              Exportar CSV
             </button>
             <button
               @click="printReport"
@@ -376,10 +364,12 @@ const formatDate = (date) => {
 }
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price || 0)
 }
 
 const exportReport = () => {
@@ -391,14 +381,6 @@ const exportReport = () => {
   window.open(`/reportes/exportar?${params.toString()}`, '_blank')
 }
 
-const exportCSV = () => {
-  const params = new URLSearchParams({
-    type: 'financial',
-    format: 'csv',
-    ...filters.value
-  })
-  window.open(`/reportes/exportar?${params.toString()}`, '_blank')
-}
 
 const printReport = () => {
   window.print()

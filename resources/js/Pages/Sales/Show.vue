@@ -26,7 +26,7 @@
             Imprimir
           </Button>
           <Button
-            v-if="sale.status === 'pending' && can('sales.update')"
+            v-if="(sale.status === 'pending' || sale.status === 'draft') && can('sales.update')"
             variant="outline"
             @click="editSale"
             class="flex items-center gap-2"
@@ -188,6 +188,12 @@
                     {{ getPaymentMethodText(sale.payment_method) }}
                   </Badge>
                 </div>
+                <div>
+                  <label class="text-sm font-medium text-gray-500">Estado de Pago</label>
+                  <Badge :variant="getPaymentStatusVariant(sale.payment_status)">
+                    {{ getPaymentStatusText(sale.payment_status) }}
+                  </Badge>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -226,9 +232,10 @@
                 <h2 class="text-lg font-semibold text-gray-900">Acciones</h2>
               </div>
               <div class="space-y-3">
+
                 <!-- Complete Sale -->
                 <Button
-                  v-if="sale.status === 'pending' && can('sales.complete')"
+                  v-if="(sale.status === 'pending' || sale.status === 'draft') && can('sales.complete')"
                   @click="completeSale"
                   class="w-full flex items-center justify-center gap-2 text-green-600 hover:text-green-700"
                   variant="outline"
@@ -239,7 +246,7 @@
 
                 <!-- Cancel Sale -->
                 <Button
-                  v-if="sale.status !== 'canceled' && can('sales.cancel')"
+                  v-if="sale.status !== 'cancelled' && sale.status !== 'canceled' && can('sales.cancel')"
                   @click="cancelSale"
                   class="w-full flex items-center justify-center gap-2 text-red-600 hover:text-red-700"
                   variant="outline"
@@ -250,7 +257,7 @@
 
                 <!-- Delete Sale -->
                 <Button
-                  v-if="sale.status === 'pending' && can('sales.delete')"
+                  v-if="(sale.status === 'pending' || sale.status === 'draft') && can('sales.delete')"
                   @click="deleteSale"
                   class="w-full flex items-center justify-center gap-2 text-red-600 hover:text-red-700"
                   variant="outline"
@@ -261,7 +268,7 @@
 
                 <!-- Generate Invoice -->
                 <Button
-                  v-if="sale.status === 'complete' && can('sales.invoice')"
+                  v-if="canGenerateInvoice && can('sales.invoice')"
                   @click="generateInvoice"
                   class="w-full flex items-center justify-center gap-2"
                   variant="outline"
@@ -290,6 +297,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
@@ -314,7 +322,8 @@ import {
   Trash2,
   Clock,
   CheckCircle2,
-  X
+  X,
+  DollarSign
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -326,6 +335,24 @@ const props = defineProps({
 
 const { can } = usePermissions()
 const { alertState, showAlert, showConfirm, hideAlert, handleConfirm } = useAlert()
+
+// Computed: Determinar si se puede generar factura
+const canGenerateInvoice = computed(() => {
+  // Si ya tiene factura, no se puede generar otra
+  if (props.sale.invoice) {
+    return false
+  }
+  
+  // Se puede generar si:
+  // 1. La venta está completada, O
+  // 2. La venta es a crédito, O
+  // 3. La venta tiene pago parcial/pendiente
+  const isCompleted = props.sale.status === 'completed' || props.sale.status === 'complete'
+  const isCredit = props.sale.payment_method === 'credit'
+  const hasPendingPayment = ['partial', 'pending', 'unpaid'].includes(props.sale.payment_status)
+  
+  return isCompleted || isCredit || hasPendingPayment
+})
 
 // Methods
 const formatCurrency = (amount) => {
@@ -350,8 +377,11 @@ const formatDate = (date) => {
 
 const getStatusBannerClass = (status) => {
   const classes = {
+    draft: 'bg-gray-50 border-gray-200 text-gray-800',
     pending: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+    completed: 'bg-green-50 border-green-200 text-green-800',
     complete: 'bg-green-50 border-green-200 text-green-800',
+    cancelled: 'bg-red-50 border-red-200 text-red-800',
     canceled: 'bg-red-50 border-red-200 text-red-800'
   }
   return classes[status] || 'bg-gray-50 border-gray-200 text-gray-800'
@@ -359,8 +389,11 @@ const getStatusBannerClass = (status) => {
 
 const getStatusIcon = (status) => {
   const icons = {
+    draft: Clock,
     pending: Clock,
+    completed: CheckCircle2,
     complete: CheckCircle2,
+    cancelled: X,
     canceled: X
   }
   return icons[status] || Clock
@@ -368,8 +401,11 @@ const getStatusIcon = (status) => {
 
 const getStatusTitle = (status) => {
   const titles = {
+    draft: 'Venta en Borrador',
     pending: 'Venta Pendiente',
+    completed: 'Venta Completada',
     complete: 'Venta Completada',
+    cancelled: 'Venta Cancelada',
     canceled: 'Venta Cancelada'
   }
   return titles[status] || 'Estado Desconocido'
@@ -377,8 +413,11 @@ const getStatusTitle = (status) => {
 
 const getStatusDescription = (status) => {
   const descriptions = {
+    draft: 'Esta venta está en borrador.',
     pending: 'Esta venta está pendiente de completar.',
+    completed: 'Esta venta ha sido completada exitosamente.',
     complete: 'Esta venta ha sido completada exitosamente.',
+    cancelled: 'Esta venta ha sido cancelada.',
     canceled: 'Esta venta ha sido cancelada.'
   }
   return descriptions[status] || 'Estado no definido.'
@@ -402,6 +441,24 @@ const getPaymentMethodText = (method) => {
   return texts[method] || method
 }
 
+const getPaymentStatusVariant = (status) => {
+  const variants = {
+    paid: 'success',
+    pending: 'warning',
+    partial: 'secondary'
+  }
+  return variants[status] || 'secondary'
+}
+
+const getPaymentStatusText = (status) => {
+  const texts = {
+    paid: 'Pagado',
+    pending: 'Pendiente',
+    partial: 'Pago Parcial'
+  }
+  return texts[status] || status
+}
+
 // Actions
 const printSale = () => {
   window.open(`/ventas/${props.sale.id}/imprimir`, '_blank')
@@ -412,75 +469,119 @@ const editSale = () => {
 }
 
 const completeSale = () => {
-  showConfirm(
-    'Completar Venta',
-    '¿Estás seguro de que quieres completar esta venta?',
-    'Completar',
-    () => {
+  showConfirm({
+    title: 'Completar Venta',
+    message: '¿Estás seguro de que quieres completar esta venta?',
+    confirmText: 'Sí, completar',
+    onConfirm: () => {
       router.post(`/ventas/${props.sale.id}/completar`, {}, {
+        preserveScroll: true,
+        preserveState: false,
         onSuccess: () => {
-          showAlert('success', 'Venta completada', 'La venta ha sido completada exitosamente.')
+          router.reload({ only: ['sale'] })
+          showAlert({
+            type: 'success',
+            title: 'Éxito',
+            message: 'La venta ha sido completada exitosamente.'
+          })
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo completar la venta.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errors?.message || 'No se pudo completar la venta. Por favor, intente nuevamente.'
+          })
         }
       })
     }
-  )
+  })
 }
 
 const cancelSale = () => {
-  showConfirm(
-    'Cancelar Venta',
-    '¿Estás seguro de que quieres cancelar esta venta?',
-    'Cancelar',
-    () => {
+  showConfirm({
+    title: 'Cancelar Venta',
+    message: '¿Estás seguro de que quieres cancelar esta venta?',
+    confirmText: 'Sí, cancelar',
+    onConfirm: () => {
       router.post(`/ventas/${props.sale.id}/cancelar`, {}, {
+        preserveScroll: true,
+        preserveState: false,
         onSuccess: () => {
-          showAlert('success', 'Venta cancelada', 'La venta ha sido cancelada exitosamente.')
+          router.reload({ only: ['sale'] })
+          showAlert({
+            type: 'success',
+            title: 'Éxito',
+            message: 'La venta ha sido cancelada exitosamente.'
+          })
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo cancelar la venta.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errors?.message || 'No se pudo cancelar la venta. Por favor, intente nuevamente.'
+          })
         }
       })
     }
-  )
+  })
 }
 
 const deleteSale = () => {
-  showConfirm(
-    'Eliminar Venta',
-    '¿Estás seguro de que quieres eliminar esta venta? Esta acción no se puede deshacer.',
-    'Eliminar',
-    () => {
+  showConfirm({
+    title: 'Eliminar Venta',
+    message: '¿Estás seguro de que quieres eliminar esta venta? Esta acción no se puede deshacer.',
+    confirmText: 'Sí, eliminar',
+    onConfirm: () => {
       router.delete(`/ventas/${props.sale.id}`, {
+        preserveScroll: true,
+        preserveState: false,
         onSuccess: () => {
           router.visit('/ventas')
-          showAlert('success', 'Venta eliminada', 'La venta ha sido eliminada exitosamente.')
+          showAlert({
+            type: 'success',
+            title: 'Éxito',
+            message: 'La venta ha sido eliminada exitosamente.'
+          })
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo eliminar la venta.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errors?.message || 'No se pudo eliminar la venta. Por favor, intente nuevamente.'
+          })
         }
       })
     }
-  )
+  })
 }
 
 const generateInvoice = () => {
-  showConfirm(
-    'Generar Factura',
-    '¿Estás seguro de que quieres generar una factura para esta venta?',
-    'Generar',
-    () => {
+  showConfirm({
+    title: 'Generar Factura',
+    message: '¿Estás seguro de que quieres generar una factura para esta venta?',
+    confirmText: 'Sí, generar',
+    onConfirm: () => {
       router.post(`/ventas/${props.sale.id}/factura`, {}, {
+        preserveScroll: true,
+        preserveState: false,
         onSuccess: () => {
-          showAlert('success', 'Factura generada', 'La factura ha sido generada exitosamente.')
+          router.reload({ only: ['sale'] })
+          showAlert({
+            type: 'success',
+            title: 'Éxito',
+            message: 'La factura ha sido generada exitosamente.'
+          })
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo generar la factura.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errors?.message || 'No se pudo generar la factura. Por favor, intente nuevamente.'
+          })
         }
       })
     }
-  )
+  })
 }
+
 </script>

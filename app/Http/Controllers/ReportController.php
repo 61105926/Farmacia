@@ -109,28 +109,77 @@ class ReportController extends Controller
 
         $invoices = $query->latest('invoice_date')->paginate(20)->withQueryString();
 
-        // Estadísticas del período
+        // Estadísticas del período (usar query clonado para no afectar el paginado)
+        $statsQuery = clone $query;
         $periodStats = [
-            'totalInvoices' => $query->count(),
-            'totalAmount' => $query->sum('total'),
-            'totalPaid' => $query->sum('paid_amount'),
-            'totalBalance' => $query->sum('balance'),
-            'averageInvoice' => $query->avg('total'),
+            'totalInvoices' => $statsQuery->count(),
+            'totalAmount' => $statsQuery->sum('total'),
+            'totalPaid' => $statsQuery->sum('paid_amount'),
+            'totalBalance' => $statsQuery->sum('balance'),
+            'averageInvoice' => $statsQuery->avg('total'),
         ];
 
-        // Ventas por día
-        $dailySales = $query->selectRaw('
+        // Ventas por día (crear nuevo query para evitar conflictos con GROUP BY)
+        $dailySalesQuery = Invoice::with(['client', 'creator'])
+            ->where('status', '!=', 'cancelled');
+
+        // Aplicar los mismos filtros
+        if ($request->filled('date_from')) {
+            $dailySalesQuery->where('invoice_date', '>=', $request->get('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $dailySalesQuery->where('invoice_date', '<=', $request->get('date_to'));
+        }
+
+        if ($request->filled('client_id')) {
+            $dailySalesQuery->where('client_id', $request->get('client_id'));
+        }
+
+        if ($request->filled('status')) {
+            $dailySalesQuery->where('status', $request->get('status'));
+        }
+
+        if ($request->filled('payment_status')) {
+            $dailySalesQuery->where('payment_status', $request->get('payment_status'));
+        }
+
+        $dailySales = $dailySalesQuery->selectRaw('
                 DATE(invoice_date) as date,
                 COUNT(*) as invoice_count,
                 SUM(total) as total_amount
             ')
-            ->groupBy('date')
-            ->orderBy('date', 'desc')
+            ->groupBy(DB::raw('DATE(invoice_date)'))
+            ->orderBy(DB::raw('DATE(invoice_date)'), 'desc')
             ->limit(30)
             ->get();
 
-        // Ventas por cliente
-        $salesByClient = $query->selectRaw('
+        // Ventas por cliente (crear nuevo query para evitar conflictos con GROUP BY)
+        $salesByClientQuery = Invoice::with(['client', 'creator'])
+            ->where('status', '!=', 'cancelled');
+
+        // Aplicar los mismos filtros
+        if ($request->filled('date_from')) {
+            $salesByClientQuery->where('invoice_date', '>=', $request->get('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $salesByClientQuery->where('invoice_date', '<=', $request->get('date_to'));
+        }
+
+        if ($request->filled('client_id')) {
+            $salesByClientQuery->where('client_id', $request->get('client_id'));
+        }
+
+        if ($request->filled('status')) {
+            $salesByClientQuery->where('status', $request->get('status'));
+        }
+
+        if ($request->filled('payment_status')) {
+            $salesByClientQuery->where('payment_status', $request->get('payment_status'));
+        }
+
+        $salesByClient = $salesByClientQuery->selectRaw('
                 client_name,
                 COUNT(*) as invoice_count,
                 SUM(total) as total_amount
@@ -392,6 +441,11 @@ class ReportController extends Controller
         $type = $request->get('type', 'sales');
         $format = $request->get('format', 'excel');
 
+        // Si es 'all', generar PDF con todos los reportes
+        if ($type === 'all' || $format === 'pdf') {
+            return $this->exportAllToPdf($request);
+        }
+
         switch ($type) {
             case 'sales':
                 return $this->exportSales($request, $format);
@@ -404,6 +458,78 @@ class ReportController extends Controller
             default:
                 return back()->withErrors(['error' => 'Tipo de reporte no válido']);
         }
+    }
+
+    private function exportAllToPdf(Request $request)
+    {
+        // Obtener todos los datos del dashboard
+        $stats = [
+            'totalSales' => Invoice::where('status', '!=', 'cancelled')->sum('total'),
+            'totalOrders' => Order::where('status', '!=', 'cancelled')->count(),
+            'totalClients' => Client::where('status', 'active')->count(),
+            'totalProducts' => Product::where('is_active', true)->count(),
+            'pendingPayments' => Invoice::where('payment_status', '!=', 'paid')->sum('balance'),
+            'overdueInvoices' => Invoice::overdue()->count(),
+        ];
+
+        // Ventas por mes (últimos 12 meses)
+        $monthlySales = Invoice::selectRaw('
+                YEAR(invoice_date) as year,
+                MONTH(invoice_date) as month,
+                SUM(total) as total,
+                COUNT(*) as count
+            ')
+            ->where('status', '!=', 'cancelled')
+            ->where('invoice_date', '>=', now()->subMonths(12))
+            ->groupBy('year', 'month')
+            ->orderBy('year', 'desc')
+            ->orderBy('month', 'desc')
+            ->get();
+
+        // Top productos más vendidos
+        $topProducts = DB::table('invoice_items')
+            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+            ->join('products', 'invoice_items.product_id', '=', 'products.id')
+            ->selectRaw('
+                products.name,
+                products.code,
+                SUM(invoice_items.quantity) as total_quantity,
+                SUM(invoice_items.total) as total_amount
+            ')
+            ->where('invoices.status', '!=', 'cancelled')
+            ->where('invoices.invoice_date', '>=', now()->subMonths(6))
+            ->groupBy('products.id', 'products.name', 'products.code')
+            ->orderBy('total_quantity', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Top clientes por ventas
+        $topClients = Invoice::selectRaw('
+                client_name,
+                COUNT(*) as invoice_count,
+                SUM(total) as total_amount,
+                SUM(paid_amount) as paid_amount,
+                SUM(balance) as balance_amount
+            ')
+            ->where('status', '!=', 'cancelled')
+            ->where('invoice_date', '>=', now()->subMonths(6))
+            ->groupBy('client_name')
+            ->orderBy('total_amount', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Renderizar vista HTML para PDF
+        $html = view('reports.all-pdf', [
+            'stats' => $stats,
+            'monthlySales' => $monthlySales,
+            'topProducts' => $topProducts,
+            'topClients' => $topClients,
+            'generatedAt' => now()->format('d/m/Y H:i:s'),
+        ])->render();
+
+        // Retornar HTML para que el navegador lo imprima como PDF
+        return response($html)
+            ->header('Content-Type', 'text/html; charset=utf-8');
     }
 
     private function exportSales(Request $request, string $format)
@@ -432,7 +558,7 @@ class ReportController extends Controller
                 'Total' => $invoice->total,
                 'Pagado' => $invoice->paid_amount,
                 'Saldo' => $invoice->balance,
-                'Estado' => $invoice->status_label,
+                'Estado' => Invoice::getStatuses()[$invoice->status] ?? $invoice->status,
                 'Estado Pago' => $invoice->payment_status_label,
             ];
         });
@@ -529,33 +655,60 @@ class ReportController extends Controller
         return $this->downloadFile($data, 'reporte_clientes', $format);
     }
 
-    private function downloadFile(array $data, string $filename, string $format)
+    private function downloadFile($data, string $filename, string $format)
     {
-        if ($format === 'csv') {
-            return $this->downloadCsv($data, $filename);
+        // Convertir Collection a array si es necesario
+        if (is_object($data) && method_exists($data, 'toArray')) {
+            $data = $data->toArray();
+        }
+        
+        // Si está vacío, retornar error
+        if (empty($data)) {
+            return back()->withErrors(['error' => 'No hay datos para exportar']);
         }
 
-        // Por defecto Excel (implementar con Laravel Excel si está disponible)
+        // Por defecto CSV (compatible con Excel)
         return $this->downloadCsv($data, $filename);
     }
 
-    private function downloadCsv(array $data, string $filename)
+    private function downloadCsv($data, string $filename)
     {
+        // Convertir Collection a array si es necesario
+        if (is_object($data) && method_exists($data, 'toArray')) {
+            $data = $data->toArray();
+        }
+
+        // Si está vacío, retornar error
+        if (empty($data)) {
+            return back()->withErrors(['error' => 'No hay datos para exportar']);
+        }
+
+        // Usar formato Excel (CSV con BOM UTF-8 para Excel)
         $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}.csv\"",
+            'Content-Type' => 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}.xls\"",
         ];
 
         $callback = function () use ($data) {
             $file = fopen('php://output', 'w');
+            
+            // Agregar BOM UTF-8 para Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
 
             if (!empty($data)) {
                 // Escribir encabezados
-                fputcsv($file, array_keys($data[0]));
+                fputcsv($file, array_keys($data[0]), ';');
 
                 // Escribir datos
                 foreach ($data as $row) {
-                    fputcsv($file, $row);
+                    // Formatear valores numéricos con punto decimal
+                    $formattedRow = array_map(function ($value) {
+                        if (is_numeric($value)) {
+                            return number_format($value, 2, '.', '');
+                        }
+                        return $value;
+                    }, $row);
+                    fputcsv($file, $formattedRow, ';');
                 }
             }
 

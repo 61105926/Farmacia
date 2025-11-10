@@ -239,7 +239,7 @@
       </CardContent>
       
       <!-- Pagination -->
-      <div v-if="users?.data && Array.isArray(users.data) && users.data.length > 0" class="px-6 py-3 border-t border-gray-200">
+      <div v-if="users?.data && Array.isArray(users.data) && users.data.length > 0 && users.links" class="px-6 py-3 border-t border-gray-200">
         <div class="flex items-center justify-between">
           <div class="text-sm text-gray-700">
             Mostrando {{ users.from }} a {{ users.to }} de {{ users.total }} resultados

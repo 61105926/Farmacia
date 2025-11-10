@@ -2,384 +2,238 @@
   <AdminLayout>
     <div class="p-6">
       <!-- Header -->
-      <div class="mb-6">
-        <Link href="/preventas" class="text-sm text-primary-700 hover:text-primary-800 mb-2 inline-block">
-          ← Volver a preventas
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Editar Preventa</h1>
+          <p class="text-sm text-gray-600 mt-1">{{ presale.code }}</p>
+        </div>
+        <Link
+          href="/preventas"
+          class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+        >
+          Volver
         </Link>
-        <h1 class="text-2xl font-bold text-gray-900">Editar Preventa</h1>
-        <p class="text-sm text-gray-600 mt-1">{{ order.order_number }}</p>
       </div>
 
-      <form @submit.prevent="submit">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Main Form -->
-          <div class="lg:col-span-2 space-y-6">
-            <!-- Información del Cliente -->
-            <Card>
-              <CardHeader>
-                <CardTitle>Información del Cliente</CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-4">
+      <form @submit.prevent="submitForm" class="space-y-6">
+        <!-- Client Selection -->
+        <Card>
+          <CardHeader>
+            <CardTitle>Información del Cliente</CardTitle>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Cliente <span class="text-red-500">*</span>
+                </label>
+                <select
+                  v-model="form.client_id"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Seleccionar cliente</option>
+                  <option v-for="client in clients" :key="client.id" :value="client.id">
+                    {{ client.business_name }} - {{ client.trade_name }}
+                  </option>
+                </select>
+                <div v-if="errors.client_id" class="text-red-500 text-sm mt-1">
+                  {{ errors.client_id }}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Vendedor
+                </label>
+                <select
+                  v-model="form.salesperson_id"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Sin asignar</option>
+                  <option v-for="salesperson in salespeople" :key="salesperson.id" :value="salesperson.id">
+                    {{ salesperson.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Fecha de Entrega
+              </label>
+              <input
+                v-model="form.delivery_date"
+                type="date"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Products -->
+        <Card>
+          <CardHeader>
+            <div class="flex items-center justify-between">
+              <CardTitle>Productos</CardTitle>
+              <button
+                type="button"
+                @click="addProduct"
+                class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors"
+              >
+                Agregar Producto
+              </button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div v-if="form.items.length === 0" class="text-center py-8 text-gray-500">
+              <p>No hay productos agregados</p>
+              <p class="text-sm">Haz clic en "Agregar Producto" para comenzar</p>
+            </div>
+
+            <div v-else class="space-y-4">
+              <div
+                v-for="(item, index) in form.items"
+                :key="index"
+                class="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border border-gray-200 rounded-lg"
+              >
+                <!-- Product -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Cliente <span class="text-red-500">*</span>
-                  </label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
                   <select
-                    v-model="form.client_id"
-                    required
+                    v-model="item.product_id"
+                    @change="updateProductInfo(index)"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    :class="{ 'border-red-500': form.errors.client_id }"
-                    @change="onClientChange"
                   >
-                    <option value="">Seleccionar cliente</option>
-                    <option v-for="client in clients" :key="client.id" :value="client.id">
-                      {{ client.business_name }} - {{ client.trade_name }}
+                    <option value="">Seleccionar</option>
+                    <option v-for="product in products" :key="product.id" :value="product.id">
+                      {{ product.name }}
                     </option>
                   </select>
-                  <span v-if="form.errors.client_id" class="text-sm text-red-600">
-                    {{ form.errors.client_id }}
-                  </span>
                 </div>
 
-                <div v-if="selectedClient" class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">NIT</label>
-                    <div class="text-sm text-gray-900">{{ selectedClient.tax_id || 'N/A' }}</div>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
-                    <select
-                      v-model="form.salesperson_id"
-                      required
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                      :class="{ 'border-red-500': form.errors.salesperson_id }"
-                    >
-                      <option value="">Seleccionar vendedor</option>
-                      <option v-for="salesperson in salespeople" :key="salesperson.id" :value="salesperson.id">
-                        {{ salesperson.name }}
-                      </option>
-                    </select>
-                    <span v-if="form.errors.salesperson_id" class="text-sm text-red-600">
-                      {{ form.errors.salesperson_id }}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <!-- Información del Pedido -->
-            <Card>
-              <CardHeader>
-                <CardTitle>Información del Pedido</CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha del Pedido <span class="text-red-500">*</span>
-                    </label>
-                    <input
-                      v-model="form.order_date"
-                      type="date"
-                      required
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                      :class="{ 'border-red-500': form.errors.order_date }"
-                    />
-                    <span v-if="form.errors.order_date" class="text-sm text-red-600">
-                      {{ form.errors.order_date }}
-                    </span>
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha de Entrega
-                    </label>
-                    <input
-                      v-model="form.delivery_date"
-                      type="date"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Descuento (%)
-                    </label>
-                    <input
-                      v-model.number="form.discount_percentage"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Costo de Envío
-                    </label>
-                    <input
-                      v-model.number="form.shipping_cost"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                </div>
-
+                <!-- Quantity -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Referencia
-                  </label>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
                   <input
-                    v-model="form.reference"
-                    type="text"
+                    v-model.number="item.quantity"
+                    @input="calculateItemTotal(index)"
+                    type="number"
+                    step="0.001"
+                    min="0"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    placeholder="Referencia del pedido"
                   />
                 </div>
 
+                <!-- Unit Price -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Observaciones
-                  </label>
-                  <textarea
-                    v-model="form.notes"
-                    rows="3"
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Precio Unit.</label>
+                  <input
+                    v-model.number="item.unit_price"
+                    @input="calculateItemTotal(index)"
+                    type="number"
+                    step="0.01"
+                    min="0"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    placeholder="Observaciones del pedido"
-                  ></textarea>
+                  />
                 </div>
-              </CardContent>
-            </Card>
 
-            <!-- Dirección de Entrega -->
-            <Card>
-              <CardHeader>
-                <CardTitle>Dirección de Entrega</CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-4">
+                <!-- Discount -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Dirección
-                  </label>
-                  <textarea
-                    v-model="form.delivery_address"
-                    rows="2"
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Descuento %</label>
+                  <input
+                    v-model.number="item.discount"
+                    @input="calculateItemTotal(index)"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    placeholder="Dirección completa de entrega"
-                  ></textarea>
+                  />
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Ciudad
-                    </label>
-                    <input
-                      v-model="form.delivery_city"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Departamento
-                    </label>
-                    <input
-                      v-model="form.delivery_state"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <!-- Productos -->
-            <Card>
-              <CardHeader>
-                <CardTitle>Productos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div class="space-y-4">
-                  <!-- Add Product Form -->
-                  <div class="border border-gray-200 rounded-lg p-4">
-                    <h4 class="text-sm font-medium text-gray-900 mb-3">Agregar Producto</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                      <div class="md:col-span-2">
-                        <select
-                          v-model="newItem.product_id"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                          @change="onProductSelect"
-                        >
-                          <option value="">Seleccionar producto</option>
-                          <option v-for="product in products" :key="product.id" :value="product.id">
-                            {{ product.name }} ({{ product.code }}) - Stock: {{ product.stock_quantity }}
-                          </option>
-                        </select>
-                      </div>
-                      <div>
-                        <input
-                          v-model.number="newItem.quantity"
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          placeholder="Cantidad"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                      <div>
-                        <input
-                          v-model.number="newItem.unit_price"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Precio"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                        />
-                      </div>
-                      <div>
-                        <button
-                          type="button"
-                          @click="addItem"
-                          :disabled="!canAddItem"
-                          class="w-full px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Agregar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Items List -->
-                  <div v-if="form.items.length > 0" class="space-y-2">
-                    <div
-                      v-for="(item, index) in form.items"
-                      :key="index"
-                      class="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
-                    >
-                      <div class="flex-1">
-                        <div class="text-sm font-medium text-gray-900">{{ item.product_name }}</div>
-                        <div class="text-xs text-gray-500">{{ item.product_code }}</div>
-                      </div>
-                      <div class="flex items-center gap-4">
-                        <div class="text-sm text-gray-900">{{ item.quantity }}</div>
-                        <div class="text-sm text-gray-900">${{ formatPrice(item.unit_price) }}</div>
-                        <div class="text-sm font-medium text-gray-900">${{ formatPrice(item.subtotal) }}</div>
-                        <button
-                          type="button"
-                          @click="removeItem(index)"
-                          class="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 class="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div v-else class="text-center py-8 text-gray-500">
-                    <Package class="mx-auto h-12 w-12 text-gray-400" />
-                    <p class="mt-2 text-sm">No hay productos agregados</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <!-- Sidebar -->
-          <div class="space-y-6">
-            <!-- Resumen del Pedido -->
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumen del Pedido</CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Subtotal</span>
-                  <span class="text-sm text-gray-900">${{ formatPrice(subtotal) }}</span>
-                </div>
-                <div v-if="discountAmount > 0" class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Descuento ({{ form.discount_percentage }}%)</span>
-                  <span class="text-sm text-green-600">-${{ formatPrice(discountAmount) }}</span>
-                </div>
-                <div v-if="form.shipping_cost > 0" class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">Envío</span>
-                  <span class="text-sm text-gray-900">${{ formatPrice(form.shipping_cost) }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">IVA (19%)</span>
-                  <span class="text-sm text-gray-900">${{ formatPrice(taxAmount) }}</span>
-                </div>
-                <div class="flex items-center justify-between border-t pt-2">
-                  <span class="text-sm font-medium text-gray-900">Total</span>
-                  <span class="text-sm font-medium text-gray-900">${{ formatPrice(total) }}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <!-- Información del Cliente -->
-            <Card v-if="selectedClient">
-              <CardHeader>
-                <CardTitle>Información del Cliente</CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-3">
+                <!-- Total -->
                 <div>
-                  <div class="text-xs text-gray-500">Razón Social</div>
-                  <div class="text-sm text-gray-900">{{ selectedClient.business_name }}</div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                  <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm font-medium">
+                    {{ formatCurrency(item.total) }}
+                  </div>
                 </div>
-                <div>
-                  <div class="text-xs text-gray-500">Nombre Comercial</div>
-                  <div class="text-sm text-gray-900">{{ selectedClient.trade_name }}</div>
-                </div>
-                <div v-if="selectedClient.tax_id">
-                  <div class="text-xs text-gray-500">NIT</div>
-                  <div class="text-sm text-gray-900">{{ selectedClient.tax_id }}</div>
-                </div>
-              </CardContent>
-            </Card>
 
-            <!-- Estado Actual -->
-            <Card>
-              <CardHeader>
-                <CardTitle>Estado Actual</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <span
-                  class="px-2 py-1 text-xs font-medium rounded-full"
-                  :class="getStatusColorClass(order.status)"
-                >
-                  {{ order.status_label }}
-                </span>
-                <div class="mt-2 text-xs text-gray-500">
-                  Última actualización: {{ formatDateTime(order.updated_at) }}
+                <!-- Actions -->
+                <div class="flex items-end">
+                  <button
+                    type="button"
+                    @click="removeProduct(index)"
+                    class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                  >
+                    Eliminar
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
-
-            <!-- Actions -->
-            <div class="flex flex-col space-y-2">
-              <button
-                type="submit"
-                :disabled="form.processing || form.items.length === 0"
-                class="w-full px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 disabled:opacity-50 transition-colors"
-              >
-                <span v-if="form.processing">Actualizando...</span>
-                <span v-else>Actualizar Preventa</span>
-              </button>
-              <Link
-                :href="`/preventas/${order.id}`"
-                class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-center transition-colors"
-              >
-                Cancelar
-              </Link>
+              </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
+
+        <!-- Totals -->
+        <Card v-if="form.items.length > 0">
+          <CardHeader>
+            <CardTitle>Resumen</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Subtotal</label>
+                <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-lg font-medium">
+                  {{ formatCurrency(form.subtotal) }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Total Descuentos</label>
+                <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-lg font-medium">
+                  {{ formatCurrency(form.total_discount) }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                <div class="px-3 py-2 bg-primary-50 border border-primary-300 rounded-md text-xl font-bold text-primary-900">
+                  {{ formatCurrency(form.total) }}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Notes -->
+        <Card>
+          <CardHeader>
+            <CardTitle>Notas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <textarea
+              v-model="form.notes"
+              rows="3"
+              placeholder="Notas adicionales sobre la preventa..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+            ></textarea>
+          </CardContent>
+        </Card>
+
+        <!-- Actions -->
+        <div class="flex justify-end gap-4">
+          <Link
+            href="/preventas"
+            class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+          >
+            Cancelar
+          </Link>
+          <button
+            type="submit"
+            :disabled="form.items.length === 0"
+            class="px-6 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Actualizar Preventa
+          </button>
         </div>
       </form>
     </div>
@@ -387,160 +241,189 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { useForm, Link } from '@inertiajs/vue3'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
-import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
-import { Package, Trash2 } from 'lucide-vue-next'
+import Card from '@/Components/ui/Card.vue'
+import CardHeader from '@/Components/ui/CardHeader.vue'
+import CardTitle from '@/Components/ui/CardTitle.vue'
+import CardContent from '@/Components/ui/CardContent.vue'
 
 const props = defineProps({
-  order: Object,
+  presale: Object,
   clients: Array,
   products: Array,
   salespeople: Array,
+  errors: Object,
 })
 
-const form = useForm({
-  client_id: props.order.client_id,
-  order_date: props.order.order_date,
-  delivery_date: props.order.delivery_date || '',
-  salesperson_id: props.order.salesperson_id,
-  delivery_address: props.order.delivery_address || '',
-  delivery_city: props.order.delivery_city || '',
-  delivery_state: props.order.delivery_state || '',
-  discount_percentage: props.order.discount_percentage || 0,
-  shipping_cost: props.order.shipping_cost || 0,
-  notes: props.order.notes || '',
-  reference: props.order.reference || '',
-  items: props.order.items.map(item => ({
-    product_id: item.product_id,
-    product_code: item.product_code,
-    product_name: item.product_name,
-    product_description: item.product_description,
-    quantity: item.quantity,
-    unit_price: item.unit_price,
-    discount_percentage: item.discount_percentage || 0,
-    tax_rate: item.tax_rate || 19,
-    notes: item.notes || '',
-    subtotal: item.subtotal,
-  })),
-})
-
-const newItem = ref({
-  product_id: '',
-  quantity: 1,
-  unit_price: 0,
-  discount_percentage: 0,
+const form = reactive({
+  client_id: '',
+  salesperson_id: '',
+  delivery_date: '',
   notes: '',
+  items: [],
+  subtotal: 0,
+  total_discount: 0,
+  total: 0,
 })
 
-const selectedClient = computed(() => {
-  return props.clients.find(c => c.id == form.client_id)
-})
-
-const selectedProduct = computed(() => {
-  return props.products.find(p => p.id == newItem.value.product_id)
-})
-
-const canAddItem = computed(() => {
-  return newItem.value.product_id && 
-         newItem.value.quantity > 0 && 
-         newItem.value.unit_price > 0
-})
-
-const subtotal = computed(() => {
-  return form.items.reduce((sum, item) => sum + item.subtotal, 0)
-})
-
-const discountAmount = computed(() => {
-  return subtotal.value * (form.discount_percentage / 100)
-})
-
-const taxAmount = computed(() => {
-  return (subtotal.value - discountAmount.value) * 0.19
-})
-
-const total = computed(() => {
-  return subtotal.value - discountAmount.value + taxAmount.value + form.shipping_cost
-})
-
-const onClientChange = () => {
-  // Resetear campos relacionados cuando cambia el cliente
-  form.delivery_address = ''
-  form.delivery_city = ''
-  form.delivery_state = ''
-}
-
-const onProductSelect = () => {
-  if (selectedProduct.value) {
-    newItem.value.unit_price = selectedProduct.value.sale_price
+// Inicializar el formulario con los datos de la preventa
+onMounted(() => {
+  form.client_id = props.presale.client_id || ''
+  form.salesperson_id = props.presale.salesperson_id || ''
+  form.delivery_date = props.presale.delivery_date || ''
+  form.notes = props.presale.notes || ''
+  
+  // Cargar items de la preventa
+  if (props.presale.items && props.presale.items.length > 0) {
+    form.items = props.presale.items.map(item => {
+      const quantity = parseFloat(item.quantity) || 0
+      const unitPrice = parseFloat(item.unit_price) || 0
+      const discount = parseFloat(item.discount) || 0
+      const subtotal = quantity * unitPrice
+      const discountAmount = (subtotal * discount) / 100
+      const total = subtotal - discountAmount
+      
+      return {
+        product_id: item.product_id,
+        quantity: quantity,
+        unit_price: unitPrice,
+        discount: discount,
+        subtotal: subtotal,
+        discount_amount: discountAmount,
+        total: total,
+      }
+    })
   }
-}
+  
+  calculateTotals()
+})
 
-const addItem = () => {
-  if (!canAddItem.value) return
-
-  const product = selectedProduct.value
-  const item = {
-    product_id: newItem.value.product_id,
-    product_code: product.code,
-    product_name: product.name,
-    product_description: product.description,
-    quantity: newItem.value.quantity,
-    unit_price: newItem.value.unit_price,
-    discount_percentage: newItem.value.discount_percentage,
-    tax_rate: product.tax_rate || 19,
-    notes: newItem.value.notes,
-    subtotal: newItem.value.quantity * newItem.value.unit_price,
-  }
-
-  form.items.push(item)
-
-  // Reset form
-  newItem.value = {
+const addProduct = () => {
+  form.items.push({
     product_id: '',
     quantity: 1,
     unit_price: 0,
-    discount_percentage: 0,
-    notes: '',
-  }
-}
-
-const removeItem = (index) => {
-  form.items.splice(index, 1)
-}
-
-const getStatusColorClass = (status) => {
-  const classes = {
-    'draft': 'bg-gray-100 text-gray-800',
-    'pending': 'bg-yellow-100 text-yellow-800',
-    'confirmed': 'bg-green-100 text-green-800',
-    'processing': 'bg-blue-100 text-blue-800',
-    'shipped': 'bg-purple-100 text-purple-800',
-    'delivered': 'bg-green-100 text-green-800',
-    'cancelled': 'bg-red-100 text-red-800',
-  }
-  return classes[status] || 'bg-gray-100 text-gray-800'
-}
-
-const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(price)
-}
-
-const formatDateTime = (date) => {
-  return new Date(date).toLocaleString('es-ES', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+    discount: 0,
+    subtotal: 0,
+    discount_amount: 0,
+    total: 0,
   })
 }
 
-const submit = () => {
-  form.put(`/preventas/${props.order.id}`)
+const removeProduct = (index) => {
+  form.items.splice(index, 1)
+  calculateTotals()
+}
+
+const updateProductInfo = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (product) {
+    form.items[index].unit_price = product.sale_price
+    calculateItemTotal(index)
+  }
+}
+
+const calculateItemTotal = (index) => {
+  const item = form.items[index]
+  const quantity = parseFloat(item.quantity) || 0
+  const unitPrice = parseFloat(item.unit_price) || 0
+  const discount = parseFloat(item.discount) || 0
+  
+  item.subtotal = quantity * unitPrice
+  item.discount_amount = (item.subtotal * discount) / 100
+  item.total = item.subtotal - item.discount_amount
+  calculateTotals()
+}
+
+const calculateTotals = () => {
+  form.subtotal = form.items.reduce((sum, item) => {
+    const subtotal = parseFloat(item.subtotal) || 0
+    return sum + subtotal
+  }, 0)
+  
+  form.total_discount = form.items.reduce((sum, item) => {
+    const discountAmount = parseFloat(item.discount_amount) || 0
+    return sum + discountAmount
+  }, 0)
+  
+  form.total = form.subtotal - form.total_discount
+}
+
+const submitForm = () => {
+  // Validar que haya items
+  if (form.items.length === 0) {
+    alert('Debe agregar al menos un producto')
+    return
+  }
+
+  // Validar cliente
+  if (!form.client_id || form.client_id === '') {
+    alert('Debe seleccionar un cliente')
+    return
+  }
+
+  // Validar que todos los items tengan producto seleccionado
+  const itemsWithProducts = form.items.filter(item => item.product_id && item.product_id !== '')
+  if (itemsWithProducts.length === 0) {
+    alert('Debe seleccionar al menos un producto en los items agregados')
+    return
+  }
+
+  // Validar fecha de entrega si está presente
+  if (form.delivery_date) {
+    const deliveryDate = new Date(form.delivery_date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    deliveryDate.setHours(0, 0, 0, 0)
+    
+    if (deliveryDate < today) {
+      alert('La fecha de entrega no puede ser anterior a hoy')
+      return
+    }
+  }
+
+  // Preparar datos para enviar - solo items con producto seleccionado
+  const dataToSend = {
+    client_id: form.client_id,
+    salesperson_id: form.salesperson_id || null,
+    delivery_date: form.delivery_date || null,
+    notes: form.notes || null,
+    items: itemsWithProducts.map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity || 1,
+      unit_price: item.unit_price || 0,
+      discount: item.discount || 0,
+    })),
+  }
+
+  console.log('Enviando datos de preventa actualizada:', dataToSend)
+  
+  router.put(`/preventas/${props.presale.id}`, dataToSend, {
+    preserveScroll: true,
+    onSuccess: () => {
+      console.log('Preventa actualizada exitosamente')
+      // Redirigir a la vista de la preventa
+      router.visit(`/preventas/${props.presale.id}`)
+    },
+    onError: (errors) => {
+      console.error('Errores al actualizar preventa:', errors)
+      // Mostrar errores de validación
+      if (errors) {
+        const errorMessages = Object.values(errors).flat()
+        alert('Error al actualizar la preventa:\n' + errorMessages.join('\n'))
+      }
+    }
+  })
+}
+
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount || 0)
 }
 </script>

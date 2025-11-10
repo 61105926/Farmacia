@@ -4,8 +4,8 @@
       <!-- Header -->
       <div class="mb-6 flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Reportes y Análisis</h1>
-          <p class="text-sm text-gray-600 mt-1">Dashboard de métricas y análisis del negocio</p>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Reportes y Análisis</h1>
+          <p class="text-sm text-gray-600 dark:text-gray-300 mt-1">Dashboard de métricas y análisis del negocio</p>
         </div>
         <div class="flex items-center gap-2">
           <button
@@ -27,7 +27,7 @@
               </div>
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-500">Total Ventas</p>
-                <p class="text-xl font-bold text-gray-900">${{ formatPrice(stats.totalSales || 0) }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ formatPrice(stats.totalSales || 0) }}</p>
               </div>
             </div>
           </CardContent>
@@ -83,7 +83,7 @@
               </div>
               <div class="ml-3">
                 <p class="text-sm font-medium text-gray-500">Pagos Pendientes</p>
-                <p class="text-xl font-bold text-gray-900">${{ formatPrice(stats.pendingPayments || 0) }}</p>
+                <p class="text-xl font-bold text-gray-900">{{ formatPrice(stats.pendingPayments || 0) }}</p>
               </div>
             </div>
           </CardContent>
@@ -188,7 +188,7 @@
                 </div>
                 <div class="text-right">
                   <div class="text-sm font-medium text-gray-900">
-                    ${{ formatPrice(sale.total) }}
+                    {{ formatPrice(sale.total) }}
                   </div>
                 </div>
               </div>
@@ -226,7 +226,7 @@
                     {{ product.total_quantity }} unidades
                   </div>
                   <div class="text-xs text-gray-500">
-                    ${{ formatPrice(product.total_amount) }}
+                    {{ formatPrice(product.total_amount) }}
                   </div>
                 </div>
               </div>
@@ -261,10 +261,10 @@
                 </div>
                 <div class="text-right">
                   <div class="text-sm font-medium text-gray-900">
-                    ${{ formatPrice(client.total_amount) }}
+                    {{ formatPrice(client.total_amount) }}
                   </div>
                   <div class="text-xs text-gray-500">
-                    Saldo: ${{ formatPrice(client.balance_amount) }}
+                    Saldo: {{ formatPrice(client.balance_amount) }}
                   </div>
                 </div>
               </div>
@@ -299,7 +299,7 @@
                 <Clock class="w-5 h-5 text-yellow-600" />
                 <div class="ml-3">
                   <div class="text-sm font-medium text-yellow-900">
-                    ${{ formatPrice(stats.pendingPayments) }} en pagos pendientes
+                    {{ formatPrice(stats.pendingPayments) }} en pagos pendientes
                   </div>
                   <div class="text-xs text-yellow-600">
                     Seguimiento de cartera requerido
@@ -350,10 +350,12 @@ const props = defineProps({
 })
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price || 0)
 }
 
 const getMonthName = (month) => {
@@ -365,10 +367,10 @@ const getMonthName = (month) => {
 }
 
 const exportAll = () => {
-  // Implementar exportación de todos los reportes
+  // Exportar todos los reportes como PDF
   const params = new URLSearchParams({
     type: 'all',
-    format: 'excel'
+    format: 'pdf'
   })
   window.open(`/reportes/exportar?${params.toString()}`, '_blank')
 }

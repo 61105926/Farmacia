@@ -149,13 +149,7 @@
               </div>
             </div>
             <div class="py-2">
-              <Link
-                href="/perfil"
-                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                <User class="w-4 h-4 mr-3" />
-                Mi Perfil
-              </Link>
+           
               <Link
                 href="/configuracion"
                 class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -423,23 +417,45 @@ const setTheme = (theme) => {
   currentTheme.value = theme
   localStorage.setItem('theme', theme)
 
-  // Apply theme logic
-  const root = document.documentElement
-  if (theme === 'dark') {
-    root.classList.add('dark')
-    window.$notify?.success('Tema actualizado', 'Modo oscuro activado')
-  } else if (theme === 'light') {
-    root.classList.remove('dark')
-    window.$notify?.success('Tema actualizado', 'Modo claro activado')
+  // Usar la función global applyTheme si está disponible
+  if (window.applyTheme) {
+    window.applyTheme(theme)
   } else {
-    // Auto theme - follow system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    // Fallback: Apply theme logic - modificar tanto root como body
+    const root = document.documentElement
+    const body = document.body
+    
+    // Siempre remover primero
+    root.classList.remove('dark')
+    body.classList.remove('dark')
+    
+    if (theme === 'dark') {
       root.classList.add('dark')
-    } else {
+      body.classList.add('dark')
+    } else if (theme === 'light') {
+      // Asegurarse de que se remueve la clase dark
       root.classList.remove('dark')
+      body.classList.remove('dark')
+    } else {
+      // Auto theme - follow system preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      if (prefersDark) {
+        root.classList.add('dark')
+        body.classList.add('dark')
+      } else {
+        root.classList.remove('dark')
+        body.classList.remove('dark')
+      }
     }
-    window.$notify?.success('Tema actualizado', 'Modo automático activado')
   }
+  
+  // Mostrar notificación
+  const messages = {
+    dark: 'Modo oscuro activado',
+    light: 'Modo claro activado',
+    auto: 'Modo automático activado'
+  }
+  window.$notify?.success('Tema actualizado', messages[theme] || 'Tema actualizado')
 }
 
 const setLanguage = () => {

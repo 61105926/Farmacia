@@ -12,6 +12,8 @@ use Inertia\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class ProductController extends Controller
 {
@@ -112,7 +114,7 @@ class ProductController extends Controller
             $sanitizedFilters = InertiaHelper::sanitizeFilters($currentFilters);
 
             return Inertia::render('Products/Index', [
-                'products' => InertiaHelper::sanitizeData($products),
+                'products' => $products, // No sanitizar para mantener estructura de paginación
                 'categories' => InertiaHelper::sanitizeData($categories),
                 'filters' => $sanitizedFilters,
                 'stats' => InertiaHelper::sanitizeData($stats),
@@ -971,5 +973,248 @@ class ProductController extends Controller
         ];
 
         DB::table('stock_movements')->insert($demoMovements);
+    }
+
+    /**
+     * Import products from Excel file
+     */
+    public function importExcel(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls|max:10240', // Max 10MB
+        ]);
+
+        try {
+            $file = $request->file('file');
+            $spreadsheet = IOFactory::load($file->getRealPath());
+            $worksheet = $spreadsheet->getActiveSheet();
+            $rows = $worksheet->toArray();
+
+            // Skip header row (first row)
+            $headerRow = array_shift($rows);
+            
+            // Mapeo de columnas esperadas (puedes ajustar según tu Excel)
+            // Asumimos que el Excel tiene estas columnas en orden:
+            // nombre, codigo, descripcion, categoria, marca, precio_costo, precio_venta, stock, stock_minimo, tipo_unidad
+            $imported = 0;
+            $errors = [];
+            $skipped = 0;
+
+            foreach ($rows as $index => $row) {
+                $rowNumber = $index + 2; // +2 porque empezamos desde la fila 2 (después del header)
+                
+                // Saltar filas vacías
+                if (empty(array_filter($row))) {
+                    continue;
+                }
+
+                try {
+                    // Mapear columnas del Excel
+                    // Orden esperado: A=Nombre, B=Código, C=Descripción, D=Categoría, E=Marca, F=Precio Costo, 
+                    // G=Precio Venta, H=Stock, I=Stock Mínimo, J=Tipo Unidad, K=Activo, 
+                    // L=Código de Barras, M=Lote, N=Presentación
+                    $data = [
+                        'name' => isset($row[0]) ? trim((string)$row[0]) : null,
+                        'code' => isset($row[1]) ? trim((string)$row[1]) : null,
+                        'description' => isset($row[2]) ? trim((string)$row[2]) : null,
+                        'category_name' => isset($row[3]) ? trim((string)$row[3]) : null,
+                        'brand' => isset($row[4]) ? trim((string)$row[4]) : null,
+                        'cost_price' => isset($row[5]) && is_numeric($row[5]) ? (float)$row[5] : 0,
+                        'sale_price' => isset($row[6]) && is_numeric($row[6]) ? (float)$row[6] : 0,
+                        'stock_quantity' => isset($row[7]) && is_numeric($row[7]) ? (int)$row[7] : 0,
+                        'min_stock' => isset($row[8]) && is_numeric($row[8]) ? (int)$row[8] : 0,
+                        'unit_type' => isset($row[9]) ? trim((string)$row[9]) : 'unit',
+                        'is_active' => isset($row[10]) ? (bool)(is_numeric($row[10]) ? (int)$row[10] : $row[10]) : true,
+                        'barcode' => isset($row[11]) ? trim((string)$row[11]) : null, // Columna L
+                        'lot' => isset($row[12]) ? trim((string)$row[12]) : null, // Columna M - Lote (se guardará en SKU)
+                        'presentation' => isset($row[13]) ? trim((string)$row[13]) : null, // Columna N
+                    ];
+
+                    // Validar campos requeridos
+                    if (empty($data['name']) || empty($data['code'])) {
+                        $errors[] = "Fila {$rowNumber}: Nombre y código son requeridos";
+                        $skipped++;
+                        continue;
+                    }
+
+                    // Verificar si el código ya existe
+                    $existingProduct = DB::table('products')->where('code', $data['code'])->first();
+                    if ($existingProduct) {
+                        $errors[] = "Fila {$rowNumber}: El código '{$data['code']}' ya existe. Producto: {$existingProduct->name}";
+                        $skipped++;
+                        continue;
+                    }
+
+                    // Buscar categoría por nombre
+                    $categoryId = null;
+                    if (!empty($data['category_name'])) {
+                        $category = DB::table('product_categories')
+                            ->where('name', 'like', trim($data['category_name']))
+                            ->first();
+                        if ($category) {
+                            $categoryId = $category->id;
+                        }
+                    }
+
+                    // Generar slug único
+                    $slug = \Str::slug($data['name']);
+                    $slugCount = DB::table('products')->where('slug', 'like', $slug . '%')->count();
+                    if ($slugCount > 0) {
+                        $slug = $slug . '-' . ($slugCount + 1);
+                    }
+
+                    // Verificar si el código de barras ya existe
+                    $barcodeId = null;
+                    if (!empty($data['barcode'])) {
+                        $existingBarcode = DB::table('products')->where('barcode', $data['barcode'])->first();
+                        if ($existingBarcode) {
+                            $errors[] = "Fila {$rowNumber}: El código de barras '{$data['barcode']}' ya existe. Producto: {$existingBarcode->name}";
+                            $skipped++;
+                            continue;
+                        }
+                    }
+
+                    // Crear producto
+                    DB::table('products')->insert([
+                        'name' => trim($data['name']),
+                        'code' => trim($data['code']),
+                        'slug' => $slug,
+                        'description' => !empty($data['description']) ? trim($data['description']) : null,
+                        'category_id' => $categoryId,
+                        'brand' => !empty($data['brand']) ? trim($data['brand']) : null,
+                        'presentation' => !empty($data['presentation']) ? trim($data['presentation']) : null,
+                        'barcode' => !empty($data['barcode']) ? trim($data['barcode']) : null,
+                        'sku' => !empty($data['lot']) ? trim($data['lot']) : null, // Guardar lote en SKU
+                        'cost_price' => $data['cost_price'] ?? 0,
+                        'base_price' => $data['cost_price'] ?? 0,
+                        'sale_price' => $data['sale_price'] ?? 0,
+                        'stock_quantity' => (int)($data['stock_quantity'] ?? 0),
+                        'min_stock' => (int)($data['min_stock'] ?? 0),
+                        'max_stock' => 0,
+                        'unit_type' => $data['unit_type'] ?? 'unit',
+                        'is_active' => $data['is_active'] ?? true,
+                        'created_by' => auth()->id(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    $imported++;
+
+                } catch (\Exception $e) {
+                    $errors[] = "Fila {$rowNumber}: " . $e->getMessage();
+                    $skipped++;
+                }
+            }
+
+            $message = "Importación completada. {$imported} productos importados exitosamente.";
+            if ($skipped > 0) {
+                $message .= " {$skipped} productos omitidos.";
+            }
+            if (!empty($errors)) {
+                $message .= " Errores: " . implode('; ', array_slice($errors, 0, 5));
+                if (count($errors) > 5) {
+                    $message .= " y " . (count($errors) - 5) . " más.";
+                }
+            }
+
+            return redirect()->route('products.index')
+                ->with('success', $message)
+                ->with('import_errors', $errors);
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al importar el archivo: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Download Excel template for product import
+     */
+    public function downloadTemplate()
+    {
+        try {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Headers - Orden de columnas según formato del usuario
+            $headers = [
+                'Nombre',
+                'Código',
+                'Descripción',
+                'Categoría',
+                'Marca',
+                'Precio Costo',
+                'Precio Venta',
+                'Stock',
+                'Stock Mínimo',
+                'Tipo Unidad',
+                'Activo (1/0)',
+                'Código de Barras',
+                'Lote',
+                'Presentación'
+            ];
+
+            // Escribir headers manualmente
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($col . '1', $header);
+                $col++;
+            }
+            
+            // Estilo para headers (hasta columna N que es la 14)
+            $sheet->getStyle('A1:N1')->getFont()->setBold(true);
+            $sheet->getStyle('A1:N1')->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setARGB('FF4472C4');
+            $sheet->getStyle('A1:N1')->getFont()->getColor()->setARGB('FFFFFFFF');
+
+            // Auto-size columns (A hasta N)
+            foreach (range('A', 'N') as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+
+            // Ejemplo de datos - escribir manualmente
+            $exampleData = [
+                ['Paracetamol 500mg', 'PROD-001', 'Analgésico y antipirético', 'Medicamentos', 'Genérico', '5.50', '8.00', '100', '20', 'unit', '1', '1234567890123', 'LOTE-001', 'Tableta'],
+                ['Ibuprofeno 400mg', 'PROD-002', 'Antiinflamatorio', 'Medicamentos', 'Genérico', '6.00', '9.50', '80', '15', 'unit', '1', '1234567890124', 'LOTE-002', 'Cápsula'],
+            ];
+
+            $row = 2;
+            foreach ($exampleData as $dataRow) {
+                $col = 'A';
+                foreach ($dataRow as $value) {
+                    $sheet->setCellValue($col . $row, $value);
+                    $col++;
+                }
+                $row++;
+            }
+
+            // Crear writer
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            
+            // Usar storage temporal de Laravel
+            $filename = 'plantilla_importacion_productos.xlsx';
+            $tempPath = storage_path('app/temp/' . uniqid('template_', true) . '.xlsx');
+            
+            // Asegurar que el directorio existe
+            $tempDir = dirname($tempPath);
+            if (!is_dir($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+            
+            $writer->save($tempPath);
+
+            return response()->download($tempPath, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            \Log::error('Error al generar plantilla Excel: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Si hay error, redirigir a la página de productos con mensaje
+            return redirect()->route('products.index')
+                ->with('error', 'Error al generar la plantilla: ' . $e->getMessage());
+        }
     }
 }

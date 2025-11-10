@@ -1,30 +1,45 @@
 <template>
   <AdminLayout>
     <div class="p-6">
-      <!-- Header -->
-      <div class="mb-6 flex items-center justify-between">
-        <div>
-          <Link href="/cuentas-por-cobrar" class="text-sm text-primary-700 hover:text-primary-800 mb-2 inline-block">
-            ← Volver a cuentas por cobrar
-          </Link>
-          <h1 class="text-2xl font-bold text-gray-900">Detalle de Factura</h1>
-          <p class="text-sm text-gray-600 mt-1">{{ invoice.invoice_number }}</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button
-            v-if="canAddPayment"
-            @click="showPaymentModal = true"
-            class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors"
-          >
-            Agregar Pago
-          </button>
-          <Link
-            :href="`/ventas/${invoice.id}`"
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            Ver Factura
-          </Link>
-        </div>
+      <!-- Error State -->
+      <div v-if="!invoice" class="text-center py-12">
+        <Receipt class="mx-auto h-12 w-12 text-gray-400" />
+        <h3 class="mt-2 text-sm font-medium text-gray-900">Factura no encontrada</h3>
+        <p class="mt-1 text-sm text-gray-500">La factura que buscas no existe o ha sido eliminada.</p>
+        <Link
+          href="/cuentas-por-cobrar"
+          class="mt-4 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-700 hover:bg-primary-800"
+        >
+          Volver a Cuentas por Cobrar
+        </Link>
+      </div>
+
+      <!-- Invoice Content -->
+      <div v-else>
+        <!-- Header -->
+        <div class="mb-6 flex items-center justify-between">
+          <div>
+            <Link href="/cuentas-por-cobrar" class="text-sm text-primary-700 hover:text-primary-800 mb-2 inline-block">
+              ← Volver a cuentas por cobrar
+            </Link>
+            <h1 class="text-2xl font-bold text-gray-900">Detalle de Factura</h1>
+            <p class="text-sm text-gray-600 mt-1">{{ invoice.invoice_number }}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="canAddPayment"
+              @click="showPaymentModal = true"
+              class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors"
+            >
+              Agregar Pago
+            </button>
+            <Link
+              :href="`/ventas/${invoice.id}`"
+              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Ver Factura
+            </Link>
+          </div>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -151,7 +166,7 @@
                         {{ formatDate(payment.payment_date) }}
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        ${{ formatPrice(payment.amount) }}
+                        {{ formatPrice(payment.amount) }}
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {{ payment.payment_method_label }}
@@ -223,28 +238,28 @@
             <CardContent class="space-y-3">
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Subtotal</span>
-                <span class="text-sm text-gray-900">${{ formatPrice(invoice.subtotal) }}</span>
+                <span class="text-sm text-gray-900">{{ formatPrice(invoice.subtotal) }}</span>
               </div>
               <div v-if="invoice.discount_amount > 0" class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Descuento</span>
-                <span class="text-sm text-green-600">-${{ formatPrice(invoice.discount_amount) }}</span>
+                <span class="text-sm text-green-600">-{{ formatPrice(invoice.discount_amount) }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">IVA (19%)</span>
-                <span class="text-sm text-gray-900">${{ formatPrice(invoice.tax_amount) }}</span>
+                <span class="text-sm text-gray-900">{{ formatPrice(invoice.tax_amount) }}</span>
               </div>
               <div class="flex items-center justify-between border-t pt-2">
                 <span class="text-sm font-medium text-gray-900">Total</span>
-                <span class="text-sm font-medium text-gray-900">${{ formatPrice(invoice.total) }}</span>
+                <span class="text-sm font-medium text-gray-900">{{ formatPrice(invoice.total) }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Pagado</span>
-                <span class="text-sm text-green-600">${{ formatPrice(invoice.paid_amount) }}</span>
+                <span class="text-sm text-green-600">{{ formatPrice(invoice.paid_amount) }}</span>
               </div>
               <div class="flex items-center justify-between border-t pt-2">
                 <span class="text-sm font-medium text-gray-900">Saldo</span>
                 <span class="text-sm font-medium" :class="getBalanceClass(invoice)">
-                  ${{ formatPrice(invoice.balance) }}
+                  {{ formatPrice(invoice.balance) }}
                 </span>
               </div>
             </CardContent>
@@ -315,7 +330,7 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                 />
                 <div class="text-xs text-gray-500 mt-1">
-                  Saldo disponible: ${{ formatPrice(invoice.balance) }}
+                  Saldo disponible: {{ formatPrice(invoice.balance) }}
                 </div>
               </div>
               <div class="mb-4">
@@ -427,23 +442,33 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
   </AdminLayout>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 import { usePermissions } from '@/composables/usePermissions'
-import { CreditCard } from 'lucide-vue-next'
+import { CreditCard, Receipt } from 'lucide-vue-next'
 
 const { can } = usePermissions()
 
 const props = defineProps({
-  invoice: Object,
+  invoice: {
+    type: Object,
+    required: false,
+    default: () => null
+  },
 })
+
+// Debug
+console.log('AccountReceivables/Show - Componente montado')
+console.log('AccountReceivables/Show - Props:', props)
+console.log('AccountReceivables/Show - Invoice:', props.invoice)
 
 const showPaymentModal = ref(false)
 const showCancelModal = ref(false)
@@ -462,6 +487,7 @@ const cancelForm = useForm({
 })
 
 const canAddPayment = computed(() => {
+  if (!props.invoice) return false
   return can('sales.payment') && props.invoice.balance > 0 && props.invoice.status !== 'cancelled'
 })
 
@@ -532,10 +558,12 @@ const formatDate = (date) => {
 }
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price || 0)
 }
 
 const approvePayment = (payment) => {

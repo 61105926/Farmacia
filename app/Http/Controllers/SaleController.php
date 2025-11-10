@@ -145,8 +145,8 @@ class SaleController extends Controller
             try {
                 if (\Schema::hasTable('presales')) {
                     $presales = \DB::table('presales')
-                        ->where('status', 'confirmed')
-                        ->select('id', 'code', 'client_id', 'total')
+                        ->whereIn('status', ['draft', 'confirmed'])
+                        ->select('id', 'code', 'client_id', 'total', 'status')
                         ->get()
                         ->toArray();
                 }
@@ -198,7 +198,7 @@ class SaleController extends Controller
                 'payment_method' => 'required|in:cash,credit,transfer',
                 'payment_status' => 'nullable|in:paid,pending,partial',
                 'notes' => 'nullable|string|max:1000',
-                'delivery_date' => 'nullable|date|after_or_equal:today',
+                'delivery_date' => 'nullable|date',
             ], [
                 'client_id.required' => 'Debe seleccionar un cliente.',
                 'items.required' => 'Debe agregar al menos un producto.',
@@ -334,6 +334,35 @@ class SaleController extends Controller
                     'converted_at' => now(),
                     'converted_by' => auth()->id(),
                 ]);
+            }
+
+            // 10. Generar factura automáticamente si:
+            // - El método de pago es crédito
+            // - O el estado de pago es parcial o pendiente
+            $shouldGenerateInvoice = false;
+            if ($validated['payment_method'] === 'credit') {
+                $shouldGenerateInvoice = true;
+            } elseif (in_array($paymentStatus, ['partial', 'pending', 'unpaid'])) {
+                $shouldGenerateInvoice = true;
+            }
+
+            if ($shouldGenerateInvoice) {
+                try {
+                    $this->generateInvoiceForSale($sale);
+                    Log::info('SaleController store - Factura generada automáticamente', [
+                        'sale_id' => $sale->id,
+                        'sale_code' => $sale->code,
+                        'payment_method' => $sale->payment_method,
+                        'payment_status' => $sale->payment_status,
+                    ]);
+                } catch (\Exception $e) {
+                    // Log el error pero no fallar la creación de la venta
+                    Log::error('SaleController store - Error al generar factura automática', [
+                        'sale_id' => $sale->id,
+                        'message' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                }
             }
 
             DB::commit();
@@ -517,14 +546,27 @@ class SaleController extends Controller
      */
     public function destroy(Sale $sale): RedirectResponse
     {
+        // Permitir eliminar ventas en estado draft (borrador)
         if ($sale->status !== 'draft') {
             return back()->with('error', 'Solo se pueden eliminar ventas en estado borrador.');
         }
 
-        $sale->delete();
+        try {
+            $sale->delete();
 
-        return redirect()->route('sales.index')
-            ->with('success', 'Venta eliminada exitosamente.');
+            \Log::info('SaleController destroy - Venta eliminada', [
+                'sale_id' => $sale->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            return back()->with('success', 'Venta eliminada exitosamente.');
+        } catch (\Exception $e) {
+            \Log::error('SaleController destroy - Error:', [
+                'sale_id' => $sale->id,
+                'message' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Error al eliminar la venta: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -532,8 +574,17 @@ class SaleController extends Controller
      */
     public function generateInvoice(Sale $sale): RedirectResponse
     {
-        if ($sale->status !== 'complete') {
-            return back()->with('error', 'Solo se pueden generar facturas para ventas completadas.');
+        // Permitir generar facturas para ventas a crédito o con pago parcial/pendiente
+        // incluso si están en estado draft
+        $canGenerateInvoice = false;
+        if ($sale->payment_method === 'credit') {
+            $canGenerateInvoice = true;
+        } elseif (in_array($sale->payment_status, ['partial', 'pending', 'unpaid'])) {
+            $canGenerateInvoice = true;
+        }
+
+        if (!$canGenerateInvoice && $sale->status !== 'completed') {
+            return back()->with('error', 'Solo se pueden generar facturas para ventas completadas o ventas a crédito/pago parcial.');
         }
 
         // Verificar si ya tiene factura
@@ -576,6 +627,21 @@ class SaleController extends Controller
         // Calcular fecha de vencimiento según los días de crédito del cliente
         $dueDate = now()->addDays($sale->client->credit_days ?? 30);
 
+        // Determinar el estado de pago inicial de la factura basado en el payment_status de la venta
+        $invoicePaymentStatus = 'unpaid';
+        $invoicePaidAmount = 0;
+        $invoiceBalance = $sale->total;
+        
+        // Si la venta tiene pago parcial, reflejarlo en la factura
+        if ($sale->payment_status === 'partial') {
+            $invoicePaymentStatus = 'partial';
+            // El saldo se calculará cuando se registren pagos en la factura
+        } elseif ($sale->payment_status === 'paid') {
+            $invoicePaymentStatus = 'paid';
+            $invoicePaidAmount = $sale->total;
+            $invoiceBalance = 0;
+        }
+
         // Crear la factura
         $invoice = \App\Models\Invoice::create([
             'invoice_number' => \App\Models\Invoice::generateInvoiceNumber(),
@@ -591,10 +657,10 @@ class SaleController extends Controller
             'discount_amount' => $sale->total_discount,
             'tax_amount' => 0, // Puedes calcular IVA si lo necesitas
             'total' => $sale->total,
-            'paid_amount' => 0,
-            'balance' => $sale->total,
+            'paid_amount' => $invoicePaidAmount,
+            'balance' => $invoiceBalance,
             'status' => 'pending',
-            'payment_status' => 'unpaid',
+            'payment_status' => $invoicePaymentStatus,
             'payment_method' => $sale->payment_method,
             'notes' => $sale->notes,
         ]);
@@ -615,17 +681,19 @@ class SaleController extends Controller
             ]);
         }
 
-        // Crear cuenta por cobrar
-        \App\Models\Receivable::create([
-            'client_id' => $sale->client_id,
-            'invoice_id' => $invoice->id,
-            'amount' => $sale->total,
-            'balance' => $sale->total,
-            'due_date' => $dueDate,
-            'status' => 'pending',
-            'notes' => "Generada desde venta #{$sale->code}",
-            'created_by' => auth()->id(),
-        ]);
+        // Crear cuenta por cobrar solo si hay saldo pendiente
+        if ($invoiceBalance > 0) {
+            \App\Models\Receivable::create([
+                'client_id' => $sale->client_id,
+                'invoice_id' => $invoice->id,
+                'amount' => $sale->total,
+                'balance' => $invoiceBalance,
+                'due_date' => $dueDate,
+                'status' => $invoicePaymentStatus === 'partial' ? 'partial' : 'pending',
+                'notes' => "Generada desde venta #{$sale->code}",
+                'created_by' => auth()->id(),
+            ]);
+        }
 
         return $invoice;
     }
@@ -674,12 +742,21 @@ class SaleController extends Controller
 
             // 3. Actualizar estado de la venta
             $sale->update([
-                'status' => 'complete',
+                'status' => 'completed',
                 'completed_at' => now(),
             ]);
 
-            // 4. Generar factura si el método de pago es crédito
+            // 4. Generar factura si:
+            // - El método de pago es crédito
+            // - O el estado de pago es parcial o pendiente (unpaid)
+            $shouldGenerateInvoice = false;
             if ($sale->payment_method === 'credit') {
+                $shouldGenerateInvoice = true;
+            } elseif (in_array($sale->payment_status, ['partial', 'pending', 'unpaid'])) {
+                $shouldGenerateInvoice = true;
+            }
+
+            if ($shouldGenerateInvoice) {
                 $this->generateInvoiceForSale($sale);
             }
 
@@ -688,9 +765,16 @@ class SaleController extends Controller
             \Log::info('SaleController complete - Venta completada:', [
                 'sale_id' => $sale->id,
                 'payment_method' => $sale->payment_method,
+                'payment_status' => $sale->payment_status,
+                'should_generate_invoice' => $shouldGenerateInvoice,
             ]);
 
-            return back()->with('success', 'Venta completada exitosamente.' . ($sale->payment_method === 'credit' ? ' Se ha generado la factura.' : ''));
+            $message = 'Venta completada exitosamente.';
+            if ($shouldGenerateInvoice) {
+                $message .= ' Se ha generado la factura en cuentas por cobrar.';
+            }
+            
+            return back()->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -843,44 +927,146 @@ class SaleController extends Controller
             if (!\Schema::hasTable('sales')) {
                 return [
                     'total_sales' => 0,
-                    'draft_sales' => 0,
+                    'pending_sales' => 0,
                     'complete_sales' => 0,
                     'canceled_sales' => 0,
                     'total_value' => 0,
-                    'draft_value' => 0,
+                    'pending_value' => 0,
                     'complete_value' => 0,
                 ];
             }
 
             $totalSales = \DB::table('sales')->count();
-            $draftSales = \DB::table('sales')->where('status', 'draft')->count();
-            $completeSales = \DB::table('sales')->where('status', 'complete')->count();
-            $canceledSales = \DB::table('sales')->where('status', 'canceled')->count();
+            // Estados según el enum: 'draft', 'completed', 'cancelled'
+            // 'draft' se considera pendiente
+            $pendingSales = \DB::table('sales')->where('status', 'draft')->count();
+            $completeSales = \DB::table('sales')->where('status', 'completed')->count();
+            $canceledSales = \DB::table('sales')->where('status', 'cancelled')->count();
             
             $totalValue = \DB::table('sales')->sum('total') ?? 0;
-            $draftValue = \DB::table('sales')->where('status', 'draft')->sum('total') ?? 0;
-            $completeValue = \DB::table('sales')->where('status', 'complete')->sum('total') ?? 0;
+            $pendingValue = \DB::table('sales')->where('status', 'draft')->sum('total') ?? 0;
+            $completeValue = \DB::table('sales')->where('status', 'completed')->sum('total') ?? 0;
 
             return [
                 'total_sales' => $totalSales,
-                'draft_sales' => $draftSales,
+                'pending_sales' => $pendingSales,
                 'complete_sales' => $completeSales,
                 'canceled_sales' => $canceledSales,
                 'total_value' => $totalValue,
-                'draft_value' => $draftValue,
+                'pending_value' => $pendingValue,
                 'complete_value' => $completeValue,
             ];
         } catch (\Exception $e) {
             \Log::error('SaleController getSalesStats - Error:', ['message' => $e->getMessage()]);
             return [
                 'total_sales' => 0,
-                'draft_sales' => 0,
+                'pending_sales' => 0,
                 'complete_sales' => 0,
                 'canceled_sales' => 0,
                 'total_value' => 0,
-                'draft_value' => 0,
+                'pending_value' => 0,
                 'complete_value' => 0,
             ];
+        }
+    }
+
+    /**
+     * Marcar una venta como pagada
+     */
+    public function markAsPaid(Request $request, $saleId)
+    {
+        // Log inmediato al inicio
+        error_log('=== SaleController markAsPaid - MÉTODO LLAMADO ===');
+        error_log('Sale ID: ' . $saleId);
+        error_log('Request URL: ' . $request->url());
+        error_log('Request Method: ' . $request->method());
+        error_log('User ID: ' . (auth()->id() ?? 'null'));
+        
+        \Log::info('SaleController markAsPaid - Método llamado', [
+            'sale_id_param' => $saleId,
+            'request_all' => $request->all(),
+            'user_id' => auth()->id(),
+            'url' => $request->url(),
+            'method' => $request->method(),
+        ]);
+
+        try {
+            // Buscar la venta por ID
+            $sale = Sale::findOrFail($saleId);
+            
+            \Log::info('SaleController markAsPaid - Venta encontrada', [
+                'sale_id' => $sale->id,
+                'current_payment_status' => $sale->payment_status,
+            ]);
+
+            if ($sale->payment_status === 'paid') {
+                \Log::warning('SaleController markAsPaid - Venta ya está pagada', [
+                    'sale_id' => $sale->id,
+                ]);
+                return back()->with('error', 'La venta ya está marcada como pagada.');
+            }
+
+            $sale->update([
+                'payment_status' => 'paid',
+            ]);
+
+            \Log::info('SaleController markAsPaid - Venta marcada como pagada exitosamente', [
+                'sale_id' => $sale->id,
+                'user_id' => auth()->id(),
+            ]);
+
+            // Para Inertia, usar back() directamente
+            return back()->with('success', 'La venta ha sido marcada como pagada exitosamente.');
+        } catch (\Exception $e) {
+            \Log::error('SaleController markAsPaid - Error:', [
+                'sale_id' => $sale->id ?? null,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return back()->with('error', 'Error al marcar la venta como pagada: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtener los items de una preventa para cargar en el formulario de venta
+     */
+    public function getPresaleItems(Request $request, $presaleId)
+    {
+        try {
+            $presale = Presale::with(['items.product', 'client'])->findOrFail($presaleId);
+
+            // Verificar que la preventa esté en un estado válido (draft o confirmed)
+            if (!in_array($presale->status, ['draft', 'confirmed'])) {
+                return response()->json([
+                    'error' => 'La preventa debe estar en estado borrador o confirmada para convertirla en venta'
+                ], 400);
+            }
+
+            // Formatear los items para el formulario
+            $items = $presale->items->map(function ($item) {
+                return [
+                    'product_id' => $item->product_id,
+                    'quantity' => (float) $item->quantity,
+                    'unit_price' => (float) $item->unit_price,
+                    'discount' => (float) $item->discount,
+                    'subtotal' => (float) $item->subtotal,
+                    'discount_amount' => (float) $item->discount_amount,
+                    'total' => (float) $item->total,
+                ];
+            });
+
+            return response()->json([
+                'items' => $items,
+                'client_id' => $presale->client_id,
+                'subtotal' => (float) $presale->subtotal,
+                'total_discount' => (float) $presale->total_discount,
+                'total' => (float) $presale->total,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('SaleController getPresaleItems - Error:', ['message' => $e->getMessage()]);
+            return response()->json([
+                'error' => 'Error al cargar los items de la preventa: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

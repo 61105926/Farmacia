@@ -17,12 +17,6 @@
           >
             Exportar Excel
           </button>
-          <button
-            @click="exportCSV"
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            Exportar CSV
-          </button>
         </div>
       </div>
 
@@ -189,12 +183,12 @@
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900">
-                          ${{ formatPrice(getClientTotalSales(client)) }}
+                          {{ formatPrice(getClientTotalSales(client)) }}
                         </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium" :class="getBalanceClass(getClientBalance(client))">
-                          ${{ formatPrice(getClientBalance(client)) }}
+                          {{ formatPrice(getClientBalance(client)) }}
                         </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
@@ -250,7 +244,7 @@
                   </div>
                   <div class="text-right">
                     <div class="text-sm font-medium text-gray-900">
-                      ${{ formatPrice(client.total_sales) }}
+                      {{ formatPrice(client.total_sales) }}
                     </div>
                   </div>
                 </div>
@@ -284,7 +278,7 @@
                   </div>
                   <div class="text-right">
                     <div class="text-sm font-medium text-gray-900">
-                      ${{ formatPrice(client.total_balance) }}
+                      {{ formatPrice(client.total_balance) }}
                     </div>
                   </div>
                 </div>
@@ -307,12 +301,6 @@
                 class="w-full px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 text-center transition-colors"
               >
                 Exportar Excel
-              </button>
-              <button
-                @click="exportCSV"
-                class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-center transition-colors"
-              >
-                Exportar CSV
               </button>
             </CardContent>
           </Card>
@@ -396,10 +384,12 @@ const getBalanceClass = (balance) => {
 }
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price || 0)
 }
 
 const exportReport = () => {
@@ -411,12 +401,4 @@ const exportReport = () => {
   window.open(`/reportes/exportar?${params.toString()}`, '_blank')
 }
 
-const exportCSV = () => {
-  const params = new URLSearchParams({
-    type: 'clients',
-    format: 'csv',
-    ...filters.value
-  })
-  window.open(`/reportes/exportar?${params.toString()}`, '_blank')
-}
 </script>

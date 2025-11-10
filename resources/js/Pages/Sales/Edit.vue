@@ -212,8 +212,8 @@
                       </div>
                       <div class="flex items-center gap-4">
                         <div class="text-sm text-gray-900">{{ item.quantity }}</div>
-                        <div class="text-sm text-gray-900">${{ formatPrice(item.unit_price) }}</div>
-                        <div class="text-sm font-medium text-gray-900">${{ formatPrice(item.subtotal) }}</div>
+                        <div class="text-sm text-gray-900">{{ formatPrice(item.unit_price) }}</div>
+                        <div class="text-sm font-medium text-gray-900">{{ formatPrice(item.subtotal) }}</div>
                         <button
                           type="button"
                           @click="removeItem(index)"
@@ -244,19 +244,19 @@
               <CardContent class="space-y-3">
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Subtotal</span>
-                  <span class="text-sm text-gray-900">${{ formatPrice(subtotal) }}</span>
+                  <span class="text-sm text-gray-900">{{ formatPrice(subtotal) }}</span>
                 </div>
                 <div v-if="discountAmount > 0" class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Descuento</span>
-                  <span class="text-sm text-green-600">-${{ formatPrice(discountAmount) }}</span>
+                  <span class="text-sm text-green-600">-{{ formatPrice(discountAmount) }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">IVA (19%)</span>
-                  <span class="text-sm text-gray-900">${{ formatPrice(taxAmount) }}</span>
+                  <span class="text-sm text-gray-900">{{ formatPrice(taxAmount) }}</span>
                 </div>
                 <div class="flex items-center justify-between border-t pt-2">
                   <span class="text-sm font-medium text-gray-900">Total</span>
-                  <span class="text-sm font-medium text-gray-900">${{ formatPrice(total) }}</span>
+                  <span class="text-sm font-medium text-gray-900">{{ formatPrice(total) }}</span>
                 </div>
               </CardContent>
             </Card>
@@ -492,10 +492,12 @@ const getStatusDescription = (status) => {
 }
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price || 0)
 }
 
 const submit = () => {

@@ -63,6 +63,7 @@
                 </label>
                 <select
                   v-model="form.presale_id"
+                  @change="loadPresaleItems"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Sin preventa</option>
@@ -292,6 +293,7 @@
 <script setup>
 import { ref, reactive, computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import axios from 'axios'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardHeader from '@/Components/ui/CardHeader.vue'
@@ -360,18 +362,70 @@ const calculateTotals = () => {
 }
 
 const submitForm = () => {
+  // Validar que haya items
   if (form.items.length === 0) {
     alert('Debe agregar al menos un producto')
     return
   }
 
-  console.log('Enviando datos de venta:', form)
-  router.post('/ventas', form, {
+  // Validar que todos los items tengan producto seleccionado
+  const itemsWithProducts = form.items.filter(item => item.product_id && item.product_id !== '')
+  if (itemsWithProducts.length === 0) {
+    alert('Debe seleccionar al menos un producto')
+    return
+  }
+
+  // Validar cliente
+  if (!form.client_id || form.client_id === '') {
+    alert('Debe seleccionar un cliente')
+    return
+  }
+
+  // Validar método de pago
+  if (!form.payment_method || form.payment_method === '') {
+    alert('Debe seleccionar un método de pago')
+    return
+  }
+
+  // Validar estado de pago
+  if (!form.payment_status || form.payment_status === '') {
+    alert('Debe seleccionar un estado de pago')
+    return
+  }
+
+  // Preparar datos para enviar - solo items con producto seleccionado
+  const dataToSend = {
+    ...form,
+    items: itemsWithProducts.map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity || 1,
+      unit_price: item.unit_price || 0,
+      discount: item.discount || 0,
+    })),
+    // Si delivery_date está vacío, enviar null
+    delivery_date: form.delivery_date || null,
+    // Si presale_id está vacío, enviar null
+    presale_id: form.presale_id || null,
+    // Si salesperson_id está vacío, enviar null
+    salesperson_id: form.salesperson_id || null,
+  }
+
+  console.log('Enviando datos de venta:', dataToSend)
+  
+  router.post('/ventas', dataToSend, {
+    preserveScroll: true,
     onSuccess: () => {
       console.log('Venta creada exitosamente')
+      // Redirigir a la lista de ventas
+      router.visit('/ventas')
     },
     onError: (errors) => {
       console.error('Errores al crear venta:', errors)
+      // Mostrar errores de validación
+      if (errors) {
+        const errorMessages = Object.values(errors).flat()
+        alert('Error al crear la venta:\n' + errorMessages.join('\n'))
+      }
     }
   })
 }
@@ -383,5 +437,52 @@ const formatCurrency = (amount) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount || 0)
+}
+
+const loadPresaleItems = async () => {
+  if (!form.presale_id) {
+    // Si no hay preventa seleccionada, limpiar los items
+    form.items = []
+    form.subtotal = 0
+    form.total_discount = 0
+    form.total = 0
+    return
+  }
+
+  try {
+    const response = await axios.get(`/ventas/preventa/${form.presale_id}/items`)
+    const data = response.data
+
+    if (data.error) {
+      alert(data.error)
+      form.presale_id = ''
+      return
+    }
+
+    // Cargar el cliente de la preventa
+    if (data.client_id) {
+      form.client_id = data.client_id
+    }
+
+    // Cargar los items de la preventa
+    form.items = data.items.map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      discount: item.discount,
+      subtotal: item.subtotal,
+      discount_amount: item.discount_amount,
+      total: item.total,
+    }))
+
+    // Actualizar los totales
+    form.subtotal = data.subtotal || 0
+    form.total_discount = data.total_discount || 0
+    form.total = data.total || 0
+  } catch (error) {
+    console.error('Error al cargar items de preventa:', error)
+    alert('Error al cargar los productos de la preventa. Por favor, intente nuevamente.')
+    form.presale_id = ''
+  }
 }
 </script>

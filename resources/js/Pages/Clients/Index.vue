@@ -89,6 +89,57 @@
       </CardContent>
     </Card>
 
+    <!-- Client Statistics Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+      <Card>
+        <CardContent class="p-6">
+          <div class="flex items-center">
+            <Building2 class="h-8 w-8 text-blue-500" />
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Total Clientes</p>
+              <p class="text-2xl font-bold">{{ clients.total || 0 }}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent class="p-6">
+          <div class="flex items-center">
+            <UserCheck class="h-8 w-8 text-green-500" />
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Activos</p>
+              <p class="text-2xl font-bold">{{ activeClientsCount }}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent class="p-6">
+          <div class="flex items-center">
+            <UserX class="h-8 w-8 text-red-500" />
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Bloqueados</p>
+              <p class="text-2xl font-bold">{{ blockedClientsCount }}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent class="p-6">
+          <div class="flex items-center">
+            <CreditCard class="h-8 w-8 text-purple-500" />
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Con Crédito</p>
+              <p class="text-2xl font-bold">{{ clientsWithCreditCount }}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
     <!-- Clients Table -->
     <Card>
       <CardContent class="p-0">
@@ -234,79 +285,20 @@
       </CardContent>
       
       <!-- Pagination -->
-      <div v-if="clients.data && clients.data.length > 0" class="px-6 py-3 border-t border-gray-200">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-700">
-            Mostrando {{ clients.from }} a {{ clients.to }} de {{ clients.total }} resultados
-          </div>
-          <div class="flex items-center space-x-2">
-            <Link
-              v-for="link in clients.links"
-              :key="link.label"
-              :href="link.url"
-              v-html="link.label"
-              :class="[
-                'px-3 py-2 text-sm rounded-md',
-                link.active 
-                  ? 'bg-primary-700 text-white' 
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              ]"
-            />
-          </div>
-        </div>
+      <div v-if="clients && clients.links && clients.links.length > 0" class="px-6 py-3 border-t border-gray-200">
+        <Pagination 
+          :links="clients.links" 
+          :pagination-data="{
+            from: clients.from,
+            to: clients.to,
+            total: clients.total,
+            current_page: clients.current_page,
+            last_page: clients.last_page
+          }"
+        />
       </div>
     </Card>
 
-    <!-- Client Statistics Summary -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-      <Card>
-        <CardContent class="p-6">
-          <div class="flex items-center">
-            <Building2 class="h-8 w-8 text-blue-500" />
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500">Total Clientes</p>
-              <p class="text-2xl font-bold">{{ clients.total || 0 }}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent class="p-6">
-          <div class="flex items-center">
-            <UserCheck class="h-8 w-8 text-green-500" />
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500">Activos</p>
-              <p class="text-2xl font-bold">{{ activeClientsCount }}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent class="p-6">
-          <div class="flex items-center">
-            <UserX class="h-8 w-8 text-red-500" />
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500">Bloqueados</p>
-              <p class="text-2xl font-bold">{{ blockedClientsCount }}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent class="p-6">
-          <div class="flex items-center">
-            <CreditCard class="h-8 w-8 text-purple-500" />
-            <div class="ml-4">
-              <p class="text-sm font-medium text-gray-500">Con Crédito</p>
-              <p class="text-2xl font-bold">{{ clientsWithCreditCount }}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
     
     <!-- Alert Dialog -->
     <AlertDialog
@@ -328,6 +320,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
 import Badge from '@/Components/ui/Badge.vue'
+import Pagination from '@/Components/ui/Pagination.vue'
 import { Building2, UserCheck, UserX, CreditCard, Eye, Edit, Shield, ShieldOff } from 'lucide-vue-next'
 import { usePermissions } from '@/composables/usePermissions'
 import { useAlert } from '@/composables/useAlert'

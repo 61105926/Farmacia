@@ -307,18 +307,68 @@ const calculateTotals = () => {
 }
 
 const submitForm = () => {
+  // Validar que haya items
   if (form.items.length === 0) {
     alert('Debe agregar al menos un producto')
     return
   }
 
-  console.log('Enviando datos de preventa:', form)
-  router.post('/preventas', form, {
+  // Validar cliente
+  if (!form.client_id || form.client_id === '') {
+    alert('Debe seleccionar un cliente')
+    return
+  }
+
+  // Validar que todos los items tengan producto seleccionado
+  const itemsWithProducts = form.items.filter(item => item.product_id && item.product_id !== '')
+  if (itemsWithProducts.length === 0) {
+    alert('Debe seleccionar al menos un producto en los items agregados')
+    return
+  }
+
+  // Validar fecha de entrega si está presente
+  if (form.delivery_date) {
+    const deliveryDate = new Date(form.delivery_date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    deliveryDate.setHours(0, 0, 0, 0)
+    
+    if (deliveryDate < today) {
+      alert('La fecha de entrega no puede ser anterior a hoy')
+      return
+    }
+  }
+
+  // Preparar datos para enviar - solo items con producto seleccionado
+  const dataToSend = {
+    client_id: form.client_id,
+    salesperson_id: form.salesperson_id || null,
+    delivery_date: form.delivery_date || null,
+    notes: form.notes || null,
+    items: itemsWithProducts.map(item => ({
+      product_id: item.product_id,
+      quantity: item.quantity || 1,
+      unit_price: item.unit_price || 0,
+      discount: item.discount || 0,
+    })),
+  }
+
+  console.log('Enviando datos de preventa:', dataToSend)
+  
+  router.post('/preventas', dataToSend, {
+    preserveScroll: true,
     onSuccess: () => {
       console.log('Preventa creada exitosamente')
+      // Redirigir a la lista de preventas
+      router.visit('/preventas')
     },
     onError: (errors) => {
       console.error('Errores al crear preventa:', errors)
+      // Mostrar errores de validación
+      if (errors) {
+        const errorMessages = Object.values(errors).flat()
+        alert('Error al crear la preventa:\n' + errorMessages.join('\n'))
+      }
     }
   })
 }

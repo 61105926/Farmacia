@@ -122,7 +122,6 @@ class PresaleController extends Controller
 
                 'statuses' => [
                     ['value' => 'draft', 'label' => 'Borrador'],
-                    ['value' => 'confirmed', 'label' => 'Confirmada'],
                     ['value' => 'converted', 'label' => 'Convertida'],
                     ['value' => 'cancelled', 'label' => 'Cancelada'],
                 ],
@@ -170,27 +169,70 @@ class PresaleController extends Controller
     private function getPresalesStats(Request $request): array
     {
         try {
-            $query = Presale::query();
+            // Crear query base sin clonar para evitar problemas
+            $baseQuery = Presale::query();
 
             // Aplicar mismos filtros de fecha si existen
             if ($request->filled('date_from')) {
-                $query->whereDate('created_at', '>=', $request->date_from);
+                $baseQuery->whereDate('created_at', '>=', $request->date_from);
             }
             if ($request->filled('date_to')) {
-                $query->whereDate('created_at', '<=', $request->date_to);
+                $baseQuery->whereDate('created_at', '<=', $request->date_to);
             }
 
-            // Estadísticas base
-            $baseQuery = clone $query;
+            // Calcular estadísticas
+            $total = $baseQuery->count();
+            $draft = Presale::query()
+                ->when($request->filled('date_from'), function($q) use ($request) {
+                    $q->whereDate('created_at', '>=', $request->date_from);
+                })
+                ->when($request->filled('date_to'), function($q) use ($request) {
+                    $q->whereDate('created_at', '<=', $request->date_to);
+                })
+                ->where('status', 'draft')
+                ->count();
+            
+            $confirmed = Presale::query()
+                ->when($request->filled('date_from'), function($q) use ($request) {
+                    $q->whereDate('created_at', '>=', $request->date_from);
+                })
+                ->when($request->filled('date_to'), function($q) use ($request) {
+                    $q->whereDate('created_at', '<=', $request->date_to);
+                })
+                ->where('status', 'confirmed')
+                ->count();
+
+            $totalValue = $baseQuery->sum('total') ?? 0;
+
+            $converted = Presale::query()
+                ->when($request->filled('date_from'), function($q) use ($request) {
+                    $q->whereDate('created_at', '>=', $request->date_from);
+                })
+                ->when($request->filled('date_to'), function($q) use ($request) {
+                    $q->whereDate('created_at', '<=', $request->date_to);
+                })
+                ->where('status', 'converted')
+                ->count();
 
             return [
-                'total' => $baseQuery->count(),
-                'draft' => (clone $query)->where('status', 'draft')->count(),
-                'confirmed' => (clone $query)->where('status', 'confirmed')->count(),
-                'converted' => (clone $query)->where('status', 'converted')->count(),
-                'cancelled' => (clone $query)->where('status', 'cancelled')->count(),
-                'total_value' => $baseQuery->sum('total'),
-                'average_value' => $baseQuery->avg('total'),
+                'total' => $total,
+                'total_presales' => $total,
+                'draft' => $draft,
+                'pending_presales' => $draft,
+                'confirmed' => $confirmed,
+                'confirmed_presales' => $converted, // "Confirmadas" muestra las convertidas
+                'converted' => $converted,
+                'cancelled' => Presale::query()
+                    ->when($request->filled('date_from'), function($q) use ($request) {
+                        $q->whereDate('created_at', '>=', $request->date_from);
+                    })
+                    ->when($request->filled('date_to'), function($q) use ($request) {
+                        $q->whereDate('created_at', '<=', $request->date_to);
+                    })
+                    ->where('status', 'cancelled')
+                    ->count(),
+                'total_value' => $totalValue,
+                'average_value' => $total > 0 ? ($totalValue / $total) : 0,
                 'today' => Presale::whereDate('created_at', today())->count(),
                 'this_week' => Presale::whereBetween('created_at', [
                     now()->startOfWeek(),
@@ -202,7 +244,8 @@ class PresaleController extends Controller
             ];
         } catch (\Exception $e) {
             Log::warning('Error al calcular estadísticas de preventas', [
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return $this->getDefaultStats();
         }
@@ -215,8 +258,11 @@ class PresaleController extends Controller
     {
         return [
             'total' => 0,
+            'total_presales' => 0,
             'draft' => 0,
+            'pending_presales' => 0,
             'confirmed' => 0,
+            'confirmed_presales' => 0,
             'converted' => 0,
             'cancelled' => 0,
             'total_value' => 0,
@@ -533,8 +579,8 @@ class PresaleController extends Controller
             'salesperson',
             'items.product',
             'creator:id,name',
-            'confirmedBy:id,name',
-            'convertedBy:id,name',
+            'confirmer:id,name',
+            'converter:id,name',
         ]);
 
         // Determinar acciones disponibles según el estado

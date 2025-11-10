@@ -32,6 +32,10 @@ class User extends Authenticatable
         'last_login_ip',
         'failed_login_attempts',
         'blocked_at',
+        'theme',
+        'language',
+        'notification_settings',
+        'preferences',
         // Compatibilidad con campos antiguos
         'telefono',
         'cedula',
@@ -63,6 +67,8 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'blocked_at' => 'datetime',
             'failed_login_attempts' => 'integer',
+            'notification_settings' => 'array',
+            'preferences' => 'array',
             // Compatibilidad con campos antiguos
             'ultimo_acceso' => 'datetime',
         ];

@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Client;
 use App\Models\Product;
-use App\Models\Order;
+use App\Models\Sale;
+use App\Models\Presale;
 use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Http\Request;
@@ -82,14 +83,13 @@ class DashboardController extends Controller
     private function getGeneralStats()
     {
         return [
-            'users' => \Schema::hasTable('users') ? User::count() : 0,
-            'clients' => \Schema::hasTable('clients') ? Client::count() : 0,
-            'products' => \Schema::hasTable('products') ? Product::where('is_active', true)->count() : 0,
-            'orders' => \Schema::hasTable('orders') ? Order::count() : 0,
-            'invoices' => \Schema::hasTable('invoices') ? Invoice::count() : 0,
-            'payments' => \Schema::hasTable('payments') ? Payment::sum('amount') : 0,
-            'presales' => \Schema::hasTable('presales') ? DB::table('presales')->count() : 0,
-            'sales' => \Schema::hasTable('sales') ? DB::table('sales')->count() : 0,
+            'users' => User::count(),
+            'clients' => Client::count(),
+            'products' => Product::where('is_active', true)->count(),
+            'sales' => Sale::count(),
+            'presales' => Presale::count(),
+            'invoices' => Invoice::where('status', '!=', 'cancelled')->count(),
+            'payments' => Payment::sum('amount') ?? 0,
         ];
     }
     
@@ -98,51 +98,32 @@ class DashboardController extends Controller
         $currentMonth = Carbon::now();
         
         return [
-            'orders' => \Schema::hasTable('orders') ? 
-                Order::whereMonth('created_at', $currentMonth->month)
-                    ->whereYear('created_at', $currentMonth->year)
-                    ->count() : 0,
-            'invoices' => \Schema::hasTable('invoices') ? 
-                Invoice::whereMonth('created_at', $currentMonth->month)
-                    ->whereYear('created_at', $currentMonth->year)
-                    ->count() : 0,
-            'revenue' => \Schema::hasTable('payments') ? 
-                Payment::whereMonth('created_at', $currentMonth->month)
-                    ->whereYear('created_at', $currentMonth->year)
-                    ->sum('amount') : 0,
-            'presales' => \Schema::hasTable('presales') ? 
-                DB::table('presales')
-                    ->whereMonth('created_at', $currentMonth->month)
-                    ->whereYear('created_at', $currentMonth->year)
-                    ->count() : 0,
-            'sales' => \Schema::hasTable('sales') ? 
-                DB::table('sales')
-                    ->whereMonth('created_at', $currentMonth->month)
-                    ->whereYear('created_at', $currentMonth->year)
-                    ->count() : 0,
+            'presales' => Presale::whereMonth('created_at', $currentMonth->month)
+                ->whereYear('created_at', $currentMonth->year)
+                ->count(),
+            'sales' => Sale::whereMonth('created_at', $currentMonth->month)
+                ->whereYear('created_at', $currentMonth->year)
+                ->count(),
+            'revenue' => Invoice::whereMonth('invoice_date', $currentMonth->month)
+                ->whereYear('invoice_date', $currentMonth->year)
+                ->where('status', '!=', 'cancelled')
+                ->sum('total') ?? 0,
         ];
     }
     
     private function getOrderStats()
     {
-        if (!\Schema::hasTable('orders')) {
-            return ['pending' => 0, 'confirmed' => 0, 'processing' => 0, 'delivered' => 0];
-        }
-        
+        // Estadísticas de preventas por estado
         return [
-            'pending' => Order::where('status', 'pending')->count(),
-            'confirmed' => Order::where('status', 'confirmed')->count(),
-            'processing' => Order::where('status', 'processing')->count(),
-            'delivered' => Order::where('status', 'delivered')->count(),
+            'pending' => Presale::where('status', 'draft')->count(),
+            'confirmed' => Presale::where('status', 'confirmed')->count(),
+            'processing' => Presale::where('status', 'confirmed')->count(), // Preventas confirmadas en proceso
+            'delivered' => Presale::where('status', 'converted')->count(), // Preventas convertidas a ventas
         ];
     }
     
     private function getClientStats()
     {
-        if (!\Schema::hasTable('clients')) {
-            return ['active' => 0, 'inactive' => 0, 'blocked' => 0];
-        }
-        
         return [
             'active' => Client::where('status', 'active')->count(),
             'inactive' => Client::where('status', 'inactive')->count(),
@@ -158,37 +139,17 @@ class DashboardController extends Controller
             
             $monthData = [
                 'month' => $date->format('M Y'),
-                'orders' => 0,
-                'revenue' => 0,
-                'presales' => 0,
-                'sales' => 0,
+                'presales' => Presale::whereMonth('created_at', $date->month)
+                    ->whereYear('created_at', $date->year)
+                    ->count(),
+                'sales' => Sale::whereMonth('created_at', $date->month)
+                    ->whereYear('created_at', $date->year)
+                    ->count(),
+                'revenue' => Invoice::whereMonth('invoice_date', $date->month)
+                    ->whereYear('invoice_date', $date->year)
+                    ->where('status', '!=', 'cancelled')
+                    ->sum('total') ?? 0,
             ];
-            
-            if (\Schema::hasTable('orders')) {
-                $monthData['orders'] = Order::whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
-                    ->count();
-            }
-            
-            if (\Schema::hasTable('payments')) {
-                $monthData['revenue'] = Payment::whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
-                    ->sum('amount');
-            }
-            
-            if (\Schema::hasTable('presales')) {
-                $monthData['presales'] = DB::table('presales')
-                    ->whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
-                    ->count();
-            }
-            
-            if (\Schema::hasTable('sales')) {
-                $monthData['sales'] = DB::table('sales')
-                    ->whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
-                    ->count();
-            }
             
             $salesChart[] = $monthData;
         }
@@ -198,67 +159,70 @@ class DashboardController extends Controller
     
     private function getRecentOrders()
     {
-        if (!\Schema::hasTable('orders')) {
-            return [];
-        }
-        
-        return Order::with(['client:id,business_name', 'salesperson:id,name'])
+        // Obtener ventas recientes
+        return Sale::with(['client:id,business_name', 'salesperson:id,name'])
             ->latest()
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(function ($sale) {
+                return [
+                    'id' => $sale->id,
+                    'code' => $sale->code,
+                    'client' => $sale->client ? [
+                        'id' => $sale->client->id,
+                        'business_name' => $sale->client->business_name,
+                    ] : null,
+                    'salesperson' => $sale->salesperson ? [
+                        'id' => $sale->salesperson->id,
+                        'name' => $sale->salesperson->name,
+                    ] : null,
+                    'status' => $sale->status,
+                    'total' => $sale->total,
+                    'created_at' => $sale->created_at,
+                ];
+            });
     }
     
     private function getTopClients()
     {
-        if (!\Schema::hasTable('clients')) {
-            return [];
-        }
-        
-        return Client::withCount(['orders', 'invoices'])
-            ->orderBy('orders_count', 'desc')
+        return Client::withCount(['sales', 'invoices'])
+            ->orderBy('sales_count', 'desc')
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(function ($client) {
+                return [
+                    'id' => $client->id,
+                    'business_name' => $client->business_name,
+                    'trade_name' => $client->trade_name,
+                    'orders_count' => $client->sales_count ?? 0,
+                    'invoices_count' => $client->invoices_count ?? 0,
+                ];
+            });
     }
     
     private function getProductStats()
     {
-        if (!\Schema::hasTable('products')) {
-            return [
-                'total' => 0,
-                'active' => 0,
-                'inactive' => 0,
-                'low_stock' => 0,
-                'out_of_stock' => 0,
-            ];
-        }
-        
         return [
             'total' => Product::count(),
             'active' => Product::where('is_active', true)->count(),
             'inactive' => Product::where('is_active', false)->count(),
-            'low_stock' => Product::where('stock_quantity', '<=', 10)->count(),
+            'low_stock' => Product::where('stock_quantity', '<=', 10)
+                ->where('stock_quantity', '>', 0)
+                ->count(),
             'out_of_stock' => Product::where('stock_quantity', '<=', 0)->count(),
         ];
     }
     
     private function getUserStats()
     {
-        if (!\Schema::hasTable('users')) {
-            return [
-                'total' => 0,
-                'active' => 0,
-                'by_role' => [],
-            ];
-        }
-        
         $userStats = [
             'total' => User::count(),
-            'active' => User::count(), // Sin columna is_active
+            'active' => User::count(),
             'by_role' => [],
         ];
         
         // Estadísticas por rol si existe la tabla de roles
-        if (\Schema::hasTable('model_has_roles')) {
+        try {
             $roleStats = DB::table('users')
                 ->leftJoin('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
                 ->leftJoin('roles', 'model_has_roles.role_id', '=', 'roles.id')
@@ -267,6 +231,9 @@ class DashboardController extends Controller
                 ->get();
                 
             $userStats['by_role'] = $roleStats->pluck('count', 'name')->toArray();
+        } catch (\Exception $e) {
+            // Si no existe la tabla de roles, simplemente no agregamos estadísticas por rol
+            $userStats['by_role'] = [];
         }
         
         return $userStats;
@@ -277,43 +244,53 @@ class DashboardController extends Controller
         $alerts = [];
         
         // Productos con stock bajo
-        if (\Schema::hasTable('products')) {
-            $lowStockProducts = Product::where('stock_quantity', '<=', 10)
-                ->where('stock_quantity', '>', 0)
-                ->count();
-                
-            if ($lowStockProducts > 0) {
-                $alerts[] = [
-                    'type' => 'warning',
-                    'title' => 'Stock Bajo',
-                    'message' => "{$lowStockProducts} productos tienen stock bajo",
-                    'action' => '/productos?filter=low_stock'
-                ];
-            }
+        $lowStockProducts = Product::where('stock_quantity', '<=', 10)
+            ->where('stock_quantity', '>', 0)
+            ->count();
             
-            // Productos sin stock
-            $outOfStockProducts = Product::where('stock_quantity', '<=', 0)->count();
-            if ($outOfStockProducts > 0) {
-                $alerts[] = [
-                    'type' => 'error',
-                    'title' => 'Sin Stock',
-                    'message' => "{$outOfStockProducts} productos están sin stock",
-                    'action' => '/productos?filter=out_of_stock'
-                ];
-            }
+        if ($lowStockProducts > 0) {
+            $alerts[] = [
+                'type' => 'warning',
+                'title' => 'Stock Bajo',
+                'message' => "{$lowStockProducts} productos tienen stock bajo",
+                'action' => '/productos?filter=low_stock'
+            ];
+        }
+        
+        // Productos sin stock
+        $outOfStockProducts = Product::where('stock_quantity', '<=', 0)->count();
+        if ($outOfStockProducts > 0) {
+            $alerts[] = [
+                'type' => 'error',
+                'title' => 'Sin Stock',
+                'message' => "{$outOfStockProducts} productos están sin stock",
+                'action' => '/productos?filter=out_of_stock'
+            ];
+        }
+        
+        // Facturas vencidas
+        $overdueInvoices = Invoice::where('due_date', '<', now())
+            ->where('payment_status', '!=', 'paid')
+            ->where('status', '!=', 'cancelled')
+            ->count();
+        if ($overdueInvoices > 0) {
+            $alerts[] = [
+                'type' => 'error',
+                'title' => 'Facturas Vencidas',
+                'message' => "{$overdueInvoices} facturas están vencidas",
+                'action' => '/cuentas-por-cobrar?filter=overdue'
+            ];
         }
         
         // Clientes bloqueados
-        if (\Schema::hasTable('clients')) {
-            $blockedClients = Client::where('status', 'blocked')->count();
-            if ($blockedClients > 0) {
-                $alerts[] = [
-                    'type' => 'info',
-                    'title' => 'Clientes Bloqueados',
-                    'message' => "{$blockedClients} clientes están bloqueados",
-                    'action' => '/clientes?filter=blocked'
-                ];
-            }
+        $blockedClients = Client::where('status', 'blocked')->count();
+        if ($blockedClients > 0) {
+            $alerts[] = [
+                'type' => 'info',
+                'title' => 'Clientes Bloqueados',
+                'message' => "{$blockedClients} clientes están bloqueados",
+                'action' => '/clientes?filter=blocked'
+            ];
         }
         
         return $alerts;
@@ -330,49 +307,45 @@ class DashboardController extends Controller
             'client_growth' => 0,
         ];
         
-        // Crecimiento de ingresos
-        if (\Schema::hasTable('payments')) {
-            $currentRevenue = Payment::whereMonth('created_at', $currentMonth->month)
-                ->whereYear('created_at', $currentMonth->year)
-                ->sum('amount');
-                
-            $lastRevenue = Payment::whereMonth('created_at', $lastMonth->month)
-                ->whereYear('created_at', $lastMonth->year)
-                ->sum('amount');
-                
-            if ($lastRevenue > 0) {
-                $metrics['revenue_growth'] = round((($currentRevenue - $lastRevenue) / $lastRevenue) * 100, 2);
-            }
+        // Crecimiento de ingresos (basado en facturas)
+        $currentRevenue = Invoice::whereMonth('invoice_date', $currentMonth->month)
+            ->whereYear('invoice_date', $currentMonth->year)
+            ->where('status', '!=', 'cancelled')
+            ->sum('total') ?? 0;
+            
+        $lastRevenue = Invoice::whereMonth('invoice_date', $lastMonth->month)
+            ->whereYear('invoice_date', $lastMonth->year)
+            ->where('status', '!=', 'cancelled')
+            ->sum('total') ?? 0;
+            
+        if ($lastRevenue > 0) {
+            $metrics['revenue_growth'] = round((($currentRevenue - $lastRevenue) / $lastRevenue) * 100, 2);
         }
         
-        // Crecimiento de órdenes
-        if (\Schema::hasTable('orders')) {
-            $currentOrders = Order::whereMonth('created_at', $currentMonth->month)
-                ->whereYear('created_at', $currentMonth->year)
-                ->count();
-                
-            $lastOrders = Order::whereMonth('created_at', $lastMonth->month)
-                ->whereYear('created_at', $lastMonth->year)
-                ->count();
-                
-            if ($lastOrders > 0) {
-                $metrics['order_growth'] = round((($currentOrders - $lastOrders) / $lastOrders) * 100, 2);
-            }
+        // Crecimiento de ventas
+        $currentSales = Sale::whereMonth('created_at', $currentMonth->month)
+            ->whereYear('created_at', $currentMonth->year)
+            ->count();
+            
+        $lastSales = Sale::whereMonth('created_at', $lastMonth->month)
+            ->whereYear('created_at', $lastMonth->year)
+            ->count();
+            
+        if ($lastSales > 0) {
+            $metrics['order_growth'] = round((($currentSales - $lastSales) / $lastSales) * 100, 2);
         }
         
         // Crecimiento de clientes
-        if (\Schema::hasTable('clients')) {
-            $currentClients = Client::whereMonth('created_at', $currentMonth->month)
-                ->whereYear('created_at', $currentMonth->year)
-                ->count();
-                
-            $lastClients = Client::whereMonth('created_at', $lastMonth->month)
-                ->whereYear('created_at', $lastMonth->year)
-                ->count();
-                
-            if ($lastClients > 0) {
-                $metrics['client_growth'] = round((($currentClients - $lastClients) / $lastClients) * 100, 2);
-            }
+        $currentClients = Client::whereMonth('created_at', $currentMonth->month)
+            ->whereYear('created_at', $currentMonth->year)
+            ->count();
+            
+        $lastClients = Client::whereMonth('created_at', $lastMonth->month)
+            ->whereYear('created_at', $lastMonth->year)
+            ->count();
+            
+        if ($lastClients > 0) {
+            $metrics['client_growth'] = round((($currentClients - $lastClients) / $lastClients) * 100, 2);
         }
         
         return $metrics;
@@ -384,11 +357,10 @@ class DashboardController extends Controller
             'users' => 0,
             'clients' => 0,
             'products' => 0,
-            'orders' => 0,
+            'sales' => 0,
+            'presales' => 0,
             'invoices' => 0,
             'payments' => 0,
-            'presales' => 0,
-            'sales' => 0,
         ];
     }
     

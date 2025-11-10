@@ -17,6 +17,14 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             AdminUserSeeder::class,
             CategorySeeder::class,
+            // PaymentTermSeeder::class,
+            ClientSeeder::class,
+            // ProductSeeder::class,
+            // PresaleSeeder::class,
+            // SaleSeeder::class,
+            // InvoiceSeeder::class,
+            // ReceivableSeeder::class,
+            // PaymentSeeder::class,
         ]);
     }
 }

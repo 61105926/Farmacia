@@ -114,7 +114,7 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="movements.links" class="mt-6">
+        <div v-if="movements && movements.links && movements.links.length > 3" class="mt-6">
           <Pagination :links="movements.links" />
         </div>
       </CardContent>

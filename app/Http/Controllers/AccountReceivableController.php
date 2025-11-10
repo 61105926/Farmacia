@@ -77,13 +77,71 @@ class AccountReceivableController extends Controller
         ]);
     }
 
-    public function show(Invoice $invoice)
+    public function show($id)
     {
-        $invoice->load(['client', 'creator', 'items.product', 'payments.creator', 'payments.approver']);
+        \Log::info('AccountReceivableController show - Iniciando', ['invoice_id' => $id]);
+        
+        try {
+            // Cargar factura con relaciones de forma segura
+            $invoice = Invoice::findOrFail($id);
+            
+            // Cargar relaciones de forma individual para evitar errores
+            try {
+                $invoice->load('client:id,business_name,trade_name,tax_id,address');
+            } catch (\Exception $e) {
+                \Log::warning('Error cargando cliente', ['error' => $e->getMessage()]);
+            }
+            
+            try {
+                $invoice->load('creator:id,name');
+            } catch (\Exception $e) {
+                \Log::warning('Error cargando creador', ['error' => $e->getMessage()]);
+            }
+            
+            try {
+                $invoice->load(['items' => function($query) {
+                    $query->with('product:id,name,code');
+                }]);
+            } catch (\Exception $e) {
+                \Log::warning('Error cargando items', ['error' => $e->getMessage()]);
+                $invoice->setRelation('items', collect([]));
+            }
+            
+            try {
+                $invoice->load(['payments' => function($query) {
+                    $query->with([
+                        'creator:id,name',
+                        'approver:id,name'
+                    ])->latest('payment_date');
+                }]);
+            } catch (\Exception $e) {
+                \Log::warning('Error cargando pagos', ['error' => $e->getMessage()]);
+                $invoice->setRelation('payments', collect([]));
+            }
 
-        return Inertia::render('AccountReceivables/Show', [
-            'invoice' => $invoice,
-        ]);
+            \Log::info('AccountReceivableController show - Factura cargada exitosamente', [
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+            ]);
+
+            return Inertia::render('AccountReceivables/Show', [
+                'invoice' => $invoice,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::warning('AccountReceivableController show - Factura no encontrada', ['invoice_id' => $id]);
+            return redirect()->route('account-receivables.index')
+                ->with('error', 'La factura no existe.');
+        } catch (\Exception $e) {
+            \Log::error('AccountReceivableController show - Error', [
+                'invoice_id' => $id,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            return redirect()->route('account-receivables.index')
+                ->with('error', 'Error al cargar la factura. Por favor, intente nuevamente.');
+        }
     }
 
     public function payments(Request $request)
@@ -153,6 +211,14 @@ class AccountReceivableController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        // Asegurar que los campos opcionales sean null si están vacíos
+        $validated['invoice_id'] = $validated['invoice_id'] ?? null;
+        $validated['payment_reference'] = $validated['payment_reference'] ?? null;
+        $validated['bank_name'] = $validated['bank_name'] ?? null;
+        $validated['account_number'] = $validated['account_number'] ?? null;
+        $validated['check_number'] = $validated['check_number'] ?? null;
+        $validated['notes'] = $validated['notes'] ?? null;
+
         DB::beginTransaction();
         try {
             $payment = Payment::create([
@@ -192,6 +258,16 @@ class AccountReceivableController extends Controller
                     'payment_status' => $paymentStatus,
                     'paid_at' => $balance <= 0 ? now() : null,
                 ]);
+
+                // Sincronizar el estado de pago con la venta relacionada
+                if ($invoice->sale_id) {
+                    $sale = \App\Models\Sale::find($invoice->sale_id);
+                    if ($sale) {
+                        $sale->update([
+                            'payment_status' => $paymentStatus,
+                        ]);
+                    }
+                }
             }
 
             DB::commit();
@@ -329,5 +405,105 @@ class AccountReceivableController extends Controller
             'clients' => Client::where('status', 'active')->get(['id', 'business_name', 'trade_name']),
             'filters' => $request->only(['client_id']),
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        $query = Invoice::with(['client', 'creator', 'payments'])
+            ->where('status', '!=', 'cancelled')
+            ->where('total', '>', 0);
+
+        // Aplicar mismos filtros que el index
+        if ($request->filled('search')) {
+            $search = $request->get('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                  ->orWhere('client_name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->get('payment_status'));
+        }
+
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->get('client_id'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->where('invoice_date', '>=', $request->get('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->where('invoice_date', '<=', $request->get('date_to'));
+        }
+
+        if ($request->filled('overdue')) {
+            $query->overdue();
+        }
+
+        if ($request->filled('unpaid')) {
+            $query->unpaid();
+        }
+
+        $invoices = $query->latest('invoice_date')->get();
+
+        // Generar CSV
+        $filename = 'cuentas_por_cobrar_' . date('Y-m-d') . '.csv';
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function() use ($invoices) {
+            $file = fopen('php://output', 'w');
+            
+            // BOM para UTF-8
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Headers
+            fputcsv($file, [
+                'Número de Factura',
+                'Cliente',
+                'Fecha',
+                'Vencimiento',
+                'Total',
+                'Pagado',
+                'Saldo',
+                'Estado de Pago',
+                'Estado'
+            ]);
+
+            // Data
+            foreach ($invoices as $invoice) {
+                fputcsv($file, [
+                    $invoice->invoice_number,
+                    $invoice->client_name,
+                    $invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : '',
+                    $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '',
+                    number_format($invoice->total, 2, '.', ''),
+                    number_format($invoice->paid_amount, 2, '.', ''),
+                    number_format($invoice->balance, 2, '.', ''),
+                    $invoice->payment_status === 'paid' ? 'Pagado' : ($invoice->payment_status === 'partial' ? 'Parcial' : 'Sin Pagar'),
+                    $invoice->status,
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function getClientInvoices(Request $request, $clientId)
+    {
+        $invoices = Invoice::where('client_id', $clientId)
+            ->where('status', '!=', 'cancelled')
+            ->where('balance', '>', 0)
+            ->select('id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'paid_amount', 'balance')
+            ->orderBy('invoice_date', 'desc')
+            ->get();
+
+        return response()->json($invoices);
     }
 }

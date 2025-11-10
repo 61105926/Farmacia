@@ -37,6 +37,11 @@ class Payment extends Model
         'approved_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'payment_method_label',
+        'status_label',
+    ];
+
     /**
      * Cliente al que pertenece el pago
      */
@@ -172,6 +177,30 @@ class Payment extends Model
     }
 
     /**
+     * Obtener el método de pago formateado
+     */
+    public function getPaymentMethodLabelAttribute(): string
+    {
+        if (!$this->payment_method) {
+            return 'N/A';
+        }
+        $methods = self::getPaymentMethods();
+        return $methods[$this->payment_method] ?? ucfirst(str_replace('_', ' ', $this->payment_method));
+    }
+
+    /**
+     * Obtener el estado formateado
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        if (!$this->status) {
+            return 'N/A';
+        }
+        $statuses = self::getStatuses();
+        return $statuses[$this->status] ?? ucfirst($this->status);
+    }
+
+    /**
      * Aprobar el pago
      */
     public function approve(User $user): bool
@@ -256,5 +285,15 @@ class Payment extends Model
             'payment_status' => $paymentStatus,
             'paid_at' => $balance <= 0 ? now() : null,
         ]);
+
+        // Sincronizar el estado de pago con la venta relacionada
+        if ($invoice->sale_id) {
+            $sale = \App\Models\Sale::find($invoice->sale_id);
+            if ($sale) {
+                $sale->update([
+                    'payment_status' => $paymentStatus,
+                ]);
+            }
+        }
     }
 }

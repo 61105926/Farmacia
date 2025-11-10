@@ -205,18 +205,24 @@ const formatDate = (date) => {
 
 const getStatusText = (status) => {
   const texts = {
+    draft: 'Borrador',
     pending: 'Pendiente',
     completed: 'Completada',
-    cancelled: 'Cancelada'
+    complete: 'Completada',
+    cancelled: 'Cancelada',
+    canceled: 'Cancelada'
   }
   return texts[status] || status
 }
 
 const getStatusClass = (status) => {
   const classes = {
+    draft: 'text-gray-600 font-medium',
     pending: 'text-yellow-600 font-medium',
     completed: 'text-green-600 font-medium',
-    cancelled: 'text-red-600 font-medium'
+    complete: 'text-green-600 font-medium',
+    cancelled: 'text-red-600 font-medium',
+    canceled: 'text-red-600 font-medium'
   }
   return classes[status] || 'text-gray-600'
 }

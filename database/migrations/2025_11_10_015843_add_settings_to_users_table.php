@@ -12,8 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->timestamp('blocked_at')->nullable()->after('email_verified_at');
-            $table->integer('failed_login_attempts')->default(0)->after('blocked_at');
+            $table->string('theme')->default('light')->after('status');
+            $table->string('language')->default('es')->after('theme');
+            $table->json('notification_settings')->nullable()->after('language');
+            $table->json('preferences')->nullable()->after('notification_settings');
         });
     }
 
@@ -23,7 +25,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['blocked_at', 'failed_login_attempts']);
+            $table->dropColumn(['theme', 'language', 'notification_settings', 'preferences']);
         });
     }
 };

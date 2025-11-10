@@ -77,6 +77,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/stock-bajo', [ProductController::class, 'lowStock'])->name('low-stock');
         Route::get('/sin-stock', [ProductController::class, 'outOfStock'])->name('out-of-stock');
         Route::get('/categorias', [ProductController::class, 'categories'])->name('categories');
+        
+        // Importación desde Excel
+        Route::post('/importar-excel', [ProductController::class, 'importExcel'])->name('import-excel');
+        Route::get('/descargar-plantilla', [ProductController::class, 'downloadTemplate'])->name('download-template');
     });
 
     // Inventario
@@ -113,20 +117,29 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [App\Http\Controllers\SaleController::class, 'index'])->name('index');
         Route::get('/crear', [App\Http\Controllers\SaleController::class, 'create'])->name('create');
         Route::post('/', [App\Http\Controllers\SaleController::class, 'store'])->name('store');
-        Route::get('/{sale}', [App\Http\Controllers\SaleController::class, 'show'])->name('show');
-        Route::get('/{sale}/editar', [App\Http\Controllers\SaleController::class, 'edit'])->name('edit');
-        Route::put('/{sale}', [App\Http\Controllers\SaleController::class, 'update'])->name('update');
-        Route::delete('/{sale}', [App\Http\Controllers\SaleController::class, 'destroy'])->name('destroy');
+        Route::get('/preventa/{presaleId}/items', [App\Http\Controllers\SaleController::class, 'getPresaleItems'])->name('presale.items');
+        // Rutas específicas antes de las genéricas
+        Route::post('/{saleId}/marcar-pagada', [App\Http\Controllers\SaleController::class, 'markAsPaid'])->name('mark-as-paid')->where('saleId', '[0-9]+');
+        
+        // Ruta de prueba para depuración
+        Route::get('/test-mark-paid/{saleId}', function($saleId) {
+            \Log::info('Ruta de prueba llamada', ['saleId' => $saleId]);
+            return response()->json(['message' => 'Ruta de prueba funcionando', 'saleId' => $saleId]);
+        });
         Route::post('/{sale}/completar', [App\Http\Controllers\SaleController::class, 'complete'])->name('complete');
         Route::post('/{sale}/cancelar', [App\Http\Controllers\SaleController::class, 'cancel'])->name('cancel');
-        Route::get('/{sale}/imprimir', [App\Http\Controllers\SaleController::class, 'print'])->name('print');
         Route::post('/{sale}/factura', [App\Http\Controllers\SaleController::class, 'generateInvoice'])->name('invoice');
+        Route::get('/{sale}/editar', [App\Http\Controllers\SaleController::class, 'edit'])->name('edit');
+        Route::get('/{sale}/imprimir', [App\Http\Controllers\SaleController::class, 'print'])->name('print');
+        // Rutas genéricas al final
+        Route::get('/{sale}', [App\Http\Controllers\SaleController::class, 'show'])->name('show');
+        Route::put('/{sale}', [App\Http\Controllers\SaleController::class, 'update'])->name('update');
+        Route::delete('/{sale}', [App\Http\Controllers\SaleController::class, 'destroy'])->name('destroy');
     });
 
     // Cuentas por Cobrar
     Route::prefix('cuentas-por-cobrar')->name('account-receivables.')->group(function () {
         Route::get('/', [App\Http\Controllers\AccountReceivableController::class, 'index'])->name('index');
-        Route::get('/{invoice}', [App\Http\Controllers\AccountReceivableController::class, 'show'])->name('show');
         Route::get('/pagos/listado', [App\Http\Controllers\AccountReceivableController::class, 'payments'])->name('payments');
         Route::post('/pagos', [App\Http\Controllers\AccountReceivableController::class, 'createPayment'])->name('payment.create');
         Route::get('/pagos/{payment}', [App\Http\Controllers\AccountReceivableController::class, 'showPayment'])->name('payment.show');
@@ -135,6 +148,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/vencidas', [App\Http\Controllers\AccountReceivableController::class, 'overdue'])->name('overdue');
         Route::get('/cliente/{client}/estado', [App\Http\Controllers\AccountReceivableController::class, 'clientStatement'])->name('client.statement');
         Route::get('/reporte-antiguedad', [App\Http\Controllers\AccountReceivableController::class, 'agingReport'])->name('aging-report');
+        Route::get('/export', [App\Http\Controllers\AccountReceivableController::class, 'export'])->name('export');
+        Route::get('/api/cliente/{clientId}/facturas', [App\Http\Controllers\AccountReceivableController::class, 'getClientInvoices'])->name('api.client.invoices');
+        Route::get('/{invoice}', [App\Http\Controllers\AccountReceivableController::class, 'show'])->name('show');
     });
 
     // Reportes
@@ -158,5 +174,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('setup')->name('setup.')->group(function () {
         Route::get('/verificar-tablas', [App\Http\Controllers\DatabaseSetupController::class, 'checkTables'])->name('check-tables');
         Route::post('/crear-tablas', [App\Http\Controllers\DatabaseSetupController::class, 'createTables'])->name('create-tables');
+    });
+
+    // Configuración
+    Route::prefix('configuracion')->name('config.')->group(function () {
+        Route::get('/', [App\Http\Controllers\ConfigurationController::class, 'index'])->middleware('permission:config.index')->name('index');
+        Route::put('/', [App\Http\Controllers\ConfigurationController::class, 'update'])->middleware('permission:config.update')->name('update');
+        Route::post('/theme', [App\Http\Controllers\ConfigurationController::class, 'updateTheme'])->name('update-theme');
     });
 });

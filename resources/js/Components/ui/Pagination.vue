@@ -1,29 +1,37 @@
 <template>
-  <nav v-if="links && links.length > 3" class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
+  <nav v-if="links && links.length > 0" class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
     <div class="flex flex-1 justify-between sm:hidden">
       <Link
         v-if="links[0].url"
         :href="links[0].url"
         class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        v-html="links[0].label"
-      />
+      >
+        Anterior
+      </Link>
       <Link
         v-if="links[links.length - 1].url"
         :href="links[links.length - 1].url"
         class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        v-html="links[links.length - 1].label"
-      />
+      >
+        Siguiente
+      </Link>
     </div>
     <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
       <div>
         <p class="text-sm text-gray-700">
-          Mostrando
-          <span class="font-medium">{{ links[0].label }}</span>
-          hasta
-          <span class="font-medium">{{ links[links.length - 1].label }}</span>
-          de
-          <span class="font-medium">{{ total }}</span>
-          resultados
+          <template v-if="paginationData && paginationData.from && paginationData.to">
+            Mostrando
+            <span class="font-medium">{{ paginationData.from }}</span>
+            a
+            <span class="font-medium">{{ paginationData.to }}</span>
+            de
+            <span class="font-medium">{{ paginationData.total || 0 }}</span>
+            resultados
+          </template>
+          <template v-else>
+            <span class="font-medium">{{ paginationData?.total || 0 }}</span>
+            resultados
+          </template>
         </p>
       </div>
       <div>
@@ -40,7 +48,7 @@
                 index === 0 ? 'rounded-l-md' : '',
                 index === links.length - 1 ? 'rounded-r-md' : ''
               ]"
-              v-html="link.label"
+              v-html="getLinkLabel(link.label)"
             />
             <span
               v-else
@@ -49,7 +57,7 @@
                 index === 0 ? 'rounded-l-md' : '',
                 index === links.length - 1 ? 'rounded-r-md' : ''
               ]"
-              v-html="link.label"
+              v-html="getLinkLabel(link.label)"
             />
           </template>
         </nav>
@@ -60,25 +68,26 @@
 
 <script setup>
 import { Link } from '@inertiajs/vue3'
-import { computed } from 'vue'
 
 const props = defineProps({
   links: {
     type: Array,
     required: true
+  },
+  paginationData: {
+    type: Object,
+    default: null
   }
 })
 
-const total = computed(() => {
-  if (!props.links || props.links.length === 0) return 0
+const getLinkLabel = (label) => {
+  if (!label) return ''
   
-  // Extraer el total del último enlace si está disponible
-  const lastLink = props.links[props.links.length - 1]
-  if (lastLink && lastLink.label) {
-    const match = lastLink.label.match(/(\d+)/)
-    return match ? parseInt(match[1]) : 0
-  }
-  
-  return 0
-})
+  // Traducir y limpiar los labels
+  return label
+    .replace(/&laquo;/g, '‹')
+    .replace(/&raquo;/g, '›')
+    .replace(/Previous/g, 'Anterior')
+    .replace(/Next/g, 'Siguiente')
+}
 </script>

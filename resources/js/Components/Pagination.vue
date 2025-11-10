@@ -1,5 +1,5 @@
 <template>
-  <div v-if="links.length > 3" class="flex items-center justify-between">
+  <div v-if="links && links.length > 0" class="flex items-center justify-between">
     <div class="flex-1 flex justify-between sm:hidden">
       <Link
         v-if="links[0].url"

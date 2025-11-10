@@ -123,9 +123,10 @@
                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
               >
                 <option value="">Todos los estados</option>
+                <option value="draft">Borrador</option>
                 <option value="pending">Pendiente</option>
-                <option value="complete">Completada</option>
-                <option value="canceled">Cancelada</option>
+                <option value="completed">Completada</option>
+                <option value="cancelled">Cancelada</option>
               </select>
             </div>
 
@@ -218,6 +219,9 @@
                     Método de Pago
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Estado de Pago
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Total
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -251,6 +255,11 @@
                     </Badge>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
+                    <Badge :variant="getPaymentStatusVariant(sale.payment_status)">
+                      {{ getPaymentStatusText(sale.payment_status) }}
+                    </Badge>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">{{ formatCurrency(sale.total) }}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
@@ -278,9 +287,9 @@
                         <Printer class="h-4 w-4" />
                       </Button>
 
-                      <!-- Editar (solo si es pendiente) -->
+                      <!-- Editar (solo si es borrador) -->
                       <Button
-                        v-if="sale.status === 'pending' && can('sales.update')"
+                        v-if="sale.status === 'draft' && can('sales.update')"
                         variant="outline"
                         size="sm"
                         @click="editSale(sale.id)"
@@ -289,9 +298,10 @@
                         <Edit class="h-4 w-4" />
                       </Button>
 
-                      <!-- Completar (solo si es pendiente) -->
+
+                      <!-- Completar (solo si es borrador) -->
                       <Button
-                        v-if="sale.status === 'pending' && can('sales.complete')"
+                        v-if="sale.status === 'draft' && can('sales.complete')"
                         variant="outline"
                         size="sm"
                         @click="completeSale(sale.id)"
@@ -303,7 +313,7 @@
 
                       <!-- Cancelar -->
                       <Button
-                        v-if="sale.status !== 'canceled' && can('sales.cancel')"
+                        v-if="sale.status !== 'cancelled' && sale.status !== 'canceled' && can('sales.cancel')"
                         variant="outline"
                         size="sm"
                         @click="cancelSale(sale.id)"
@@ -313,9 +323,9 @@
                         <XCircle class="h-4 w-4" />
                       </Button>
 
-                      <!-- Eliminar (solo pendientes) -->
+                      <!-- Eliminar (solo borradores) -->
                       <Button
-                        v-if="sale.status === 'pending' && can('sales.delete')"
+                        v-if="sale.status === 'draft' && can('sales.delete')"
                         variant="outline"
                         size="sm"
                         @click="deleteSale(sale.id)"
@@ -351,8 +361,17 @@
       </Card>
 
       <!-- Pagination -->
-      <div v-if="sales.links" class="mt-6">
-        <Pagination :links="sales.links" />
+      <div v-if="sales && sales.links && sales.links.length > 0" class="mt-6">
+        <Pagination 
+          :links="sales.links" 
+          :pagination-data="{
+            from: sales.from,
+            to: sales.to,
+            total: sales.total,
+            current_page: sales.current_page,
+            last_page: sales.last_page
+          }"
+        />
       </div>
     </div>
 
@@ -466,8 +485,11 @@ const formatDate = (date) => {
 
 const getStatusVariant = (status) => {
   const variants = {
+    draft: 'secondary',
     pending: 'secondary',
+    completed: 'success',
     complete: 'success',
+    cancelled: 'destructive',
     canceled: 'destructive'
   }
   return variants[status] || 'secondary'
@@ -475,8 +497,11 @@ const getStatusVariant = (status) => {
 
 const getStatusText = (status) => {
   const texts = {
+    draft: 'Borrador',
     pending: 'Pendiente',
+    completed: 'Completada',
     complete: 'Completada',
+    cancelled: 'Cancelada',
     canceled: 'Cancelada'
   }
   return texts[status] || status
@@ -500,6 +525,24 @@ const getPaymentMethodText = (method) => {
   return texts[method] || method
 }
 
+const getPaymentStatusVariant = (status) => {
+  const variants = {
+    paid: 'success',
+    pending: 'warning',
+    partial: 'secondary'
+  }
+  return variants[status] || 'secondary'
+}
+
+const getPaymentStatusText = (status) => {
+  const texts = {
+    paid: 'Pagado',
+    pending: 'Pendiente',
+    partial: 'Pago Parcial'
+  }
+  return texts[status] || status
+}
+
 // Actions
 const viewSale = (id) => {
   router.visit(`/ventas/${id}`)
@@ -514,56 +557,90 @@ const editSale = (id) => {
 }
 
 const completeSale = (id) => {
-  showConfirm(
-    'Completar Venta',
-    '¿Estás seguro de que quieres completar esta venta?',
-    'Completar',
-    () => {
+  showConfirm({
+    title: 'Completar Venta',
+    message: '¿Estás seguro de que quieres completar esta venta?',
+    confirmText: 'Sí, completar',
+    onConfirm: () => {
       router.post(`/ventas/${id}/completar`, {}, {
+        preserveScroll: true,
+        preserveState: false,
         onSuccess: () => {
-          showAlert('success', 'Venta completada', 'La venta ha sido completada exitosamente.')
+          router.reload({ only: ['sales'] })
+          showAlert({
+            type: 'success',
+            title: 'Éxito',
+            message: 'La venta ha sido completada exitosamente.'
+          })
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo completar la venta.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errors?.message || 'No se pudo completar la venta. Por favor, intente nuevamente.'
+          })
         }
       })
     }
-  )
+  })
 }
 
 const cancelSale = (id) => {
-  showConfirm(
-    'Cancelar Venta',
-    '¿Estás seguro de que quieres cancelar esta venta?',
-    'Cancelar',
-    () => {
+  showConfirm({
+    title: 'Cancelar Venta',
+    message: '¿Estás seguro de que quieres cancelar esta venta?',
+    confirmText: 'Sí, cancelar',
+    onConfirm: () => {
       router.post(`/ventas/${id}/cancelar`, {}, {
+        preserveScroll: true,
+        preserveState: false,
         onSuccess: () => {
-          showAlert('success', 'Venta cancelada', 'La venta ha sido cancelada exitosamente.')
+          router.reload({ only: ['sales'] })
+          showAlert({
+            type: 'success',
+            title: 'Éxito',
+            message: 'La venta ha sido cancelada exitosamente.'
+          })
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo cancelar la venta.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errors?.message || 'No se pudo cancelar la venta. Por favor, intente nuevamente.'
+          })
         }
       })
     }
-  )
+  })
 }
 
 const deleteSale = (id) => {
-  showConfirm(
-    'Eliminar Venta',
-    '¿Estás seguro de que quieres eliminar esta venta? Esta acción no se puede deshacer.',
-    'Eliminar',
-    () => {
+  showConfirm({
+    title: 'Eliminar Venta',
+    message: '¿Estás seguro de que quieres eliminar esta venta? Esta acción no se puede deshacer.',
+    confirmText: 'Sí, eliminar',
+    onConfirm: () => {
       router.delete(`/ventas/${id}`, {
+        preserveScroll: true,
+        preserveState: false,
         onSuccess: () => {
-          showAlert('success', 'Venta eliminada', 'La venta ha sido eliminada exitosamente.')
+          router.reload({ only: ['sales'] })
+          showAlert({
+            type: 'success',
+            title: 'Éxito',
+            message: 'La venta ha sido eliminada exitosamente.'
+          })
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo eliminar la venta.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errors?.message || 'No se pudo eliminar la venta. Por favor, intente nuevamente.'
+          })
         }
       })
     }
-  )
+  })
 }
+
 </script>

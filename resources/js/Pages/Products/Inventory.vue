@@ -223,26 +223,17 @@
         </div>
 
         <!-- Pagination -->
-        <div v-if="products.links" class="px-6 py-3 border-t border-gray-200">
-          <div class="flex items-center justify-between">
-            <div class="text-sm text-gray-700">
-              Mostrando {{ products.from }} a {{ products.to }} de {{ products.total }} resultados
-            </div>
-            <div class="flex space-x-2">
-              <Link
-                v-for="link in products.links"
-                :key="link.label"
-                :href="link.url"
-                v-html="link.label"
-                :class="[
-                  'px-3 py-1 text-sm rounded-md',
-                  link.active 
-                    ? 'bg-primary-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                ]"
-              />
-            </div>
-          </div>
+        <div v-if="products && products.links && products.links.length > 0" class="mt-6">
+          <Pagination 
+            :links="products.links" 
+            :pagination-data="{
+              from: products.from,
+              to: products.to,
+              total: products.total,
+              current_page: products.current_page,
+              last_page: products.last_page
+            }"
+          />
         </div>
       </CardContent>
     </Card>
@@ -320,6 +311,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
 import Badge from '@/Components/ui/Badge.vue'
+import Pagination from '@/Components/ui/Pagination.vue'
 import { 
   Package, 
   Search, 
