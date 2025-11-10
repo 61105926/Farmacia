@@ -58,6 +58,10 @@ RUN npm install --legacy-peer-deps && npm run build
 COPY start-services.sh /usr/local/bin/start-services.sh
 RUN chmod +x /usr/local/bin/start-services.sh
 
+# Copy Coolify deploy script
+COPY coolify-deploy.sh /usr/local/bin/coolify-deploy.sh
+RUN chmod +x /usr/local/bin/coolify-deploy.sh
+
 # Copy Docker environment file
 RUN cp .env.docker .env
 
