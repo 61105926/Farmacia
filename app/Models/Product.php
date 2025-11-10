@@ -14,6 +14,7 @@ class Product extends Model
     protected $fillable = [
         'code',
         'name',
+        'slug',
         'description',
         'category_id',
         'cost_price',
@@ -157,8 +158,37 @@ class Product extends Model
         parent::boot();
 
         static::creating(function ($product) {
+            // Generar código si no existe
             if (empty($product->code)) {
                 $product->code = static::generateCode();
+            }
+            
+            // Generar slug SIEMPRE si no existe (obligatorio en la base de datos)
+            if (empty($product->slug) && !empty($product->name)) {
+                $slug = Str::slug($product->name);
+                $slugCount = static::where('slug', 'like', $slug . '%')->count();
+                if ($slugCount > 0) {
+                    $slug = $slug . '-' . ($slugCount + 1);
+                }
+                $product->slug = $slug;
+            } elseif (empty($product->slug)) {
+                // Si no hay nombre, generar slug basado en código
+                $slug = Str::slug($product->code ?? 'product-' . time());
+                $product->slug = $slug;
+            }
+        });
+        
+        static::updating(function ($product) {
+            // Actualizar slug si cambió el nombre
+            if ($product->isDirty('name') && empty($product->slug)) {
+                $slug = Str::slug($product->name);
+                $slugCount = static::where('slug', 'like', $slug . '%')
+                    ->where('id', '!=', $product->id)
+                    ->count();
+                if ($slugCount > 0) {
+                    $slug = $slug . '-' . ($slugCount + 1);
+                }
+                $product->slug = $slug;
             }
         });
     }
