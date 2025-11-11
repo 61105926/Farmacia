@@ -311,7 +311,7 @@ class PresaleController extends Controller
                 if (\Schema::hasTable('products')) {
                     $products = \DB::table('products')
                         ->where('is_active', true)
-                        ->select('id', 'name', 'code', 'sale_price', 'stock_quantity')
+                        ->select('id', 'name', 'code', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock')
                         ->get()
                         ->toArray();
                 }
@@ -430,13 +430,13 @@ class PresaleController extends Controller
                     ]);
                 }
 
-                // Validar que la cantidad sea razonable según el stock (advertencia)
-                if ($item['quantity'] > $product->stock_quantity * 2) {
-                    Log::warning('PresaleController store - Cantidad solicitada muy alta', [
-                        'product_id' => $product->id,
-                        'product_name' => $product->name,
-                        'quantity_requested' => $item['quantity'],
-                        'stock_available' => $product->stock_quantity
+                // Validar que la cantidad no exceda el stock disponible
+                $availableStock = $product->stock_quantity ?? 0;
+                $requestedQuantity = $item['quantity'];
+                
+                if ($requestedQuantity > $availableStock) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.quantity" => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
                     ]);
                 }
             }
@@ -649,7 +649,7 @@ class PresaleController extends Controller
                 ->select('id', 'business_name', 'trade_name')
                 ->get(),
             'products' => Product::where('is_active', true)
-                ->select('id', 'name', 'code', 'sale_price', 'stock_quantity')
+                ->select('id', 'name', 'code', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock')
                 ->get(),
             'salespeople' => User::whereHas('roles', function($q) {
                 $q->where('name', 'vendedor-preventas');
@@ -697,6 +697,23 @@ class PresaleController extends Controller
 
         DB::beginTransaction();
         try {
+            // Validar stock disponible para cada item
+            foreach ($validated['items'] as $index => $item) {
+                $product = \App\Models\Product::find($item['product_id']);
+                if (!$product) {
+                    return back()->withErrors(['items.' . $index . '.product_id' => 'El producto seleccionado no existe.'])->withInput();
+                }
+                
+                $availableStock = $product->stock_quantity ?? 0;
+                $requestedQuantity = $item['quantity'];
+                
+                if ($requestedQuantity > $availableStock) {
+                    return back()->withErrors([
+                        'items.' . $index . '.quantity' => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
+                    ])->withInput();
+                }
+            }
+            
             // Validar cliente activo
             $client = Client::find($validated['client_id']);
             if (!$client || $client->status !== 'active') {

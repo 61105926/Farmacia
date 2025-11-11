@@ -66,10 +66,10 @@
           <CardContent class="p-4">
             <p class="text-sm text-gray-600">Crédito Disponible</p>
             <p class="text-2xl font-bold text-primary-700">
-              ${{ formatNumber(client.available_credit || 0) }}
+              Bs {{ formatNumber(client.available_credit || 0) }}
             </p>
             <p class="text-xs text-gray-500 mt-1">
-              de ${{ formatNumber(client.credit_limit || 0) }}
+              de Bs {{ formatNumber(client.credit_limit || 0) }}
             </p>
           </CardContent>
         </Card>
@@ -78,7 +78,7 @@
           <CardContent class="p-4">
             <p class="text-sm text-gray-600">Saldo Pendiente</p>
             <p class="text-2xl font-bold text-orange-600">
-              ${{ formatNumber(client.pending_balance || 0) }}
+              Bs {{ formatNumber(client.pending_balance || 0) }}
             </p>
           </CardContent>
         </Card>
@@ -96,7 +96,7 @@
           <CardContent class="p-4">
             <p class="text-sm text-gray-600">Total Compras</p>
             <p class="text-2xl font-bold text-gray-900">
-              ${{ formatNumber(client.total_purchases || 0) }}
+              Bs {{ formatNumber(client.total_purchases || 0) }}
             </p>
           </CardContent>
         </Card>
@@ -184,7 +184,7 @@
                 </div>
                 <div>
                   <p class="text-sm text-gray-600">Límite de Crédito</p>
-                  <p class="font-medium">${{ formatNumber(client.credit_limit || 0) }}</p>
+                  <p class="font-medium">Bs {{ formatNumber(client.credit_limit || 0) }}</p>
                 </div>
               </CardContent>
             </Card>
@@ -248,7 +248,7 @@
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <p class="text-sm text-gray-600">Límite de Crédito</p>
-                    <p class="text-lg font-semibold text-gray-900">${{ formatNumber(client.credit_limit || 0) }}</p>
+                    <p class="text-lg font-semibold text-gray-900">Bs {{ formatNumber(client.credit_limit || 0) }}</p>
                   </div>
                   <div>
                     <p class="text-sm text-gray-600">Días de Crédito</p>
@@ -258,11 +258,11 @@
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <p class="text-sm text-gray-600">Saldo Pendiente</p>
-                    <p class="text-lg font-semibold text-orange-600">${{ formatNumber(client.pending_balance || 0) }}</p>
+                    <p class="text-lg font-semibold text-orange-600">Bs {{ formatNumber(client.pending_balance || 0) }}</p>
                   </div>
                   <div>
                     <p class="text-sm text-gray-600">Crédito Disponible</p>
-                    <p class="text-lg font-semibold text-green-600">${{ formatNumber(client.available_credit || 0) }}</p>
+                    <p class="text-lg font-semibold text-green-600">Bs {{ formatNumber(client.available_credit || 0) }}</p>
                   </div>
                 </div>
                 <div>
@@ -312,7 +312,7 @@
                     <div class="flex justify-between items-start">
                       <div>
                         <p class="text-sm font-medium text-gray-900">
-                          ${{ formatNumber(entry.old_limit) }} → ${{ formatNumber(entry.new_limit) }}
+                          Bs {{ formatNumber(entry.old_limit) }} → Bs {{ formatNumber(entry.new_limit) }}
                         </p>
                         <p class="text-xs text-gray-600">{{ entry.reason }}</p>
                       </div>

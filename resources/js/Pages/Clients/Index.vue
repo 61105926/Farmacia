@@ -228,13 +228,13 @@
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex items-center justify-end gap-2">
-                    <Link
-                      :href="`/clientes/${client.id}`"
+                    <button
+                      @click="viewClient(client.id)"
                       class="p-2 text-primary-600 hover:text-primary-900 hover:bg-primary-50 rounded-md transition-colors"
                       :title="'Ver detalles de ' + (client.business_name || client.trade_name)"
                     >
                       <Eye class="h-4 w-4" />
-                    </Link>
+                    </button>
                     <Link
                       v-if="can('clients.update')"
                       :href="`/clientes/${client.id}/editar`"
@@ -466,6 +466,10 @@ const disableClient = (client) => {
 
 const exportClients = () => {
   window.open('/clientes/exportar/csv', '_blank')
+}
+
+const viewClient = (clientId) => {
+  router.visit(`/clientes/${clientId}`)
 }
 
 // Watch for flash messages

@@ -167,12 +167,17 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
                   <input
                     v-model.number="item.quantity"
-                    @input="calculateItemTotal(index)"
+                    @input="validateQuantity(index)"
                     type="number"
                     step="0.001"
                     min="0"
+                    :max="getMaxQuantity(index)"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :class="{ 'border-red-500': hasQuantityError(index) }"
                   />
+                  <p v-if="hasQuantityError(index)" class="text-xs text-red-600 mt-1">
+                    No hay suficiente stock. Disponible: {{ getMaxQuantity(index) }} {{ getUnitType(index) }}
+                  </p>
                 </div>
 
                 <!-- Unit Price -->
@@ -184,8 +189,16 @@
                     type="number"
                     step="0.01"
                     min="0"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    readonly
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
                   />
+                  <p v-if="form.items[index].product_id" class="text-xs text-gray-600 mt-1">
+                    Stock disponible: <span class="font-semibold" :class="getStockClass(index)">{{ getStockText(index) }}</span>
+                    <span v-if="getMaxQuantity(index) === 0" class="ml-2 text-red-600 font-medium">⚠️ Sin stock</span>
+                  </p>
+                  <p v-else class="text-xs text-gray-400 mt-1 italic">
+                    Seleccione un producto para ver el stock
+                  </p>
                 </div>
 
                 <!-- Discount -->
@@ -345,6 +358,57 @@ const updateProductInfo = (index) => {
     form.items[index].unit_price = product.sale_price
     calculateItemTotal(index)
   }
+}
+
+const getStockText = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product) return 'N/A'
+  const stock = product.stock_quantity || 0
+  const unit = product.unit_type ? ` ${product.unit_type}` : ' unidades'
+  return `${stock}${unit}`
+}
+
+const getStockClass = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product) return 'text-gray-500'
+  const stock = product.stock_quantity || 0
+  if (stock === 0) return 'text-red-600'
+  if (stock <= (product.min_stock || 0)) return 'text-orange-600'
+  return 'text-green-600'
+}
+
+const getMaxQuantity = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product) return 0
+  return product.stock_quantity || 0
+}
+
+const getUnitType = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product) return 'unidades'
+  return product.unit_type || 'unidades'
+}
+
+const hasQuantityError = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product) return false
+  const maxQuantity = product.stock_quantity || 0
+  const requestedQuantity = parseFloat(form.items[index].quantity) || 0
+  return requestedQuantity > maxQuantity
+}
+
+const validateQuantity = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product) return
+  
+  const maxQuantity = product.stock_quantity || 0
+  const requestedQuantity = parseFloat(form.items[index].quantity) || 0
+  
+  if (requestedQuantity > maxQuantity) {
+    form.items[index].quantity = maxQuantity
+  }
+  
+  calculateItemTotal(index)
 }
 
 const calculateItemTotal = (index) => {

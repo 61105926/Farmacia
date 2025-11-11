@@ -172,9 +172,14 @@
                           v-model.number="newItem.quantity"
                           type="number"
                           min="1"
+                          :max="getNewItemMaxQuantity()"
                           placeholder="Cantidad"
                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          :class="{ 'border-red-500': hasNewItemQuantityError() }"
                         />
+                        <p v-if="hasNewItemQuantityError()" class="text-xs text-red-600 mt-1">
+                          No hay suficiente stock. Disponible: {{ getNewItemMaxQuantity() }} {{ getNewItemUnitType() }}
+                        </p>
                       </div>
                       <div>
                         <input
@@ -183,8 +188,12 @@
                           min="0"
                           step="0.01"
                           placeholder="Precio"
-                          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          readonly
+                          class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
                         />
+                        <p v-if="newItem.product_id" class="text-xs text-gray-600 mt-1">
+                          Stock: <span class="font-semibold" :class="getNewItemStockClass()">{{ getNewItemStockText() }}</span>
+                        </p>
                       </div>
                       <div>
                         <button
@@ -337,7 +346,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm, Link } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
@@ -421,13 +430,76 @@ const onClientChange = () => {
 const onProductSelect = () => {
   if (selectedProduct.value) {
     newItem.value.unit_price = selectedProduct.value.sale_price
+    // Validar cantidad si excede el stock
+    const maxQuantity = selectedProduct.value.stock_quantity || 0
+    if (newItem.value.quantity > maxQuantity) {
+      newItem.value.quantity = maxQuantity
+    }
   }
 }
+
+const getNewItemStockText = () => {
+  const product = selectedProduct.value
+  if (!product) return 'N/A'
+  const stock = product.stock_quantity || 0
+  const unit = product.unit_type ? ` ${product.unit_type}` : ' unidades'
+  return `${stock}${unit}`
+}
+
+const getNewItemStockClass = () => {
+  const product = selectedProduct.value
+  if (!product) return 'text-gray-500'
+  const stock = product.stock_quantity || 0
+  if (stock === 0) return 'text-red-600'
+  if (stock <= (product.min_stock || 0)) return 'text-orange-600'
+  return 'text-green-600'
+}
+
+const getNewItemMaxQuantity = () => {
+  const product = selectedProduct.value
+  if (!product) return 0
+  return product.stock_quantity || 0
+}
+
+const getNewItemUnitType = () => {
+  const product = selectedProduct.value
+  if (!product) return 'unidades'
+  return product.unit_type || 'unidades'
+}
+
+const hasNewItemQuantityError = () => {
+  const product = selectedProduct.value
+  if (!product) return false
+  const maxQuantity = product.stock_quantity || 0
+  const requestedQuantity = parseFloat(newItem.value.quantity) || 0
+  return requestedQuantity > maxQuantity
+}
+
+// Watcher para validar cantidad cuando cambia
+watch(() => newItem.value.quantity, (newQuantity) => {
+  const product = selectedProduct.value
+  if (product && newQuantity) {
+    const maxQuantity = product.stock_quantity || 0
+    if (newQuantity > maxQuantity) {
+      newItem.value.quantity = maxQuantity
+    }
+  }
+})
 
 const addItem = () => {
   if (!canAddItem.value) return
 
   const product = selectedProduct.value
+  
+  // Validar stock antes de agregar
+  const maxQuantity = product.stock_quantity || 0
+  const requestedQuantity = parseFloat(newItem.value.quantity) || 0
+  
+  if (requestedQuantity > maxQuantity) {
+    alert(`No hay suficiente stock. Disponible: ${maxQuantity} ${product.unit_type || 'unidades'}`)
+    return
+  }
+
   const subtotal = newItem.value.quantity * newItem.value.unit_price
   const discountAmount = subtotal * (newItem.value.discount_percentage / 100)
   const taxAmount = (subtotal - discountAmount) * 0.19 // IVA 19%

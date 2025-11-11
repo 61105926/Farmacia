@@ -122,7 +122,7 @@ class SaleController extends Controller
                 if (\Schema::hasTable('products')) {
                     $products = \DB::table('products')
                         ->where('is_active', true)
-                        ->select('id', 'name', 'code', 'sale_price', 'stock_quantity')
+                        ->select('id', 'name', 'code', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock')
                         ->get()
                         ->toArray();
                 }
@@ -241,6 +241,16 @@ class SaleController extends Controller
                 if (!$product->is_active) {
                     throw ValidationException::withMessages([
                         "items.{$index}.product_id" => "El producto '{$product->name}' no está activo."
+                    ]);
+                }
+
+                // Validar que la cantidad no exceda el stock disponible
+                $availableStock = $product->stock_quantity ?? 0;
+                $requestedQuantity = $item['quantity'];
+                
+                if ($requestedQuantity > $availableStock) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.quantity" => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
                     ]);
                 }
             }
@@ -449,7 +459,7 @@ class SaleController extends Controller
                 ->select('id', 'business_name', 'trade_name')
                 ->get(),
             'products' => Product::where('is_active', true)
-                ->select('id', 'name', 'code', 'sale_price', 'stock_quantity')
+                ->select('id', 'name', 'code', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock')
                 ->get(),
             'salespeople' => User::whereHas('roles', fn($q) => $q->where('name', 'vendedor-ventas'))
                 ->select('id', 'name')
@@ -482,6 +492,23 @@ class SaleController extends Controller
 
         DB::beginTransaction();
         try {
+            // Validar stock disponible para cada item
+            foreach ($validated['items'] as $index => $item) {
+                $product = \App\Models\Product::find($item['product_id']);
+                if (!$product) {
+                    return back()->withErrors(['items.' . $index . '.product_id' => 'El producto seleccionado no existe.'])->withInput();
+                }
+                
+                $availableStock = $product->stock_quantity ?? 0;
+                $requestedQuantity = $item['quantity'];
+                
+                if ($requestedQuantity > $availableStock) {
+                    return back()->withErrors([
+                        'items.' . $index . '.quantity' => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
+                    ])->withInput();
+                }
+            }
+            
             // Calcular totales
             $subtotal = 0;
             $totalDiscount = 0;

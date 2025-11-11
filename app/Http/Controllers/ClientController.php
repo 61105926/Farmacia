@@ -140,10 +140,14 @@ class ClientController extends Controller
             'total_sales' => $client->sales()->sum('total'),
             'pending_balance' => $client->pending_balance,
             'available_credit' => $client->available_credit,
-            'last_sale_date' => $client->sales()->latest()->value('issue_date'),
-            'total_invoices' => $client->sales()->where('document_type', 'invoice')->count(),
+            'last_sale_date' => $client->sales()->latest()->value('created_at'),
+            'total_invoices' => $client->invoices()->count(),
             'overdue_invoices' => $client->receivables()->where('status', 'overdue')->count(),
         ];
+
+        // Agregar datos calculados al cliente para el componente
+        $client->total_purchases = $client->sales()->sum('total');
+        $client->last_purchase_date = $client->sales()->latest()->value('created_at');
 
         return Inertia::render('Clients/Show', [
             'client' => $client,
@@ -178,7 +182,60 @@ class ClientController extends Controller
      */
     public function update(Request $request, Client $client): RedirectResponse
     {
-        $validated = $request->validate([
+        // Preparar datos antes de validar
+        $data = $request->all();
+        
+        // Convertir strings vacíos a null para campos opcionales
+        if (isset($data['website']) && ($data['website'] === '' || $data['website'] === null)) {
+            $data['website'] = null;
+        }
+        
+        // Convertir price_list_id: manejar string "null", string vacío, null, o convertir a int si tiene valor
+        if (isset($data['price_list_id'])) {
+            if ($data['price_list_id'] === '' || $data['price_list_id'] === 'null' || $data['price_list_id'] === null) {
+                $data['price_list_id'] = null;
+            } else {
+                // Convertir a entero si es un string numérico
+                $data['price_list_id'] = is_numeric($data['price_list_id']) ? (int)$data['price_list_id'] : null;
+            }
+        } else {
+            $data['price_list_id'] = null;
+        }
+        
+        // Convertir payment_term_id
+        if (isset($data['payment_term_id'])) {
+            if ($data['payment_term_id'] === '' || $data['payment_term_id'] === 'null' || $data['payment_term_id'] === null) {
+                $data['payment_term_id'] = null;
+            } else {
+                $data['payment_term_id'] = is_numeric($data['payment_term_id']) ? (int)$data['payment_term_id'] : null;
+            }
+        } else {
+            $data['payment_term_id'] = null;
+        }
+        
+        // Convertir salesperson_id
+        if (isset($data['salesperson_id'])) {
+            if ($data['salesperson_id'] === '' || $data['salesperson_id'] === 'null' || $data['salesperson_id'] === null) {
+                $data['salesperson_id'] = null;
+            } else {
+                $data['salesperson_id'] = is_numeric($data['salesperson_id']) ? (int)$data['salesperson_id'] : null;
+            }
+        } else {
+            $data['salesperson_id'] = null;
+        }
+        
+        // Convertir collector_id
+        if (isset($data['collector_id'])) {
+            if ($data['collector_id'] === '' || $data['collector_id'] === 'null' || $data['collector_id'] === null) {
+                $data['collector_id'] = null;
+            } else {
+                $data['collector_id'] = is_numeric($data['collector_id']) ? (int)$data['collector_id'] : null;
+            }
+        } else {
+            $data['collector_id'] = null;
+        }
+
+        $rules = [
             'business_name' => 'required|string|max:255',
             'trade_name' => 'nullable|string|max:255',
             'tax_id' => 'required|string|max:50|unique:clients,tax_id,' . $client->id,
@@ -190,19 +247,48 @@ class ClientController extends Controller
             'state' => 'nullable|string|max:100',
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
-            'website' => 'nullable|url|max:255',
-            'price_list_id' => 'nullable|exists:price_lists,id',
+            'website' => 'nullable|string|max:255',
             'default_discount' => 'nullable|numeric|min:0|max:100',
-            'payment_term_id' => 'nullable|exists:payment_terms,id',
             'credit_limit' => 'nullable|numeric|min:0',
             'credit_days' => 'nullable|integer|min:0',
-            'salesperson_id' => 'nullable|exists:users,id',
-            'collector_id' => 'nullable|exists:users,id',
             'zone' => 'nullable|string|max:100',
             'visit_day' => 'nullable|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
             'visit_frequency' => 'nullable|in:weekly,biweekly,monthly',
             'notes' => 'nullable|string',
-        ]);
+        ];
+
+        // Agregar validación exists solo si el valor no es null
+        // Usar el valor ya procesado de $data (ya convertido a int o null)
+        if ($data['price_list_id'] !== null && $data['price_list_id'] !== '') {
+            $rules['price_list_id'] = 'required|integer|exists:price_lists,id';
+        } else {
+            $rules['price_list_id'] = 'nullable';
+        }
+
+        if ($data['payment_term_id'] !== null && $data['payment_term_id'] !== '') {
+            $rules['payment_term_id'] = 'required|integer|exists:payment_terms,id';
+        } else {
+            $rules['payment_term_id'] = 'nullable';
+        }
+
+        if ($data['salesperson_id'] !== null && $data['salesperson_id'] !== '') {
+            $rules['salesperson_id'] = 'required|integer|exists:users,id';
+        } else {
+            $rules['salesperson_id'] = 'nullable';
+        }
+
+        if ($data['collector_id'] !== null && $data['collector_id'] !== '') {
+            $rules['collector_id'] = 'required|integer|exists:users,id';
+        } else {
+            $rules['collector_id'] = 'nullable';
+        }
+
+        $validated = validator($data, $rules)->validate();
+
+        // Validar website solo si no está vacío
+        if (!empty($validated['website']) && !filter_var($validated['website'], FILTER_VALIDATE_URL)) {
+            return back()->withErrors(['website' => 'El sitio web debe ser una URL válida.'])->withInput();
+        }
 
         $client->update($validated);
 
@@ -473,12 +559,12 @@ class ClientController extends Controller
             'sales_summary' => [
                 'total_sales' => $client->sales()->sum('total'),
                 'this_month' => $client->sales()
-                    ->whereMonth('issue_date', now()->month)
-                    ->whereYear('issue_date', now()->year)
+                    ->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year)
                     ->sum('total'),
                 'last_month' => $client->sales()
-                    ->whereMonth('issue_date', now()->subMonth()->month)
-                    ->whereYear('issue_date', now()->subMonth()->year)
+                    ->whereMonth('created_at', now()->subMonth()->month)
+                    ->whereYear('created_at', now()->subMonth()->year)
                     ->sum('total'),
                 'average_order' => $client->sales()->avg('total'),
             ],
