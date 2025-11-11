@@ -236,9 +236,11 @@
                   :class="getDaysOverdue(invoice) > 0 ? 'bg-red-50' : ''"
                 >
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">{{ invoice.invoice_number }}</div>
-                    <div v-if="invoice.sale?.invoice_number" class="text-xs text-blue-600 font-medium">
-                      Nro Fact: {{ invoice.sale.invoice_number }}
+                    <div class="text-sm font-medium text-gray-900">
+                      {{ invoice.sale?.invoice_number || invoice.invoice_number }}
+                    </div>
+                    <div v-if="invoice.sale?.invoice_number && invoice.invoice_number" class="text-xs text-gray-500">
+                      Referencia: {{ invoice.invoice_number }}
                     </div>
                     <div v-if="invoice.order_id" class="text-xs text-gray-500">
                       Desde pedido: {{ invoice.order?.order_number }}
@@ -391,7 +393,7 @@
                   >
                     <option value="">Sin factura específica</option>
                     <option v-for="invoice in availableInvoices" :key="invoice.id" :value="invoice.id">
-                      {{ invoice.invoice_number }} - Saldo: {{ formatPrice(invoice.balance) }}
+                      {{ invoice.sale?.invoice_number || invoice.invoice_number }} - Saldo: {{ formatPrice(invoice.balance) }}
                     </option>
                   </select>
                   <div v-if="selectedInvoice" class="text-xs text-gray-500 mt-1">

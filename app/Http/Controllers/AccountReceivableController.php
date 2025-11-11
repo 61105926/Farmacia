@@ -118,6 +118,12 @@ class AccountReceivableController extends Controller
                 \Log::warning('Error cargando pagos', ['error' => $e->getMessage()]);
                 $invoice->setRelation('payments', collect([]));
             }
+            
+            try {
+                $invoice->load('sale:id,invoice_number');
+            } catch (\Exception $e) {
+                \Log::warning('Error cargando venta', ['error' => $e->getMessage()]);
+            }
 
             \Log::info('AccountReceivableController show - Factura cargada exitosamente', [
                 'invoice_id' => $invoice->id,
@@ -500,7 +506,8 @@ class AccountReceivableController extends Controller
         $invoices = Invoice::where('client_id', $clientId)
             ->where('status', '!=', 'cancelled')
             ->where('balance', '>', 0)
-            ->select('id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'paid_amount', 'balance')
+            ->with('sale:id,invoice_number')
+            ->select('id', 'invoice_number', 'invoice_date', 'due_date', 'total', 'paid_amount', 'balance', 'sale_id')
             ->orderBy('invoice_date', 'desc')
             ->get();
 

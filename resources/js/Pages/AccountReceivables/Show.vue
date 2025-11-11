@@ -23,7 +23,10 @@
               ← Volver a cuentas por cobrar
             </Link>
             <h1 class="text-2xl font-bold text-gray-900">Detalle de Factura</h1>
-            <p class="text-sm text-gray-600 mt-1">{{ invoice.invoice_number }}</p>
+            <p class="text-sm text-gray-600 mt-1">{{ invoice.sale?.invoice_number || invoice.invoice_number }}</p>
+            <p v-if="invoice.sale?.invoice_number && invoice.invoice_number" class="text-xs text-gray-500 mt-1">
+              Referencia: {{ invoice.invoice_number }}
+            </p>
           </div>
           <div class="flex items-center gap-2">
             <button
@@ -54,7 +57,10 @@
               <div class="grid grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Número de Factura</label>
-                  <div class="text-sm text-gray-900">{{ invoice.invoice_number }}</div>
+                  <div class="text-sm text-gray-900">{{ invoice.sale?.invoice_number || invoice.invoice_number }}</div>
+                  <div v-if="invoice.sale?.invoice_number && invoice.invoice_number" class="text-xs text-gray-500 mt-1">
+                    Referencia: {{ invoice.invoice_number }}
+                  </div>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Estado</label>
