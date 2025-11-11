@@ -383,8 +383,12 @@ const submit = () => {
   const data = { ...form.data() }
   
   // Convertir strings vacíos a null para campos opcionales
-  if (data.website === '' || data.website === null) {
+  // Asegurar que website sea null o un string válido
+  if (!data.website || data.website === '' || data.website === null || data.website === undefined) {
     data.website = null
+  } else {
+    // Asegurar que sea un string
+    data.website = String(data.website).trim() || null
   }
   
   // Convertir price_list_id: string vacío a null, o convertir a número si tiene valor
@@ -417,6 +421,11 @@ const submit = () => {
   } else if (data.collector_id) {
     const numValue = parseInt(data.collector_id, 10)
     data.collector_id = isNaN(numValue) ? null : numValue
+  }
+  
+  // Asegurar que website siempre esté presente en los datos
+  if (!('website' in data)) {
+    data.website = null
   }
   
   form.transform(() => data).put(`/clientes/${props.client.id}`, {

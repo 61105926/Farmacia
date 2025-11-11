@@ -186,8 +186,15 @@ class ClientController extends Controller
         $data = $request->all();
         
         // Convertir strings vacíos a null para campos opcionales
-        if (isset($data['website']) && ($data['website'] === '' || $data['website'] === null)) {
+        // Asegurar que website sea null o un string válido
+        if (!isset($data['website']) || $data['website'] === '' || $data['website'] === null || $data['website'] === 'null') {
             $data['website'] = null;
+        } else {
+            // Asegurar que sea un string válido (no vacío después de trim)
+            $data['website'] = trim($data['website']);
+            if ($data['website'] === '' || $data['website'] === 'null') {
+                $data['website'] = null;
+            }
         }
         
         // Convertir price_list_id: manejar string "null", string vacío, null, o convertir a int si tiene valor
