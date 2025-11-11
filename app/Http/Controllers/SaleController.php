@@ -40,6 +40,7 @@ class SaleController extends Controller
                 ->when($request->search, function ($query, $search) {
                     $query->where(function ($q) use ($search) {
                         $q->where('code', 'like', "%{$search}%")
+                          ->orWhere('invoice_number', 'like', "%{$search}%")
                           ->orWhereHas('client', function ($clientQuery) use ($search) {
                               $clientQuery->where('business_name', 'like', "%{$search}%");
                           });
@@ -197,6 +198,7 @@ class SaleController extends Controller
                 'items.*.discount' => 'nullable|numeric|min:0|max:100',
                 'payment_method' => 'required|in:cash,credit,transfer',
                 'payment_status' => 'nullable|in:paid,pending,partial',
+                'invoice_number' => 'nullable|string|max:50',
                 'notes' => 'nullable|string|max:1000',
                 'delivery_date' => 'nullable|date',
             ], [
@@ -306,6 +308,7 @@ class SaleController extends Controller
             // 7. Crear la venta
             $sale = Sale::create([
                 'code' => $code,
+                'invoice_number' => $validated['invoice_number'] ?? null,
                 'client_id' => $validated['client_id'],
                 'salesperson_id' => $validated['salesperson_id'] ?? auth()->id(),
                 'presale_id' => $validated['presale_id'],
@@ -455,6 +458,7 @@ class SaleController extends Controller
 
         return Inertia::render('Sales/Edit', [
             'sale' => $sale,
+            'invoice' => $sale, // Para compatibilidad con el componente actual
             'clients' => Client::where('status', 'active')
                 ->select('id', 'business_name', 'trade_name')
                 ->get(),
@@ -484,10 +488,27 @@ class SaleController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.discount' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_percentage' => 'nullable|numeric|min:0|max:100', // Para compatibilidad
             'payment_method' => 'required|in:cash,credit,transfer',
-            'payment_status' => 'required|in:paid,draft,partial',
+            'payment_status' => 'required|in:paid,pending,partial',
+            'invoice_number' => 'nullable|string|max:50',
             'notes' => 'nullable|string|max:1000',
-            'delivery_date' => 'nullable|date|after_or_equal:today',
+            'delivery_date' => 'nullable|date',
+        ], [
+            'client_id.required' => 'Debe seleccionar un cliente.',
+            'client_id.exists' => 'El cliente seleccionado no existe.',
+            'items.required' => 'Debe agregar al menos un producto.',
+            'items.min' => 'Debe agregar al menos un producto.',
+            'items.*.product_id.required' => 'Debe seleccionar un producto.',
+            'items.*.product_id.exists' => 'El producto seleccionado no existe.',
+            'items.*.quantity.required' => 'La cantidad es obligatoria.',
+            'items.*.quantity.min' => 'La cantidad debe ser mayor a 0.',
+            'items.*.unit_price.required' => 'El precio unitario es obligatorio.',
+            'items.*.unit_price.min' => 'El precio unitario debe ser mayor o igual a 0.',
+            'payment_method.required' => 'Debe seleccionar un método de pago.',
+            'payment_method.in' => 'El método de pago seleccionado no es válido.',
+            'payment_status.required' => 'Debe seleccionar un estado de pago.',
+            'payment_status.in' => 'El estado de pago seleccionado no es válido.',
         ]);
 
         DB::beginTransaction();
@@ -526,15 +547,16 @@ class SaleController extends Controller
 
             // Actualizar venta
             $sale->update([
+                'invoice_number' => $validated['invoice_number'] ?? null,
                 'client_id' => $validated['client_id'],
-                'salesperson_id' => $validated['salesperson_id'],
+                'salesperson_id' => $validated['salesperson_id'] ?? auth()->id(),
                 'subtotal' => $subtotal,
                 'total_discount' => $totalDiscount,
                 'total' => $total,
                 'payment_method' => $validated['payment_method'],
                 'payment_status' => $validated['payment_status'],
-                'notes' => $validated['notes'],
-                'delivery_date' => $validated['delivery_date'],
+                'notes' => $validated['notes'] ?? null,
+                'delivery_date' => $validated['delivery_date'] ?? null,
             ]);
 
             // Eliminar items existentes
@@ -543,14 +565,16 @@ class SaleController extends Controller
             // Crear nuevos items
             foreach ($validated['items'] as $item) {
                 $itemTotal = $item['quantity'] * $item['unit_price'];
-                $itemDiscount = $itemTotal * ($item['discount'] ?? 0) / 100;
+                // Usar discount o discount_percentage (para compatibilidad)
+                $discountPercent = $item['discount'] ?? $item['discount_percentage'] ?? 0;
+                $itemDiscount = $itemTotal * ($discountPercent / 100);
                 
                 SaleItem::create([
                     'sale_id' => $sale->id,
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
-                    'discount' => $item['discount'] ?? 0,
+                    'discount' => $discountPercent,
                     'subtotal' => $itemTotal,
                     'discount_amount' => $itemDiscount,
                     'total' => $itemTotal - $itemDiscount,

@@ -6,8 +6,8 @@
         <Link href="/ventas" class="text-sm text-primary-700 hover:text-primary-800 mb-2 inline-block">
           ← Volver a ventas
         </Link>
-        <h1 class="text-2xl font-bold text-gray-900">Editar Factura</h1>
-        <p class="text-sm text-gray-600 mt-1">{{ invoice.invoice_number }}</p>
+        <h1 class="text-2xl font-bold text-gray-900">Editar Venta</h1>
+        <p class="text-sm text-gray-600 mt-1">{{ sale?.code || invoice?.code || 'N/A' }}</p>
       </div>
 
       <form @submit.prevent="submit">
@@ -57,65 +57,76 @@
             <!-- Información de la Factura -->
             <Card>
               <CardHeader>
-                <CardTitle>Información de la Factura</CardTitle>
+                <CardTitle>Información de la Venta</CardTitle>
               </CardHeader>
               <CardContent class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha de Factura <span class="text-red-500">*</span>
+                      Método de Pago <span class="text-red-500">*</span>
                     </label>
-                    <input
-                      v-model="form.invoice_date"
-                      type="date"
+                    <select
+                      v-model="form.payment_method"
                       required
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                      :class="{ 'border-red-500': form.errors.invoice_date }"
-                    />
-                    <span v-if="form.errors.invoice_date" class="text-sm text-red-600">
-                      {{ form.errors.invoice_date }}
+                      :class="{ 'border-red-500': form.errors.payment_method }"
+                    >
+                      <option value="">Seleccionar método</option>
+                      <option value="cash">Efectivo</option>
+                      <option value="credit">Crédito</option>
+                      <option value="transfer">Transferencia</option>
+                    </select>
+                    <span v-if="form.errors.payment_method" class="text-sm text-red-600">
+                      {{ form.errors.payment_method }}
                     </span>
                   </div>
 
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Fecha de Vencimiento
+                      Estado de Pago <span class="text-red-500">*</span>
                     </label>
-                    <input
-                      v-model="form.due_date"
-                      type="date"
+                    <select
+                      v-model="form.payment_status"
+                      required
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    />
+                      :class="{ 'border-red-500': form.errors.payment_status }"
+                    >
+                      <option value="">Seleccionar estado</option>
+                      <option value="paid">Pagado</option>
+                      <option value="pending">Pendiente</option>
+                      <option value="partial">Pago Parcial</option>
+                    </select>
+                    <span v-if="form.errors.payment_status" class="text-sm text-red-600">
+                      {{ form.errors.payment_status }}
+                    </span>
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Método de Pago
-                    </label>
-                    <select
-                      v-model="form.payment_method"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">Seleccionar método</option>
-                      <option v-for="(label, value) in paymentMethods" :key="value" :value="value">
-                        {{ label }}
-                      </option>
-                    </select>
-                  </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de Entrega
+                  </label>
+                  <input
+                    v-model="form.delivery_date"
+                    type="date"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :class="{ 'border-red-500': form.errors.delivery_date }"
+                  />
+                  <span v-if="form.errors.delivery_date" class="text-sm text-red-600">
+                    {{ form.errors.delivery_date }}
+                  </span>
+                </div>
 
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Términos de Pago
-                    </label>
-                    <input
-                      v-model="form.payment_terms"
-                      type="text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                      placeholder="Ej: 30 días"
-                    />
-                  </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Número de Factura
+                  </label>
+                  <input
+                    v-model="form.invoice_number"
+                    type="text"
+                    placeholder="Ej: FAC-001-2024"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  />
                 </div>
 
                 <div>
@@ -126,20 +137,12 @@
                     v-model="form.notes"
                     rows="3"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    placeholder="Observaciones de la factura"
+                    placeholder="Observaciones de la venta"
+                    :class="{ 'border-red-500': form.errors.notes }"
                   ></textarea>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Términos y Condiciones
-                  </label>
-                  <textarea
-                    v-model="form.terms_and_conditions"
-                    rows="4"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    placeholder="Términos y condiciones de la venta"
-                  ></textarea>
+                  <span v-if="form.errors.notes" class="text-sm text-red-600">
+                    {{ form.errors.notes }}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -209,24 +212,34 @@
                   </div>
 
                   <!-- Items List -->
-                  <div v-if="form.items.length > 0" class="space-y-2">
+                  <div v-if="getValidItems().length > 0" class="space-y-2">
                     <div
-                      v-for="(item, index) in form.items"
+                      v-for="(item, index) in getValidItems()"
                       :key="index"
-                      class="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                      class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
                     >
                       <div class="flex-1">
-                        <div class="text-sm font-medium text-gray-900">{{ item.product_name }}</div>
-                        <div class="text-xs text-gray-500">{{ item.product_code }}</div>
+                        <div class="text-sm font-medium text-gray-900">{{ item.product_name || 'Producto sin nombre' }}</div>
+                        <div class="text-xs text-gray-500">{{ item.product_code || 'Sin código' }}</div>
+                        <div v-if="item.discount > 0" class="text-xs text-green-600 mt-1">
+                          Descuento: {{ item.discount }}%
+                        </div>
                       </div>
                       <div class="flex items-center gap-4">
-                        <div class="text-sm text-gray-900">{{ item.quantity }}</div>
-                        <div class="text-sm text-gray-900">{{ formatPrice(item.unit_price) }}</div>
-                        <div class="text-sm font-medium text-gray-900">{{ formatPrice(item.subtotal) }}</div>
+                        <div class="text-sm text-gray-900">
+                          <span class="text-gray-500">Cant:</span> {{ item.quantity }}
+                        </div>
+                        <div class="text-sm text-gray-900">
+                          <span class="text-gray-500">Precio:</span> {{ formatPrice(item.unit_price) }}
+                        </div>
+                        <div class="text-sm font-medium text-gray-900">
+                          <span class="text-gray-500">Total:</span> {{ formatPrice(item.total) }}
+                        </div>
                         <button
                           type="button"
-                          @click="removeItem(index)"
-                          class="text-red-600 hover:text-red-900"
+                          @click="removeItemByIndex(index)"
+                          class="text-red-600 hover:text-red-900 p-1"
+                          title="Eliminar producto"
                         >
                           <Trash2 class="w-4 h-4" />
                         </button>
@@ -234,9 +247,12 @@
                     </div>
                   </div>
 
-                  <div v-else class="text-center py-8 text-gray-500">
+                  <div v-else-if="getValidItems().length === 0" class="text-center py-8 text-gray-500">
                     <Package class="mx-auto h-12 w-12 text-gray-400" />
                     <p class="mt-2 text-sm">No hay productos agregados</p>
+                    <p v-if="form.items.length > getValidItems().length" class="mt-1 text-xs text-red-600">
+                      Hay {{ form.items.length - getValidItems().length }} producto(s) con datos inválidos
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -248,7 +264,7 @@
             <!-- Resumen de la Factura -->
             <Card>
               <CardHeader>
-                <CardTitle>Resumen de la Factura</CardTitle>
+                <CardTitle>Resumen de la Venta</CardTitle>
               </CardHeader>
               <CardContent class="space-y-3">
                 <div class="flex items-center justify-between">
@@ -258,10 +274,6 @@
                 <div v-if="discountAmount > 0" class="flex items-center justify-between">
                   <span class="text-sm text-gray-600">Descuento</span>
                   <span class="text-sm text-green-600">-{{ formatPrice(discountAmount) }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-gray-600">IVA (19%)</span>
-                  <span class="text-sm text-gray-900">{{ formatPrice(taxAmount) }}</span>
                 </div>
                 <div class="flex items-center justify-between border-t pt-2">
                   <span class="text-sm font-medium text-gray-900">Total</span>
@@ -304,12 +316,12 @@
                 <div class="text-center">
                   <span
                     class="px-3 py-1 text-sm font-medium rounded-full"
-                    :class="getStatusColorClass(invoice.status)"
+                    :class="getStatusColorClass(saleData.status)"
                   >
-                    {{ invoice.status_label }}
+                    {{ getStatusText(saleData.status) }}
                   </span>
                   <div class="mt-2 text-xs text-gray-500">
-                    {{ getStatusDescription(invoice.status) }}
+                    {{ getStatusDescription(saleData.status) }}
                   </div>
                 </div>
               </CardContent>
@@ -319,14 +331,14 @@
             <div class="flex flex-col space-y-2">
               <button
                 type="submit"
-                :disabled="form.processing || form.items.length === 0"
+                :disabled="form.processing || getValidItems().length === 0"
                 class="w-full px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 disabled:opacity-50 transition-colors"
               >
                 <span v-if="form.processing">Actualizando...</span>
-                <span v-else>Actualizar Factura</span>
+                <span v-else>Actualizar Venta</span>
               </button>
               <Link
-                :href="`/ventas/${invoice.id}`"
+                :href="`/ventas/${saleData.id}`"
                 class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-center transition-colors"
               >
                 Ver Detalle
@@ -353,40 +365,42 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 import { Package, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps({
-  invoice: Object,
+  sale: Object,
+  invoice: Object, // Para compatibilidad
   clients: Array,
   products: Array,
   paymentMethods: Object,
 })
 
+const saleData = props.sale || props.invoice
+
 const form = useForm({
-  client_id: props.invoice.client_id,
-  invoice_date: props.invoice.invoice_date,
-  due_date: props.invoice.due_date,
-  payment_method: props.invoice.payment_method,
-  payment_terms: props.invoice.payment_terms,
-  notes: props.invoice.notes,
-  terms_and_conditions: props.invoice.terms_and_conditions,
-  items: props.invoice.items.map(item => ({
-    product_id: item.product_id,
-    product_code: item.product_code,
-    product_name: item.product_name,
-    product_description: item.product_description,
-    quantity: item.quantity,
-    unit_price: item.unit_price,
-    discount_percentage: item.discount_percentage,
-    tax_rate: item.tax_rate,
-    notes: item.notes,
-    subtotal: item.subtotal,
-    discount_amount: item.discount_amount,
-    tax_amount: item.tax_amount,
-    total: item.total,
-  })),
+  client_id: saleData.client_id || '',
+  payment_method: saleData.payment_method || 'cash',
+  payment_status: saleData.payment_status || 'pending',
+  invoice_number: saleData.invoice_number || '',
+  notes: saleData.notes || '',
+  delivery_date: saleData.delivery_date || null,
+  items: (saleData.items || [])
+    .filter(item => item.product_id) // Solo items con producto válido
+    .map(item => ({
+      product_id: parseInt(item.product_id, 10),
+      product_code: item.product?.code || item.product_code || '',
+      product_name: item.product?.name || item.product_name || '',
+      product_description: item.product?.description || item.product_description || '',
+      quantity: parseFloat(item.quantity) || 1,
+      unit_price: parseFloat(item.unit_price) || 0,
+      discount: parseFloat(item.discount) || 0,
+      discount_percentage: parseFloat(item.discount) || 0,
+      subtotal: parseFloat(item.subtotal) || 0,
+      discount_amount: parseFloat(item.discount_amount) || 0,
+      total: parseFloat(item.total) || 0,
+    })),
 })
 
 const newItem = ref({
   product_id: '',
-  quantity: 1,
+  quantity: '',
   unit_price: 0,
   discount_percentage: 0,
   notes: '',
@@ -402,38 +416,44 @@ const selectedProduct = computed(() => {
 
 const canAddItem = computed(() => {
   return newItem.value.product_id && 
-         newItem.value.quantity > 0 && 
+         newItem.value.quantity && 
+         parseFloat(newItem.value.quantity) > 0 && 
          newItem.value.unit_price > 0
 })
 
 const subtotal = computed(() => {
-  return form.items.reduce((sum, item) => sum + item.subtotal, 0)
+  return getValidItems().reduce((sum, item) => {
+    const itemSubtotal = parseFloat(item.quantity || 0) * parseFloat(item.unit_price || 0)
+    return sum + itemSubtotal
+  }, 0)
 })
 
 const discountAmount = computed(() => {
-  return form.items.reduce((sum, item) => sum + (item.discount_amount || 0), 0)
-})
-
-const taxAmount = computed(() => {
-  return form.items.reduce((sum, item) => sum + (item.tax_amount || 0), 0)
+  return getValidItems().reduce((sum, item) => {
+    const itemSubtotal = parseFloat(item.quantity || 0) * parseFloat(item.unit_price || 0)
+    const discount = parseFloat(item.discount || item.discount_percentage || 0)
+    const itemDiscount = itemSubtotal * (discount / 100)
+    return sum + itemDiscount
+  }, 0)
 })
 
 const total = computed(() => {
-  return subtotal.value - discountAmount.value + taxAmount.value
+  return subtotal.value - discountAmount.value
 })
 
 const onClientChange = () => {
-  // Resetear campos relacionados cuando cambia el cliente
-  form.payment_terms = ''
+  // El cliente ha cambiado, no hay nada que resetear
 }
 
 const onProductSelect = () => {
   if (selectedProduct.value) {
     newItem.value.unit_price = selectedProduct.value.sale_price
-    // Validar cantidad si excede el stock
-    const maxQuantity = selectedProduct.value.stock_quantity || 0
-    if (newItem.value.quantity > maxQuantity) {
-      newItem.value.quantity = maxQuantity
+    // Validar cantidad si excede el stock (solo si ya tiene un valor)
+    if (newItem.value.quantity && newItem.value.quantity !== '') {
+      const maxQuantity = selectedProduct.value.stock_quantity || 0
+      if (parseFloat(newItem.value.quantity) > maxQuantity) {
+        newItem.value.quantity = maxQuantity
+      }
     }
   }
 }
@@ -500,25 +520,22 @@ const addItem = () => {
     return
   }
 
-  const subtotal = newItem.value.quantity * newItem.value.unit_price
-  const discountAmount = subtotal * (newItem.value.discount_percentage / 100)
-  const taxAmount = (subtotal - discountAmount) * 0.19 // IVA 19%
-  const total = subtotal - discountAmount + taxAmount
+  const itemSubtotal = newItem.value.quantity * newItem.value.unit_price
+  const itemDiscount = itemSubtotal * (newItem.value.discount_percentage / 100)
+  const itemTotal = itemSubtotal - itemDiscount
 
   const item = {
     product_id: newItem.value.product_id,
     product_code: product.code,
     product_name: product.name,
-    product_description: product.description,
+    product_description: product.description || '',
     quantity: newItem.value.quantity,
     unit_price: newItem.value.unit_price,
+    discount: newItem.value.discount_percentage,
     discount_percentage: newItem.value.discount_percentage,
-    tax_rate: 19,
-    notes: newItem.value.notes,
-    subtotal: subtotal,
-    discount_amount: discountAmount,
-    tax_amount: taxAmount,
-    total: total,
+    subtotal: itemSubtotal,
+    discount_amount: itemDiscount,
+    total: itemTotal,
   }
 
   form.items.push(item)
@@ -526,39 +543,64 @@ const addItem = () => {
   // Reset form
   newItem.value = {
     product_id: '',
-    quantity: 1,
+    quantity: '',
     unit_price: 0,
     discount_percentage: 0,
     notes: '',
   }
 }
 
+const getValidItems = () => {
+  return form.items.filter(item => 
+    item.product_id && 
+    item.product_id !== '' && 
+    item.product_id != null &&
+    parseFloat(item.quantity) > 0 &&
+    parseFloat(item.unit_price) >= 0
+  )
+}
+
 const removeItem = (index) => {
   form.items.splice(index, 1)
+}
+
+const removeItemByIndex = (index) => {
+  const validItems = getValidItems()
+  if (validItems[index]) {
+    const itemToRemove = validItems[index]
+    const actualIndex = form.items.findIndex(item => 
+      item.product_id === itemToRemove.product_id &&
+      item.quantity === itemToRemove.quantity
+    )
+    if (actualIndex !== -1) {
+      form.items.splice(actualIndex, 1)
+    }
+  }
+}
+
+const getStatusText = (status) => {
+  const statusMap = {
+    'draft': 'Borrador',
+    'completed': 'Completada',
+    'cancelled': 'Cancelada',
+  }
+  return statusMap[status] || status || 'Desconocido'
 }
 
 const getStatusColorClass = (status) => {
   const classes = {
     'draft': 'bg-gray-100 text-gray-800',
-    'pending': 'bg-yellow-100 text-yellow-800',
-    'approved': 'bg-green-100 text-green-800',
-    'paid': 'bg-blue-100 text-blue-800',
-    'partially_paid': 'bg-purple-100 text-purple-800',
-    'overdue': 'bg-red-100 text-red-800',
-    'cancelled': 'bg-gray-100 text-gray-800',
+    'completed': 'bg-green-100 text-green-800',
+    'cancelled': 'bg-red-100 text-red-800',
   }
   return classes[status] || 'bg-gray-100 text-gray-800'
 }
 
 const getStatusDescription = (status) => {
   const descriptions = {
-    'draft': 'Factura en borrador',
-    'pending': 'Pendiente de aprobación',
-    'approved': 'Factura aprobada',
-    'paid': 'Factura pagada',
-    'partially_paid': 'Pago parcial',
-    'overdue': 'Factura vencida',
-    'cancelled': 'Factura cancelada',
+    'draft': 'Venta en borrador - Puede ser editada',
+    'completed': 'Venta completada',
+    'cancelled': 'Venta cancelada',
   }
   return descriptions[status] || 'Estado desconocido'
 }
@@ -573,6 +615,77 @@ const formatPrice = (price) => {
 }
 
 const submit = () => {
-  form.put(`/ventas/${props.invoice.id}`)
+  // Validaciones frontend
+  if (!form.client_id) {
+    alert('Debe seleccionar un cliente')
+    return
+  }
+
+  // Usar solo items válidos
+  const validItems = getValidItems()
+
+  if (validItems.length === 0) {
+    alert('Debe agregar al menos un producto válido')
+    return
+  }
+
+  // Preparar datos para enviar
+  const dataToSend = {
+    client_id: parseInt(form.client_id, 10),
+    salesperson_id: null, // Se puede agregar después si es necesario
+    payment_method: form.payment_method || 'cash',
+    payment_status: form.payment_status || 'pending',
+    invoice_number: form.invoice_number && form.invoice_number.trim() !== '' ? form.invoice_number.trim() : null,
+    notes: form.notes && form.notes.trim() !== '' ? form.notes.trim() : null,
+    delivery_date: form.delivery_date || null,
+    items: validItems.map(item => {
+      const quantity = parseFloat(item.quantity)
+      const unitPrice = parseFloat(item.unit_price)
+      const discount = parseFloat(item.discount || item.discount_percentage || 0)
+      
+      // Asegurar valores mínimos válidos
+      return {
+        product_id: parseInt(item.product_id, 10),
+        quantity: quantity > 0 ? quantity : 1,
+        unit_price: unitPrice >= 0 ? unitPrice : 0,
+        discount: discount >= 0 && discount <= 100 ? discount : 0,
+      }
+    }),
+  }
+
+  // Validación final de items
+  const hasInvalidItems = dataToSend.items.some(item => 
+    !item.product_id || 
+    isNaN(item.product_id) ||
+    item.quantity <= 0 || 
+    isNaN(item.quantity) ||
+    item.unit_price < 0 ||
+    isNaN(item.unit_price) ||
+    item.discount < 0 ||
+    item.discount > 100
+  )
+
+  if (hasInvalidItems) {
+    alert('Hay productos con datos inválidos. Por favor verifique las cantidades y precios.')
+    console.error('Items inválidos:', dataToSend.items)
+    return
+  }
+
+  console.log('Datos a enviar:', dataToSend)
+
+  form.transform(() => dataToSend).put(`/ventas/${saleData.id}`, {
+    preserveScroll: true,
+    onError: (errors) => {
+      console.error('Errores de validación:', errors)
+      // Mostrar errores al usuario
+      const errorMessages = Object.values(errors).flat()
+      if (errorMessages.length > 0) {
+        alert('Error al actualizar la venta:\n' + errorMessages.join('\n'))
+      }
+    },
+    onSuccess: () => {
+      // Redirección manejada por el servidor
+    }
+  })
 }
 </script>

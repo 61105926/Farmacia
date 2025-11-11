@@ -109,7 +109,7 @@
               <Input
                 id="search"
                 v-model="filters.search"
-                placeholder="Código, cliente..."
+                placeholder="Código, número factura, cliente..."
                 class="mt-1"
               />
             </div>
@@ -236,6 +236,9 @@
                 <tr v-for="sale in sales.data" :key="sale.id" class="hover:bg-gray-50">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">{{ sale.code }}</div>
+                    <div v-if="sale.invoice_number" class="text-xs text-blue-600 font-medium mt-1">
+                      Nro Fact: {{ sale.invoice_number }}
+                    </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">{{ sale.client?.business_name || 'N/A' }}</div>

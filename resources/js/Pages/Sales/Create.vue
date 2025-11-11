@@ -117,6 +117,18 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                 />
               </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Número de Factura
+                </label>
+                <input
+                  v-model="form.invoice_number"
+                  type="text"
+                  placeholder="Ej: FAC-001-2024"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -328,6 +340,7 @@ const form = reactive({
   payment_method: '',
   payment_status: '',
   delivery_date: '',
+  invoice_number: '',
   notes: '',
   items: [],
   subtotal: 0,

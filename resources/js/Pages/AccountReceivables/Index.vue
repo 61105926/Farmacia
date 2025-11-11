@@ -237,6 +237,9 @@
                 >
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">{{ invoice.invoice_number }}</div>
+                    <div v-if="invoice.sale?.invoice_number" class="text-xs text-blue-600 font-medium">
+                      Nro Fact: {{ invoice.sale.invoice_number }}
+                    </div>
                     <div v-if="invoice.order_id" class="text-xs text-gray-500">
                       Desde pedido: {{ invoice.order?.order_number }}
                     </div>

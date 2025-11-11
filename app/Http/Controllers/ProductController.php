@@ -702,6 +702,28 @@ class ProductController extends Controller
                 'out_of_stock' => Product::where('stock_quantity', '<=', 0)->count(),
             ];
 
+            // Cargar últimos movimientos de inventario para cada producto
+            $productIds = $products->pluck('id')->toArray();
+            $recentMovements = [];
+            
+            if (Schema::hasTable('inventories') && !empty($productIds)) {
+                $movements = \App\Models\Inventory::whereIn('product_id', $productIds)
+                    ->with(['creator:id,name'])
+                    ->latest('movement_date')
+                    ->latest('created_at')
+                    ->get();
+                
+                // Agrupar por producto y tomar los últimos 5
+                foreach ($movements as $movement) {
+                    if (!isset($recentMovements[$movement->product_id])) {
+                        $recentMovements[$movement->product_id] = [];
+                    }
+                    if (count($recentMovements[$movement->product_id]) < 5) {
+                        $recentMovements[$movement->product_id][] = $movement;
+                    }
+                }
+            }
+
             return Inertia::render('Products/Inventory', [
                 'products' => InertiaHelper::sanitizeData($products),
                 'categories' => InertiaHelper::sanitizeData(
@@ -713,6 +735,7 @@ class ProductController extends Controller
                 ),
                 'stats' => InertiaHelper::sanitizeData($stats),
                 'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'category', 'stock_status'])),
+                'recentMovements' => InertiaHelper::sanitizeData($recentMovements),
             ]);
 
         } catch (\Exception $e) {
@@ -997,6 +1020,8 @@ class ProductController extends Controller
             // Asumimos que el Excel tiene estas columnas en orden:
             // nombre, codigo, descripcion, categoria, marca, precio_costo, precio_venta, stock, stock_minimo, tipo_unidad
             $imported = 0;
+            $updated = 0;
+            $created = 0;
             $errors = [];
             $skipped = 0;
 
@@ -1037,14 +1062,6 @@ class ProductController extends Controller
                         continue;
                     }
 
-                    // Verificar si el código ya existe
-                    $existingProduct = DB::table('products')->where('code', $data['code'])->first();
-                    if ($existingProduct) {
-                        $errors[] = "Fila {$rowNumber}: El código '{$data['code']}' ya existe. Producto: {$existingProduct->name}";
-                        $skipped++;
-                        continue;
-                    }
-
                     // Buscar categoría por nombre
                     $categoryId = null;
                     if (!empty($data['category_name'])) {
@@ -1056,29 +1073,12 @@ class ProductController extends Controller
                         }
                     }
 
-                    // Generar slug único
-                    $slug = \Str::slug($data['name']);
-                    $slugCount = DB::table('products')->where('slug', 'like', $slug . '%')->count();
-                    if ($slugCount > 0) {
-                        $slug = $slug . '-' . ($slugCount + 1);
-                    }
-
-                    // Verificar si el código de barras ya existe
-                    $barcodeId = null;
-                    if (!empty($data['barcode'])) {
-                        $existingBarcode = DB::table('products')->where('barcode', $data['barcode'])->first();
-                        if ($existingBarcode) {
-                            $errors[] = "Fila {$rowNumber}: El código de barras '{$data['barcode']}' ya existe. Producto: {$existingBarcode->name}";
-                            $skipped++;
-                            continue;
-                        }
-                    }
-
-                    // Crear producto
-                    DB::table('products')->insert([
+                    // Verificar si el código ya existe
+                    $existingProduct = DB::table('products')->where('code', $data['code'])->first();
+                    
+                    // Preparar datos para insertar/actualizar
+                    $productData = [
                         'name' => trim($data['name']),
-                        'code' => trim($data['code']),
-                        'slug' => $slug,
                         'description' => !empty($data['description']) ? trim($data['description']) : null,
                         'category_id' => $categoryId,
                         'brand' => !empty($data['brand']) ? trim($data['brand']) : null,
@@ -1093,12 +1093,63 @@ class ProductController extends Controller
                         'max_stock' => 0,
                         'unit_type' => $data['unit_type'] ?? 'unit',
                         'is_active' => $data['is_active'] ?? true,
-                        'created_by' => auth()->id(),
-                        'created_at' => now(),
                         'updated_at' => now(),
-                    ]);
+                    ];
 
-                    $imported++;
+                    if ($existingProduct) {
+                        // ACTUALIZAR producto existente
+                        // Generar slug si cambió el nombre
+                        $newSlug = \Str::slug($data['name']);
+                        if ($newSlug !== $existingProduct->slug) {
+                            // Verificar si el nuevo slug ya existe en otro producto
+                            $slugExists = DB::table('products')
+                                ->where('slug', $newSlug)
+                                ->where('id', '!=', $existingProduct->id)
+                                ->exists();
+                            
+                            if (!$slugExists) {
+                                $productData['slug'] = $newSlug;
+                            }
+                        }
+
+                        // Actualizar producto
+                        DB::table('products')
+                            ->where('id', $existingProduct->id)
+                            ->update($productData);
+
+                        $updated++;
+                        $imported++;
+                    } else {
+                        // CREAR nuevo producto
+                        // Generar slug único
+                        $slug = \Str::slug($data['name']);
+                        $slugCount = DB::table('products')->where('slug', 'like', $slug . '%')->count();
+                        if ($slugCount > 0) {
+                            $slug = $slug . '-' . ($slugCount + 1);
+                        }
+                        $productData['slug'] = $slug;
+                        $productData['code'] = trim($data['code']);
+                        $productData['created_by'] = auth()->id();
+                        $productData['created_at'] = now();
+
+                        // Verificar si el código de barras ya existe (solo para nuevos productos)
+                        if (!empty($data['barcode'])) {
+                            $existingBarcode = DB::table('products')
+                                ->where('barcode', $data['barcode'])
+                                ->first();
+                            if ($existingBarcode) {
+                                $errors[] = "Fila {$rowNumber}: El código de barras '{$data['barcode']}' ya existe. Producto: {$existingBarcode->name}";
+                                $skipped++;
+                                continue;
+                            }
+                        }
+
+                        // Crear producto
+                        DB::table('products')->insert($productData);
+
+                        $created++;
+                        $imported++;
+                    }
 
                 } catch (\Exception $e) {
                     $errors[] = "Fila {$rowNumber}: " . $e->getMessage();
@@ -1106,9 +1157,15 @@ class ProductController extends Controller
                 }
             }
 
-            $message = "Importación completada. {$imported} productos importados exitosamente.";
+            $message = "Importación completada. ";
+            if ($created > 0) {
+                $message .= "{$created} productos creados. ";
+            }
+            if ($updated > 0) {
+                $message .= "{$updated} productos actualizados. ";
+            }
             if ($skipped > 0) {
-                $message .= " {$skipped} productos omitidos.";
+                $message .= "{$skipped} productos omitidos. ";
             }
             if (!empty($errors)) {
                 $message .= " Errores: " . implode('; ', array_slice($errors, 0, 5));

@@ -52,7 +52,7 @@ class AccountReceivableController extends Controller
             $query->unpaid();
         }
 
-        $invoices = $query->latest('invoice_date')->paginate(15)->withQueryString();
+        $invoices = $query->with('sale:id,invoice_number')->latest('invoice_date')->paginate(15)->withQueryString();
 
         // Calcular estadísticas
         $stats = [

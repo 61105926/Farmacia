@@ -157,6 +157,9 @@
                   Estado
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Últimos Movimientos
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
                 </th>
               </tr>
@@ -191,6 +194,32 @@
                   <Badge :variant="getStockStatusVariant(product)">
                     {{ getStockStatus(product) }}
                   </Badge>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">
+                  <div v-if="getProductMovements(product.id) && getProductMovements(product.id).length > 0" class="space-y-1">
+                    <div 
+                      v-for="(movement, idx) in getProductMovements(product.id).slice(0, 3)" 
+                      :key="idx"
+                      class="flex items-center gap-2 text-xs"
+                    >
+                      <span 
+                        class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium"
+                        :class="movement.transaction_type === 'in' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                      >
+                        {{ movement.transaction_type === 'in' ? '+' : '-' }}{{ movement.quantity }}
+                      </span>
+                      <span class="text-gray-500">{{ formatDate(movement.movement_date) }}</span>
+                      <span v-if="movement.movement_type_label" class="text-gray-400">
+                        ({{ movement.movement_type_label }})
+                      </span>
+                    </div>
+                    <div v-if="getProductMovements(product.id).length > 3" class="text-xs text-gray-400 italic">
+                      +{{ getProductMovements(product.id).length - 3 }} más
+                    </div>
+                  </div>
+                  <div v-else class="text-xs text-gray-400 italic">
+                    Sin movimientos
+                  </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div class="flex items-center gap-2">
@@ -326,7 +355,8 @@ const props = defineProps({
   products: Object,
   categories: Array,
   stats: Object,
-  filters: Object
+  filters: Object,
+  recentMovements: Object
 })
 
 const showAdjustmentModal = ref(false)
@@ -394,8 +424,25 @@ const submitStockAdjustment = () => {
   router.post(`/productos/${selectedProduct.value.id}/ajustar-stock`, adjustmentForm, {
     onSuccess: () => {
       closeAdjustmentModal()
-      router.reload({ only: ['products'] })
+      router.reload({ only: ['products', 'recentMovements'] })
     }
+  })
+}
+
+const getProductMovements = (productId) => {
+  if (!props.recentMovements || !props.recentMovements[productId]) {
+    return []
+  }
+  return props.recentMovements[productId]
+}
+
+const formatDate = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  return d.toLocaleDateString('es-BO', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric' 
   })
 }
 </script>
