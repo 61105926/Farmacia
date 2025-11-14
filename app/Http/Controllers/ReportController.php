@@ -595,33 +595,56 @@ class ReportController extends Controller
 
     private function exportFinancial(Request $request, string $format)
     {
-        $query = Invoice::where('status', '!=', 'cancelled');
+        // Exportar pagos con número de nota de pago autonumerado
+        $query = Payment::with(['client', 'invoice', 'creator', 'approver'])
+            ->where('status', 'completed');
 
+        // Filtros por fecha de pago
         if ($request->filled('date_from')) {
-            $query->where('invoice_date', '>=', $request->get('date_from'));
+            $query->where('payment_date', '>=', $request->get('date_from'));
         }
 
         if ($request->filled('date_to')) {
-            $query->where('invoice_date', '<=', $request->get('date_to'));
+            $query->where('payment_date', '<=', $request->get('date_to'));
         }
 
-        $invoices = $query->get();
+        $payments = $query->latest('payment_date')->get();
 
-        $data = $invoices->map(function ($invoice) {
+        $data = $payments->map(function ($payment) {
+            $clientName = $payment->client 
+                ? ($payment->client->business_name ?? $payment->client->trade_name ?? 'N/A')
+                : 'N/A';
+            
+            $invoiceNumber = $payment->invoice 
+                ? $payment->invoice->invoice_number 
+                : 'N/A';
+
+            $paymentMethodLabel = 'N/A';
+            if ($payment->payment_method) {
+                $methods = Payment::getPaymentMethods();
+                $paymentMethodLabel = $methods[$payment->payment_method] ?? $payment->payment_method;
+            }
+
             return [
-                'Número' => $invoice->invoice_number,
-                'Cliente' => $invoice->client_name,
-                'Fecha' => $invoice->invoice_date->format('d/m/Y'),
-                'Vencimiento' => $invoice->due_date ? $invoice->due_date->format('d/m/Y') : 'N/A',
-                'Total' => $invoice->total,
-                'Pagado' => $invoice->paid_amount,
-                'Saldo' => $invoice->balance,
-                'Días Vencido' => $invoice->due_date ? max(0, now()->diffInDays($invoice->due_date, false)) : 0,
-                'Estado Pago' => $invoice->payment_status_label,
+                'Nota de Pago' => $payment->payment_number ?? 'N/A',
+                'Fecha de Pago' => $payment->payment_date ? $payment->payment_date->format('d/m/Y') : 'N/A',
+                'Cliente' => $clientName,
+                'Número de Factura' => $invoiceNumber,
+                'Monto' => number_format($payment->amount ?? 0, 2, '.', ''),
+                'Método de Pago' => $paymentMethodLabel,
+                'Referencia' => $payment->payment_reference ?? '',
+                'Banco' => $payment->bank_name ?? '',
+                'Número de Cuenta' => $payment->account_number ?? '',
+                'Número de Cheque' => $payment->check_number ?? '',
+                'Estado' => $payment->status_label ?? 'N/A',
+                'Registrado por' => $payment->creator ? $payment->creator->name : 'N/A',
+                'Aprobado por' => $payment->approver ? $payment->approver->name : 'N/A',
+                'Fecha de Aprobación' => $payment->approved_at ? $payment->approved_at->format('d/m/Y H:i') : 'N/A',
+                'Observaciones' => $payment->notes ?? '',
             ];
         });
 
-        return $this->downloadFile($data, 'reporte_financiero', $format);
+        return $this->downloadFile($data, 'reporte_financiero_pagos', $format);
     }
 
     private function exportClients(Request $request, string $format)

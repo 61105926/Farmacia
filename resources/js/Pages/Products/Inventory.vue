@@ -168,7 +168,7 @@
               <tr v-for="product in products.data" :key="product.id">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div>
-                    <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
+                    <div class="text-sm font-medium text-gray-900">{{ product.description || product.name || 'Sin descripción' }}</div>
                     <div class="text-sm text-gray-500">{{ product.code }}</div>
                   </div>
                 </td>

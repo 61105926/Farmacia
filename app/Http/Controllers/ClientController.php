@@ -320,12 +320,155 @@ class ClientController extends Controller
     }
 
     /**
-     * Exportar clientes a Excel
+     * Exportar clientes a CSV
      */
-    public function export(Request $request)
+    public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
-        // TODO: Implementar exportación a Excel
-        // Usar Laravel Excel o similar
+        $filename = 'clientes_' . date('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        return response()->stream(function () {
+            $handle = fopen('php://output', 'w');
+            
+            // Agregar BOM UTF-8 para Excel
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Encabezados CSV
+            fputcsv($handle, [
+                'Código',
+                'Razón Social',
+                'Nombre Comercial',
+                'RUT/NIT',
+                'Tipo Cliente',
+                'Categoría',
+                'Estado',
+                'Dirección',
+                'Ciudad',
+                'Estado/Provincia',
+                'Teléfono',
+                'Email',
+                'Sitio Web',
+                'Lista de Precios',
+                'Descuento por Defecto (%)',
+                'Condición de Pago',
+                'Límite de Crédito',
+                'Días de Crédito',
+                'Vendedor',
+                'Cobrador',
+                'Zona',
+                'Día de Visita',
+                'Frecuencia de Visita',
+                'Saldo Pendiente',
+                'Crédito Disponible',
+                'Fecha de Creación'
+            ], ';');
+
+            // Datos - usar chunk para manejar grandes volúmenes
+            Client::with(['salesperson:id,name', 'collector:id,name', 'priceList:id,name', 'paymentTerm:id,name'])
+                ->chunk(100, function ($clients) use ($handle) {
+                    foreach ($clients as $client) {
+                        $pendingBalance = $client->pending_balance ?? 0;
+                        $availableCredit = $client->available_credit ?? 0;
+                        
+                        fputcsv($handle, [
+                            $client->code ?? '',
+                            $client->business_name ?? '',
+                            $client->trade_name ?? '',
+                            $client->tax_id ?? '',
+                            $this->getClientTypeLabel($client->client_type ?? ''),
+                            $client->category ?? '',
+                            $this->getStatusLabel($client->status ?? ''),
+                            $client->address ?? '',
+                            $client->city ?? '',
+                            $client->state ?? '',
+                            $client->phone ?? '',
+                            $client->email ?? '',
+                            $client->website ?? '',
+                            ($client->priceList && $client->priceList->name) ? $client->priceList->name : '',
+                            number_format($client->default_discount ?? 0, 2),
+                            ($client->paymentTerm && $client->paymentTerm->name) ? $client->paymentTerm->name : '',
+                            number_format($client->credit_limit ?? 0, 2),
+                            $client->credit_days ?? 0,
+                            ($client->salesperson && $client->salesperson->name) ? $client->salesperson->name : '',
+                            ($client->collector && $client->collector->name) ? $client->collector->name : '',
+                            $client->zone ?? '',
+                            $this->getVisitDayLabel($client->visit_day ?? ''),
+                            $this->getVisitFrequencyLabel($client->visit_frequency ?? ''),
+                            number_format($pendingBalance, 2),
+                            number_format($availableCredit, 2),
+                            $client->created_at ? $client->created_at->format('Y-m-d H:i:s') : ''
+                        ], ';');
+                    }
+                });
+
+            fclose($handle);
+        }, 200, $headers);
+    }
+
+    /**
+     * Obtener etiqueta del tipo de cliente
+     */
+    private function getClientTypeLabel(string $type): string
+    {
+        $labels = [
+            'pharmacy' => 'Farmacia',
+            'chain' => 'Cadena',
+            'hospital' => 'Hospital',
+            'clinic' => 'Clínica',
+            'other' => 'Otro',
+        ];
+        
+        return $labels[$type] ?? $type;
+    }
+
+    /**
+     * Obtener etiqueta del estado
+     */
+    private function getStatusLabel(string $status): string
+    {
+        $labels = [
+            'active' => 'Activo',
+            'inactive' => 'Inactivo',
+            'blocked' => 'Bloqueado',
+        ];
+        
+        return $labels[$status] ?? $status;
+    }
+
+    /**
+     * Obtener etiqueta del día de visita
+     */
+    private function getVisitDayLabel(string $day): string
+    {
+        $labels = [
+            'monday' => 'Lunes',
+            'tuesday' => 'Martes',
+            'wednesday' => 'Miércoles',
+            'thursday' => 'Jueves',
+            'friday' => 'Viernes',
+            'saturday' => 'Sábado',
+            'sunday' => 'Domingo',
+        ];
+        
+        return $labels[$day] ?? $day;
+    }
+
+    /**
+     * Obtener etiqueta de frecuencia de visita
+     */
+    private function getVisitFrequencyLabel(string $frequency): string
+    {
+        $labels = [
+            'weekly' => 'Semanal',
+            'biweekly' => 'Quincenal',
+            'monthly' => 'Mensual',
+        ];
+        
+        return $labels[$frequency] ?? $frequency;
     }
 
     /**

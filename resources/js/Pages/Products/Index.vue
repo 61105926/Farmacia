@@ -204,7 +204,7 @@
               <tr class="border-b">
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Producto</th>
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Código</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-500">Categoría</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-500">Proveedor</th>
                 <th class="text-right py-3 px-4 font-medium text-gray-500">Stock</th>
                 <th class="text-right py-3 px-4 font-medium text-gray-500">Precio</th>
                 <th class="text-center py-3 px-4 font-medium text-gray-500">Estado</th>
@@ -215,7 +215,7 @@
               <tr v-for="product in products.data" :key="product.id" class="border-b hover:bg-gray-50">
                 <td class="py-3 px-4">
                   <div>
-                    <div class="font-medium text-gray-900">{{ product.name }}</div>
+                    <div class="font-medium text-gray-900">{{ product.description || product.name || 'Sin descripción' }}</div>
                     <div class="text-sm text-gray-500">{{ product.brand || 'Sin marca' }}</div>
                   </div>
                 </td>
@@ -223,7 +223,7 @@
                   <Badge variant="outline">{{ product.code }}</Badge>
                 </td>
                 <td class="py-3 px-4">
-                  <span class="text-sm text-gray-600">{{ product.category?.name || 'Sin categoría' }}</span>
+                  <span class="text-sm text-gray-600">{{ product.brand || 'Sin proveedor' }}</span>
                 </td>
                 <td class="py-3 px-4 text-right">
                   <div class="flex items-center justify-end">
@@ -759,14 +759,40 @@ const closeImportModal = () => {
   }
 }
 
-const downloadTemplate = () => {
-  // Crear un enlace temporal para descargar el archivo
-  const link = document.createElement('a')
-  link.href = '/productos/descargar-plantilla'
-  link.download = 'plantilla_importacion_productos.xlsx'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+const downloadTemplate = async () => {
+  try {
+    // Usar fetch para descargar el archivo
+    const response = await fetch('/productos/descargar-plantilla', {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+
+    // Si la respuesta es un redirect (error), Inertia lo manejará
+    if (response.redirected || response.status !== 200) {
+      // Si hay un error, el servidor redirigirá con un mensaje
+      window.location.href = '/productos/descargar-plantilla'
+      return
+    }
+
+    // Obtener el blob del archivo
+    const blob = await response.blob()
+    
+    // Crear un enlace temporal para descargar
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'plantilla_importacion_productos.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Error al descargar plantilla:', error)
+    // Fallback: abrir en nueva ventana
+    window.open('/productos/descargar-plantilla', '_blank')
+  }
 }
 
 const submitImport = () => {

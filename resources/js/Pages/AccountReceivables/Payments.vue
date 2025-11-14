@@ -135,7 +135,7 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div v-if="payment.invoice" class="text-sm text-gray-900">
-                      {{ payment.invoice.invoice_number }}
+                      {{ payment.invoice.sale?.invoice_number || payment.invoice.invoice_number }}
                     </div>
                     <div v-else class="text-sm text-gray-400">Sin factura</div>
                   </td>
@@ -165,6 +165,13 @@
                       >
                         Ver
                       </Link>
+                      <button
+                        @click="printPaymentNote(payment)"
+                        class="text-blue-600 hover:text-blue-900"
+                        title="Imprimir Nota de Pago"
+                      >
+                        <Printer class="h-4 w-4" />
+                      </button>
                       <button
                         v-if="canApprovePayment(payment)"
                         @click="approvePayment(payment)"
@@ -249,7 +256,7 @@ import { Card, CardContent } from '@/Components/ui'
 import Pagination from '@/Components/Pagination.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useDebouncedRef } from '@/composables/useDebouncedRef'
-import { CreditCard } from 'lucide-vue-next'
+import { CreditCard, Printer } from 'lucide-vue-next'
 
 const { can } = usePermissions()
 
@@ -353,5 +360,9 @@ const submitCancellation = () => {
 const exportPayments = () => {
   const params = new URLSearchParams(filters.value)
   window.open(`/cuentas-por-cobrar/pagos/export?${params.toString()}`, '_blank')
+}
+
+const printPaymentNote = (payment) => {
+  window.open(`/cuentas-por-cobrar/pagos/${payment.id}/imprimir`, '_blank')
 }
 </script>

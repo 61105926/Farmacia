@@ -16,7 +16,8 @@ class InventoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Inventory::with(['product', 'creator']);
+        // Usar distinct para evitar duplicados
+        $query = Inventory::with(['product', 'creator'])->distinct();
 
         // Filtros
         if ($request->filled('search')) {
@@ -47,7 +48,11 @@ class InventoryController extends Controller
             $query->where('movement_date', '<=', $request->get('date_to'));
         }
 
-        $movements = $query->latest('movement_date')->paginate(20)->withQueryString();
+        // Ordenar por fecha y ID para evitar duplicados en la paginación
+        $movements = $query->orderBy('movement_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(20)
+            ->withQueryString();
 
         // Si no hay movimientos, crear algunos de prueba para demostración
         if ($movements->isEmpty() && Schema::hasTable('inventories')) {
@@ -85,7 +90,8 @@ class InventoryController extends Controller
 
     public function movements(Request $request)
     {
-        $query = Inventory::with(['product', 'creator']);
+        // Usar distinct para evitar duplicados
+        $query = Inventory::with(['product', 'creator'])->distinct();
 
         // Filtros específicos para movimientos
         if ($request->filled('product_id')) {
@@ -100,7 +106,11 @@ class InventoryController extends Controller
             $query->where('movement_date', '<=', $request->get('date_to'));
         }
 
-        $movements = $query->latest('movement_date')->paginate(15)->withQueryString();
+        // Ordenar por fecha y ID para evitar duplicados en la paginación
+        $movements = $query->orderBy('movement_date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(15)
+            ->withQueryString();
 
         return Inertia::render('Inventory/Movements', [
             'movements' => $movements,

@@ -142,7 +142,7 @@
                     <tr v-for="item in presale.items" :key="item.id" class="border-b">
                       <td class="py-3">
                         <div>
-                          <p class="font-medium">{{ item.product?.name || 'N/A' }}</p>
+                          <p class="font-medium">{{ item.product?.description || item.product?.name || 'N/A' }}</p>
                           <p class="text-sm text-gray-500">{{ item.product?.code || 'N/A' }}</p>
                         </div>
                       </td>

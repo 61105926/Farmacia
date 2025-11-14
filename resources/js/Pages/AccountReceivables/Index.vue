@@ -634,7 +634,17 @@ const formatPrice = (price) => {
 }
 
 const exportData = () => {
-  const params = new URLSearchParams(filters.value)
+  // Filtrar solo los valores que tienen contenido
+  const exportFilters = {}
+  if (filters.value.search) exportFilters.search = filters.value.search
+  if (filters.value.payment_status) exportFilters.payment_status = filters.value.payment_status
+  if (filters.value.client_id) exportFilters.client_id = filters.value.client_id
+  if (filters.value.date_from) exportFilters.date_from = filters.value.date_from
+  if (filters.value.date_to) exportFilters.date_to = filters.value.date_to
+  if (filters.value.overdue === true) exportFilters.overdue = '1'
+  if (filters.value.unpaid === true) exportFilters.unpaid = '1'
+  
+  const params = new URLSearchParams(exportFilters)
   window.open(`/cuentas-por-cobrar/export?${params.toString()}`, '_blank')
 }
 

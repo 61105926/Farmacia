@@ -30,6 +30,7 @@ class RolePermissionSeeder extends Seeder
             'clients.edit',
             'clients.delete',
             'clients.update',
+            'clients.export',
 
             // Gestión de productos
             'products.index',
@@ -86,14 +87,17 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate([
+                'name' => $permission,
+                'guard_name' => 'web'
+            ]);
         }
 
         // Crear roles
-        $adminRole = Role::create(['name' => 'Administrador']);
-        $vendedorRole = Role::create(['name' => 'Vendedor']);
-        $inventarioRole = Role::create(['name' => 'Inventario']);
-        $contadorRole = Role::create(['name' => 'Contador']);
+        $adminRole = Role::firstOrCreate(['name' => 'Administrador', 'guard_name' => 'web']);
+        $vendedorRole = Role::firstOrCreate(['name' => 'Vendedor', 'guard_name' => 'web']);
+        $inventarioRole = Role::firstOrCreate(['name' => 'Inventario', 'guard_name' => 'web']);
+        $contadorRole = Role::firstOrCreate(['name' => 'Contador', 'guard_name' => 'web']);
 
         // Asignar permisos a roles
 
@@ -102,7 +106,7 @@ class RolePermissionSeeder extends Seeder
 
         // Vendedor: puede ver y manejar clientes, productos, preventas y ventas
         $vendedorRole->givePermissionTo([
-            'clients.index', 'clients.view', 'clients.create', 'clients.edit', 'clients.update',
+            'clients.index', 'clients.view', 'clients.create', 'clients.edit', 'clients.update', 'clients.export',
             'products.index', 'products.view',
             'presales.index', 'presales.view', 'presales.create', 'presales.edit', 'presales.update',
             'sales.index', 'sales.view', 'sales.create', 'sales.edit', 'sales.update',
@@ -121,7 +125,7 @@ class RolePermissionSeeder extends Seeder
         $contadorRole->givePermissionTo([
             'receivables.index', 'receivables.view', 'receivables.create', 'receivables.edit', 'receivables.update',
             'reports.index', 'reports.view', 'reports.export',
-            'clients.index', 'clients.view',
+            'clients.index', 'clients.view', 'clients.export',
             'sales.index', 'sales.view'
         ]);
     }

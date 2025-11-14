@@ -1077,6 +1077,7 @@ class ProductController extends Controller
                     $existingProduct = DB::table('products')->where('code', $data['code'])->first();
                     
                     // Preparar datos para insertar/actualizar
+                    // IMPORTANTE: NO actualizar stock_quantity durante la importación para no afectar el recálculo
                     $productData = [
                         'name' => trim($data['name']),
                         'description' => !empty($data['description']) ? trim($data['description']) : null,
@@ -1088,13 +1089,18 @@ class ProductController extends Controller
                         'cost_price' => $data['cost_price'] ?? 0,
                         'base_price' => $data['cost_price'] ?? 0,
                         'sale_price' => $data['sale_price'] ?? 0,
-                        'stock_quantity' => (int)($data['stock_quantity'] ?? 0),
+                        // NO incluir stock_quantity aquí - solo se actualiza mediante movimientos de inventario
                         'min_stock' => (int)($data['min_stock'] ?? 0),
                         'max_stock' => 0,
                         'unit_type' => $data['unit_type'] ?? 'unit',
                         'is_active' => $data['is_active'] ?? true,
                         'updated_at' => now(),
                     ];
+                    
+                    // Solo establecer stock_quantity para productos NUEVOS (no actualizar en productos existentes)
+                    if (!$existingProduct) {
+                        $productData['stock_quantity'] = (int)($data['stock_quantity'] ?? 0);
+                    }
 
                     if ($existingProduct) {
                         // ACTUALIZAR producto existente
@@ -1189,89 +1195,54 @@ class ProductController extends Controller
     public function downloadTemplate()
     {
         try {
-            $spreadsheet = new Spreadsheet();
-            $sheet = $spreadsheet->getActiveSheet();
-
-            // Headers - Orden de columnas según formato del usuario
-            $headers = [
-                'Nombre',
-                'Código',
-                'Descripción',
-                'Categoría',
-                'Marca',
-                'Precio Costo',
-                'Precio Venta',
-                'Stock',
-                'Stock Mínimo',
-                'Tipo Unidad',
-                'Activo (1/0)',
-                'Código de Barras',
-                'Lote',
-                'Presentación'
-            ];
-
-            // Escribir headers manualmente
-            $col = 'A';
-            foreach ($headers as $header) {
-                $sheet->setCellValue($col . '1', $header);
-                $col++;
-            }
+            // Ruta del archivo de plantilla
+            $templatePath = public_path('producto/NUEVO.xlsx');
             
-            // Estilo para headers (hasta columna N que es la 14)
-            $sheet->getStyle('A1:N1')->getFont()->setBold(true);
-            $sheet->getStyle('A1:N1')->getFill()
-                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                ->getStartColor()->setARGB('FF4472C4');
-            $sheet->getStyle('A1:N1')->getFont()->getColor()->setARGB('FFFFFFFF');
-
-            // Auto-size columns (A hasta N)
-            foreach (range('A', 'N') as $col) {
-                $sheet->getColumnDimension($col)->setAutoSize(true);
-            }
-
-            // Ejemplo de datos - escribir manualmente
-            $exampleData = [
-                ['Paracetamol 500mg', 'PROD-001', 'Analgésico y antipirético', 'Medicamentos', 'Genérico', '5.50', '8.00', '100', '20', 'unit', '1', '1234567890123', 'LOTE-001', 'Tableta'],
-                ['Ibuprofeno 400mg', 'PROD-002', 'Antiinflamatorio', 'Medicamentos', 'Genérico', '6.00', '9.50', '80', '15', 'unit', '1', '1234567890124', 'LOTE-002', 'Cápsula'],
-            ];
-
-            $row = 2;
-            foreach ($exampleData as $dataRow) {
-                $col = 'A';
-                foreach ($dataRow as $value) {
-                    $sheet->setCellValue($col . $row, $value);
-                    $col++;
-                }
-                $row++;
-            }
-
-            // Crear writer
-            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
-            
-            // Usar storage temporal de Laravel
-            $filename = 'plantilla_importacion_productos.xlsx';
-            $tempPath = storage_path('app/temp/' . uniqid('template_', true) . '.xlsx');
-            
-            // Asegurar que el directorio existe
-            $tempDir = dirname($tempPath);
-            if (!is_dir($tempDir)) {
-                mkdir($tempDir, 0755, true);
-            }
-            
-            $writer->save($tempPath);
-
-            return response()->download($tempPath, $filename, [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            ])->deleteFileAfterSend(true);
-
-        } catch (\Exception $e) {
-            \Log::error('Error al generar plantilla Excel: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+            // Log para debugging
+            \Log::info('Descargando plantilla', [
+                'ruta' => $templatePath,
+                'existe' => file_exists($templatePath),
+                'es_legible' => is_readable($templatePath),
             ]);
             
-            // Si hay error, redirigir a la página de productos con mensaje
+            // Verificar que el archivo existe
+            if (!file_exists($templatePath)) {
+                \Log::error('Plantilla no encontrada', [
+                    'ruta' => $templatePath,
+                    'public_path' => public_path(),
+                    'directorio_existe' => is_dir(dirname($templatePath)),
+                ]);
+                return redirect()->route('products.index')
+                    ->with('error', 'La plantilla no se encuentra disponible. Por favor contacte al administrador.');
+            }
+
+            // Verificar que el archivo es legible
+            if (!is_readable($templatePath)) {
+                \Log::error('Plantilla no es legible', [
+                    'ruta' => $templatePath,
+                    'permisos' => substr(sprintf('%o', fileperms($templatePath)), -4),
+                ]);
+                return redirect()->route('products.index')
+                    ->with('error', 'La plantilla no es accesible. Por favor contacte al administrador.');
+            }
+
+            $filename = 'plantilla_importacion_productos.xlsx';
+
+            // Descargar el archivo
+            return response()->download($templatePath, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error al descargar plantilla Excel', [
+                'mensaje' => $e->getMessage(),
+                'archivo' => $e->getFile(),
+                'linea' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
             return redirect()->route('products.index')
-                ->with('error', 'Error al generar la plantilla: ' . $e->getMessage());
+                ->with('error', 'Error al descargar la plantilla: ' . $e->getMessage());
         }
     }
 }

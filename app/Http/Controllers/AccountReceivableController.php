@@ -152,7 +152,7 @@ class AccountReceivableController extends Controller
 
     public function payments(Request $request)
     {
-        $query = Payment::with(['client', 'invoice', 'creator', 'approver']);
+        $query = Payment::with(['client', 'invoice.sale', 'creator', 'approver']);
 
         // Filtros
         if ($request->filled('search')) {
@@ -200,6 +200,127 @@ class AccountReceivableController extends Controller
                 'search', 'status', 'payment_method', 'client_id', 'date_from', 'date_to'
             ]),
         ]);
+    }
+
+    public function exportPayments(Request $request)
+    {
+        try {
+            $query = Payment::with(['client', 'invoice.sale', 'creator', 'approver']);
+
+            // Aplicar mismos filtros que el método payments
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('payment_number', 'like', "%{$search}%")
+                      ->orWhereHas('client', function ($q) use ($search) {
+                          $q->where('business_name', 'like', "%{$search}%")
+                            ->orWhere('trade_name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('invoice', function ($q) use ($search) {
+                          $q->where('invoice_number', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->get('status'));
+            }
+
+            if ($request->filled('payment_method')) {
+                $query->where('payment_method', $request->get('payment_method'));
+            }
+
+            if ($request->filled('client_id')) {
+                $query->where('client_id', $request->get('client_id'));
+            }
+
+            if ($request->filled('date_from')) {
+                $query->where('payment_date', '>=', $request->get('date_from'));
+            }
+
+            if ($request->filled('date_to')) {
+                $query->where('payment_date', '<=', $request->get('date_to'));
+            }
+
+            $payments = $query->latest('payment_date')->get();
+
+            // Preparar datos para exportación con número de nota de pago
+            $data = $payments->map(function ($payment) {
+                $clientName = $payment->client 
+                    ? ($payment->client->business_name ?? $payment->client->trade_name ?? 'N/A')
+                    : 'N/A';
+                
+                $invoiceNumber = $payment->invoice 
+                    ? ($payment->invoice->sale->invoice_number ?? $payment->invoice->invoice_number)
+                    : 'Sin factura';
+
+                $paymentMethodLabel = 'N/A';
+                if ($payment->payment_method) {
+                    $methods = Payment::getPaymentMethods();
+                    $paymentMethodLabel = $methods[$payment->payment_method] ?? $payment->payment_method;
+                }
+
+                return [
+                    'Nota de Pago' => $payment->payment_number ?? 'N/A',
+                    'Fecha de Pago' => $payment->payment_date ? $payment->payment_date->format('d/m/Y') : 'N/A',
+                    'Hora' => $payment->payment_date ? $payment->payment_date->format('H:i') : 'N/A',
+                    'Cliente' => $clientName,
+                    'NIT' => $payment->client->tax_id ?? '',
+                    'Factura' => $invoiceNumber,
+                    'Monto' => number_format($payment->amount ?? 0, 2, ',', '.'),
+                    'Método de Pago' => $paymentMethodLabel,
+                    'Referencia' => $payment->payment_reference ?? '',
+                    'Banco' => $payment->bank_name ?? '',
+                    'Número de Cuenta' => $payment->account_number ?? '',
+                    'Número de Cheque' => $payment->check_number ?? '',
+                    'Estado' => $payment->status_label ?? 'N/A',
+                    'Registrado por' => $payment->creator ? $payment->creator->name : 'Sistema',
+                    'Fecha Registro' => $payment->created_at ? $payment->created_at->format('d/m/Y H:i') : 'N/A',
+                    'Aprobado por' => $payment->approver ? $payment->approver->name : '',
+                    'Fecha Aprobación' => $payment->approved_at ? $payment->approved_at->format('d/m/Y H:i') : '',
+                    'Observaciones' => $payment->notes ?? '',
+                ];
+            });
+
+            // Generar CSV
+            $filename = 'pagos_' . date('Y-m-d_His') . '.csv';
+            $headers = [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            ];
+
+            $callback = function() use ($data) {
+                $file = fopen('php://output', 'w');
+                
+                // BOM para UTF-8
+                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+                
+                if (!empty($data)) {
+                    // Headers
+                    fputcsv($file, array_keys($data[0]), ';');
+                    
+                    // Data
+                    foreach ($data as $row) {
+                        fputcsv($file, $row, ';');
+                    }
+                } else {
+                    // Si no hay datos, agregar una fila indicando que no hay registros
+                    fputcsv($file, ['No hay datos disponibles'], ';');
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+
+        } catch (\Exception $e) {
+            \Log::error('Error en exportPayments', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors(['error' => 'Error al exportar pagos: ' . $e->getMessage()]);
+        }
     }
 
     public function createPayment(Request $request)
@@ -289,11 +410,277 @@ class AccountReceivableController extends Controller
 
     public function showPayment(Payment $payment)
     {
-        $payment->load(['client', 'invoice', 'creator', 'approver']);
+        $payment->load(['client', 'invoice.sale', 'creator', 'approver']);
 
         return Inertia::render('AccountReceivables/PaymentShow', [
             'payment' => $payment,
         ]);
+    }
+
+    public function printPaymentNote(Payment $payment)
+    {
+        $payment->load(['client', 'invoice.sale', 'creator', 'approver']);
+
+        // Generar ticket térmico
+        $ticket = $this->generateThermalTicket($payment);
+
+        return response($ticket, 200, [
+            'Content-Type' => 'text/plain; charset=utf-8',
+            'Content-Disposition' => 'inline'
+        ]);
+    }
+
+    /**
+     * Generate thermal printer ticket for payment note
+     */
+    private function generateThermalTicket($payment): string
+    {
+        $lineWidth = 42; // Ancho típico para impresoras térmicas (80mm)
+
+        $ticket = "";
+
+        // Encabezado
+        $ticket .= $this->centerText("FARMACIA PANDO", $lineWidth) . "\n";
+        $ticket .= $this->centerText("NOTA DE PAGO", $lineWidth) . "\n";
+        $ticket .= str_repeat("=", $lineWidth) . "\n";
+        $ticket .= "\n";
+
+        // Número de nota y fecha
+        $ticket .= "Nº: " . $payment->payment_number . "\n";
+        $ticket .= "Fecha: " . $payment->payment_date->format('d/m/Y H:i') . "\n";
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $ticket .= "\n";
+
+        // Información del cliente
+        $ticket .= $this->centerText("DATOS DEL CLIENTE", $lineWidth) . "\n";
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        
+        if ($payment->client) {
+            $ticket .= "Razon Social:\n";
+            $ticket .= $this->wrapText($payment->client->business_name ?? 'N/A', $lineWidth) . "\n";
+            
+            if ($payment->client->trade_name) {
+                $ticket .= "Nombre Comercial:\n";
+                $ticket .= $this->wrapText($payment->client->trade_name, $lineWidth) . "\n";
+            }
+            
+            if ($payment->client->tax_id) {
+                $ticket .= "NIT: " . $payment->client->tax_id . "\n";
+            }
+            
+            if ($payment->client->address) {
+                $ticket .= "Direccion:\n";
+                $ticket .= $this->wrapText($payment->client->address, $lineWidth) . "\n";
+            }
+            
+            if ($payment->client->phone) {
+                $ticket .= "Telefono: " . $payment->client->phone . "\n";
+            }
+        }
+        
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $ticket .= "\n";
+
+        // Información del pago
+        $ticket .= $this->centerText("DATOS DEL PAGO", $lineWidth) . "\n";
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $ticket .= "Estado: " . strtoupper($payment->status_label) . "\n";
+        $ticket .= "Metodo: " . $payment->payment_method_label . "\n";
+        
+        if ($payment->payment_reference) {
+            $ticket .= "Referencia: " . $payment->payment_reference . "\n";
+        }
+        
+        if ($payment->bank_name) {
+            $ticket .= "Banco: " . $payment->bank_name . "\n";
+        }
+        
+        if ($payment->account_number) {
+            $ticket .= "Nº Cuenta: " . $payment->account_number . "\n";
+        }
+        
+        if ($payment->check_number) {
+            $ticket .= "Nº Cheque: " . $payment->check_number . "\n";
+        }
+        
+        if ($payment->invoice) {
+            // Usar el número de factura de la venta si existe, sino el de la factura
+            $invoiceNumber = $payment->invoice->sale->invoice_number ?? $payment->invoice->invoice_number;
+            $ticket .= "Factura: " . $invoiceNumber . "\n";
+        }
+        
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $ticket .= "\n";
+
+        // Monto del pago - Sección destacada
+        $ticket .= $this->centerText("RECIBI DE", $lineWidth) . "\n";
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $clientName = $payment->client 
+            ? ($payment->client->business_name ?? $payment->client->trade_name ?? 'N/A')
+            : 'N/A';
+        $ticket .= $this->centerText($this->truncateText($clientName, $lineWidth - 4), $lineWidth) . "\n";
+        $ticket .= "\n";
+        
+        $ticket .= $this->centerText("LA CANTIDAD DE", $lineWidth) . "\n";
+        $amountWords = $this->amountInWords($payment->amount);
+        $ticket .= $this->wrapText($amountWords, $lineWidth) . "\n";
+        $ticket .= "\n";
+        
+        $ticket .= $this->centerText("EL MONTO DE", $lineWidth) . "\n";
+        $ticket .= $this->centerText(number_format($payment->amount, 2, ',', '.') . " Bs.", $lineWidth) . "\n";
+        $ticket .= "\n";
+        
+        if ($payment->invoice) {
+            // Usar el número de factura de la venta si existe, sino el de la factura
+            $invoiceNumber = $payment->invoice->sale->invoice_number ?? $payment->invoice->invoice_number;
+            $ticket .= "En concepto de pago de la\n";
+            $ticket .= "factura: " . $invoiceNumber . "\n";
+            $ticket .= "\n";
+        }
+        
+        $ticket .= str_repeat("=", $lineWidth) . "\n";
+        $ticket .= "\n";
+
+        // Observaciones
+        if ($payment->notes) {
+            $ticket .= "OBSERVACIONES:\n";
+            $ticket .= str_repeat("-", $lineWidth) . "\n";
+            $ticket .= $this->wrapText($payment->notes, $lineWidth) . "\n";
+            $ticket .= "\n";
+        }
+
+        // Información de aprobación
+        if ($payment->approved_at && $payment->approver) {
+            $ticket .= "PAGO APROBADO\n";
+            $ticket .= str_repeat("-", $lineWidth) . "\n";
+            $ticket .= "Aprobado por: " . $payment->approver->name . "\n";
+            $ticket .= "Fecha: " . $payment->approved_at->format('d/m/Y H:i') . "\n";
+            $ticket .= "\n";
+        }
+
+        // Firmas
+        $ticket .= str_repeat("-", $lineWidth) . "\n";
+        $ticket .= "\n";
+        $ticket .= "RECIBIDO POR:\n";
+        $ticket .= ($payment->creator->name ?? 'Sistema') . "\n";
+        $ticket .= $payment->created_at->format('d/m/Y H:i') . "\n";
+        $ticket .= "\n";
+        $ticket .= "ENTREGADO POR:\n";
+        $ticket .= $this->truncateText($clientName, $lineWidth) . "\n";
+        $ticket .= "\n";
+        $ticket .= "\n";
+
+        // Footer
+        $ticket .= str_repeat("=", $lineWidth) . "\n";
+        $ticket .= $this->centerText("NOTA DE PAGO Nº " . $payment->payment_number, $lineWidth) . "\n";
+        $ticket .= $this->centerText("Gracias por su pago", $lineWidth) . "\n";
+        $ticket .= "\n";
+        $ticket .= "\n";
+        $ticket .= "\x1B" . "m"; // Corte de papel (ESC m para algunas impresoras)
+        $ticket .= "\n";
+
+        return $ticket;
+    }
+
+    private function centerText($text, $width): string
+    {
+        $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+        $textLength = mb_strlen($text);
+        $padding = max(0, ($width - $textLength) / 2);
+        return str_repeat(" ", (int)$padding) . $text;
+    }
+
+    private function truncateText($text, $length): string
+    {
+        $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+        if (mb_strlen($text) <= $length) {
+            return $text;
+        }
+        return mb_substr($text, 0, $length - 3) . '...';
+    }
+
+    private function wrapText($text, $width): string
+    {
+        $text = mb_convert_encoding($text, 'UTF-8', 'UTF-8');
+        $words = explode(' ', $text);
+        $lines = [];
+        $currentLine = '';
+
+        foreach ($words as $word) {
+            $testLine = $currentLine === '' ? $word : $currentLine . ' ' . $word;
+            if (mb_strlen($testLine) <= $width) {
+                $currentLine = $testLine;
+            } else {
+                if ($currentLine !== '') {
+                    $lines[] = $currentLine;
+                }
+                $currentLine = $word;
+            }
+        }
+        
+        if ($currentLine !== '') {
+            $lines[] = $currentLine;
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function amountInWords($amount): string
+    {
+        if (!is_numeric($amount) || $amount == 0) {
+            return 'Cero bolivianos';
+        }
+
+        $ones = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'];
+        $tens = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+        $teens = ['diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
+        $hundreds = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+
+        $num = (int)floor($amount);
+        $cents = (int)round(($amount - $num) * 100);
+
+        $convert = function($n) use ($ones, $tens, $teens, $hundreds, &$convert) {
+            if ($n == 0) return '';
+            if ($n < 10) return $ones[$n];
+            if ($n < 20) return $teens[$n - 10];
+            if ($n < 100) {
+                $ten = (int)floor($n / 10);
+                $one = $n % 10;
+                if ($one == 0) return $tens[$ten];
+                if ($ten == 1) return 'dieci' . $ones[$one];
+                return $tens[$ten] . ($one > 0 ? ' y ' . $ones[$one] : '');
+            }
+            if ($n < 1000) {
+                $hundred = (int)floor($n / 100);
+                $remainder = $n % 100;
+                if ($hundred == 1 && $remainder == 0) return 'cien';
+                return $hundreds[$hundred] . ($remainder > 0 ? ' ' . $convert($remainder) : '');
+            }
+            if ($n < 1000000) {
+                $thousand = (int)floor($n / 1000);
+                $remainder = $n % 1000;
+                $thousandText = $thousand == 1 ? 'mil' : $convert($thousand) . ' mil';
+                return $thousandText . ($remainder > 0 ? ' ' . $convert($remainder) : '');
+            }
+            return 'Número muy grande';
+        };
+
+        $result = $convert($num);
+        if ($num == 0) {
+            $result = 'Cero';
+        } elseif ($num == 1) {
+            $result = 'Un';
+        }
+
+        $result = mb_strtoupper(mb_substr($result, 0, 1)) . mb_substr($result, 1);
+        $result .= ' bolivianos';
+
+        if ($cents > 0) {
+            $centsText = $convert($cents);
+            $result .= ' con ' . $centsText . ' centavos';
+        }
+
+        return $result;
     }
 
     public function approvePayment(Payment $payment)
@@ -415,90 +802,144 @@ class AccountReceivableController extends Controller
 
     public function export(Request $request)
     {
-        $query = Invoice::with(['client', 'creator', 'payments'])
-            ->where('status', '!=', 'cancelled')
-            ->where('total', '>', 0);
+        try {
+            $query = Invoice::with(['client', 'creator', 'payments'])
+                ->where('status', '!=', 'cancelled')
+                ->where('total', '>', 0);
 
-        // Aplicar mismos filtros que el index
-        if ($request->filled('search')) {
-            $search = $request->get('search');
-            $query->where(function ($q) use ($search) {
-                $q->where('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('client_name', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('payment_status')) {
-            $query->where('payment_status', $request->get('payment_status'));
-        }
-
-        if ($request->filled('client_id')) {
-            $query->where('client_id', $request->get('client_id'));
-        }
-
-        if ($request->filled('date_from')) {
-            $query->where('invoice_date', '>=', $request->get('date_from'));
-        }
-
-        if ($request->filled('date_to')) {
-            $query->where('invoice_date', '<=', $request->get('date_to'));
-        }
-
-        if ($request->filled('overdue')) {
-            $query->overdue();
-        }
-
-        if ($request->filled('unpaid')) {
-            $query->unpaid();
-        }
-
-        $invoices = $query->latest('invoice_date')->get();
-
-        // Generar CSV
-        $filename = 'cuentas_por_cobrar_' . date('Y-m-d') . '.csv';
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function() use ($invoices) {
-            $file = fopen('php://output', 'w');
-            
-            // BOM para UTF-8
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // Headers
-            fputcsv($file, [
-                'Número de Factura',
-                'Cliente',
-                'Fecha',
-                'Vencimiento',
-                'Total',
-                'Pagado',
-                'Saldo',
-                'Estado de Pago',
-                'Estado'
-            ]);
-
-            // Data
-            foreach ($invoices as $invoice) {
-                fputcsv($file, [
-                    $invoice->invoice_number,
-                    $invoice->client_name,
-                    $invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : '',
-                    $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '',
-                    number_format($invoice->total, 2, '.', ''),
-                    number_format($invoice->paid_amount, 2, '.', ''),
-                    number_format($invoice->balance, 2, '.', ''),
-                    $invoice->payment_status === 'paid' ? 'Pagado' : ($invoice->payment_status === 'partial' ? 'Parcial' : 'Sin Pagar'),
-                    $invoice->status,
-                ]);
+            // Aplicar mismos filtros que el index
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where('invoice_number', 'like', "%{$search}%")
+                      ->orWhere('client_name', 'like', "%{$search}%");
+                });
             }
 
-            fclose($file);
-        };
+            if ($request->filled('payment_status')) {
+                $query->where('payment_status', $request->get('payment_status'));
+            }
 
-        return response()->stream($callback, 200, $headers);
+            if ($request->filled('client_id')) {
+                $query->where('client_id', $request->get('client_id'));
+            }
+
+            if ($request->filled('date_from')) {
+                $query->where('invoice_date', '>=', $request->get('date_from'));
+            }
+
+            if ($request->filled('date_to')) {
+                $query->where('invoice_date', '<=', $request->get('date_to'));
+            }
+
+            if ($request->filled('overdue')) {
+                $query->overdue();
+            }
+
+            if ($request->filled('unpaid')) {
+                $query->unpaid();
+            }
+
+            $invoices = $query->latest('invoice_date')->get();
+
+            // Log para depuración
+            \Log::info('Export cuentas por cobrar', [
+                'total_invoices' => $invoices->count(),
+                'filters' => $request->all(),
+            ]);
+
+            // Generar CSV
+            $filename = 'cuentas_por_cobrar_' . date('Y-m-d') . '.csv';
+            $headers = [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            ];
+
+            $callback = function() use ($invoices) {
+                $file = fopen('php://output', 'w');
+                
+                // BOM para UTF-8
+                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+                
+                // Headers
+                fputcsv($file, [
+                    'Número de Factura',
+                    'Cliente',
+                    'Fecha',
+                    'Vencimiento',
+                    'Total',
+                    'Pagado',
+                    'Saldo',
+                    'Estado de Pago',
+                    'Estado'
+                ], ';'); // Usar punto y coma como delimitador para mejor compatibilidad con Excel
+
+                // Data
+                if ($invoices->count() === 0) {
+                    // Si no hay datos, agregar una fila indicando que no hay registros
+                    fputcsv($file, [
+                        'No hay datos disponibles',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        ''
+                    ], ';');
+                } else {
+                    foreach ($invoices as $invoice) {
+                        try {
+                            $invoiceDate = $invoice->invoice_date 
+                                ? (is_string($invoice->invoice_date) ? date('d/m/Y', strtotime($invoice->invoice_date)) : $invoice->invoice_date->format('d/m/Y'))
+                                : '';
+                            
+                            $dueDate = $invoice->due_date 
+                                ? (is_string($invoice->due_date) ? date('d/m/Y', strtotime($invoice->due_date)) : $invoice->due_date->format('d/m/Y'))
+                                : '';
+
+                            $paymentStatusLabel = 'Sin Pagar';
+                            if ($invoice->payment_status === 'paid') {
+                                $paymentStatusLabel = 'Pagado';
+                            } elseif ($invoice->payment_status === 'partial') {
+                                $paymentStatusLabel = 'Parcial';
+                            }
+
+                            fputcsv($file, [
+                                $invoice->invoice_number ?? '',
+                                $invoice->client_name ?? ($invoice->client ? ($invoice->client->business_name ?? $invoice->client->trade_name ?? '') : ''),
+                                $invoiceDate,
+                                $dueDate,
+                                number_format($invoice->total ?? 0, 2, '.', ''),
+                                number_format($invoice->paid_amount ?? 0, 2, '.', ''),
+                                number_format($invoice->balance ?? 0, 2, '.', ''),
+                                $paymentStatusLabel,
+                                $invoice->status ?? '',
+                            ], ';');
+                        } catch (\Exception $e) {
+                            \Log::error('Error procesando factura en export', [
+                                'invoice_id' => $invoice->id ?? 'N/A',
+                                'error' => $e->getMessage(),
+                            ]);
+                            // Continuar con la siguiente factura
+                            continue;
+                        }
+                    }
+                }
+
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        } catch (\Exception $e) {
+            \Log::error('Error en export cuentas por cobrar', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->withErrors(['error' => 'Error al exportar datos: ' . $e->getMessage()]);
+        }
     }
 
     public function getClientInvoices(Request $request, $clientId)

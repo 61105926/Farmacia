@@ -23,6 +23,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/{client}', [ClientController::class, 'update'])->middleware('permission:clients.update')->name('update');
         Route::delete('/{client}', [ClientController::class, 'destroy'])->middleware('permission:clients.delete')->name('destroy');
         Route::get('/exportar', [ClientController::class, 'export'])->middleware('permission:clients.export')->name('export');
+        Route::get('/exportar/csv', [ClientController::class, 'export'])->middleware('permission:clients.export')->name('export.csv');
         
         // Funcionalidades avanzadas
         Route::post('/{client}/toggle-status', [ClientController::class, 'toggleStatus'])->middleware('permission:clients.update')->name('toggle-status');
@@ -63,6 +64,18 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [ProductController::class, 'index'])->name('index');
         Route::get('/crear', [ProductController::class, 'create'])->name('create');
         Route::post('/', [ProductController::class, 'store'])->name('store');
+        
+        // Rutas específicas ANTES de las rutas con parámetros
+        Route::get('/inventario', [ProductController::class, 'inventory'])->name('inventory');
+        Route::get('/stock-bajo', [ProductController::class, 'lowStock'])->name('low-stock');
+        Route::get('/sin-stock', [ProductController::class, 'outOfStock'])->name('out-of-stock');
+        Route::get('/categorias', [ProductController::class, 'categories'])->name('categories');
+        
+        // Importación desde Excel - ANTES de las rutas con parámetros
+        Route::post('/importar-excel', [ProductController::class, 'importExcel'])->name('import-excel');
+        Route::get('/descargar-plantilla', [ProductController::class, 'downloadTemplate'])->name('download-template');
+        
+        // Rutas con parámetros DESPUÉS de las rutas específicas
         Route::get('/{product}', [ProductController::class, 'show'])->name('show');
         Route::get('/{product}/editar', [ProductController::class, 'edit'])->name('edit');
         Route::put('/{product}', [ProductController::class, 'update'])->name('update');
@@ -73,14 +86,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{product}/update-stock', [ProductController::class, 'updateStock'])->name('update-stock');
         Route::post('/{product}/ajustar-stock', [ProductController::class, 'adjustStock'])->name('adjust-stock');
         Route::get('/{product}/historial-stock', [ProductController::class, 'stockHistory'])->name('stock-history');
-        Route::get('/inventario', [ProductController::class, 'inventory'])->name('inventory');
-        Route::get('/stock-bajo', [ProductController::class, 'lowStock'])->name('low-stock');
-        Route::get('/sin-stock', [ProductController::class, 'outOfStock'])->name('out-of-stock');
-        Route::get('/categorias', [ProductController::class, 'categories'])->name('categories');
-        
-        // Importación desde Excel
-        Route::post('/importar-excel', [ProductController::class, 'importExcel'])->name('import-excel');
-        Route::get('/descargar-plantilla', [ProductController::class, 'downloadTemplate'])->name('download-template');
     });
 
     // Inventario
@@ -141,8 +146,10 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('cuentas-por-cobrar')->name('account-receivables.')->group(function () {
         Route::get('/', [App\Http\Controllers\AccountReceivableController::class, 'index'])->name('index');
         Route::get('/pagos/listado', [App\Http\Controllers\AccountReceivableController::class, 'payments'])->name('payments');
+        Route::get('/pagos/export', [App\Http\Controllers\AccountReceivableController::class, 'exportPayments'])->name('payments.export');
         Route::post('/pagos', [App\Http\Controllers\AccountReceivableController::class, 'createPayment'])->name('payment.create');
         Route::get('/pagos/{payment}', [App\Http\Controllers\AccountReceivableController::class, 'showPayment'])->name('payment.show');
+        Route::get('/pagos/{payment}/imprimir', [App\Http\Controllers\AccountReceivableController::class, 'printPaymentNote'])->name('payment.print');
         Route::post('/pagos/{payment}/aprobar', [App\Http\Controllers\AccountReceivableController::class, 'approvePayment'])->name('payment.approve');
         Route::post('/pagos/{payment}/cancelar', [App\Http\Controllers\AccountReceivableController::class, 'cancelPayment'])->name('payment.cancel');
         Route::get('/vencidas', [App\Http\Controllers\AccountReceivableController::class, 'overdue'])->name('overdue');

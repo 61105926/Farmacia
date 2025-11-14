@@ -166,7 +166,7 @@
                         >
                           <option value="">Seleccionar producto</option>
                           <option v-for="product in products" :key="product.id" :value="product.id">
-                            {{ product.name }} ({{ product.code }}) - Stock: {{ product.stock_quantity }}
+                            {{ product.description || product.name || 'Sin descripción' }} ({{ product.code }}) - Stock: {{ product.stock_quantity }}
                           </option>
                         </select>
                       </div>
