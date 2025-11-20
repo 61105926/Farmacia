@@ -25,6 +25,7 @@ class Product extends Model
         'unit_type',
         'is_active',
         'notes',
+        'expiry_date',
         'created_by',
         'updated_by',
     ];
@@ -33,6 +34,7 @@ class Product extends Model
         'cost_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
         'is_active' => 'boolean',
+        'expiry_date' => 'date',
     ];
 
     // Relaciones

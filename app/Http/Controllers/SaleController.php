@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Presale;
+use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -123,7 +124,7 @@ class SaleController extends Controller
                 if (\Schema::hasTable('products')) {
                     $products = \DB::table('products')
                         ->where('is_active', true)
-                        ->select('id', 'name', 'code', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock')
+                        ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock')
                         ->get()
                         ->toArray();
                 }
@@ -198,7 +199,7 @@ class SaleController extends Controller
                 'items.*.discount' => 'nullable|numeric|min:0|max:100',
                 'payment_method' => 'required|in:cash,credit,transfer',
                 'payment_status' => 'nullable|in:paid,pending,partial',
-                'invoice_number' => 'nullable|string|max:50',
+                'invoice_number' => 'required|string|max:50',
                 'notes' => 'nullable|string|max:1000',
                 'delivery_date' => 'nullable|date',
             ], [
@@ -207,6 +208,7 @@ class SaleController extends Controller
                 'items.min' => 'Debe agregar al menos un producto.',
                 'payment_method.required' => 'Debe seleccionar un método de pago.',
                 'payment_method.in' => 'El método de pago seleccionado no es válido.',
+                'invoice_number.required' => 'El número de factura es obligatorio.',
                 'delivery_date.after_or_equal' => 'La fecha de entrega no puede ser anterior a hoy.',
             ]);
         } catch (ValidationException $e) {
@@ -463,7 +465,7 @@ class SaleController extends Controller
                 ->select('id', 'business_name', 'trade_name')
                 ->get(),
             'products' => Product::where('is_active', true)
-                ->select('id', 'name', 'code', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock')
+                ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock')
                 ->get(),
             'salespeople' => User::whereHas('roles', fn($q) => $q->where('name', 'vendedor-ventas'))
                 ->select('id', 'name')
@@ -491,7 +493,7 @@ class SaleController extends Controller
             'items.*.discount_percentage' => 'nullable|numeric|min:0|max:100', // Para compatibilidad
             'payment_method' => 'required|in:cash,credit,transfer',
             'payment_status' => 'required|in:paid,pending,partial',
-            'invoice_number' => 'nullable|string|max:50',
+            'invoice_number' => 'required|string|max:50',
             'notes' => 'nullable|string|max:1000',
             'delivery_date' => 'nullable|date',
         ], [
@@ -602,19 +604,47 @@ class SaleController extends Controller
             return back()->with('error', 'Solo se pueden eliminar ventas en estado borrador.');
         }
 
+        DB::beginTransaction();
         try {
+            // Obtener todas las facturas relacionadas con esta venta
+            $invoices = Invoice::where('sale_id', $sale->id)->get();
+            
+            // Eliminar pagos, receivables e items relacionados con cada factura
+            foreach ($invoices as $invoice) {
+                // Eliminar todos los pagos de la factura
+                $invoice->payments()->delete();
+                
+                // Eliminar receivables relacionados (cuentas por cobrar)
+                $invoice->receivables()->delete();
+                
+                // Eliminar items de la factura (aunque tienen cascade, lo hacemos explícitamente)
+                $invoice->items()->delete();
+                
+                // Eliminar la factura
+                $invoice->delete();
+            }
+
+            // Eliminar items de la venta
+            $sale->items()->delete();
+
+            // Eliminar la venta
             $sale->delete();
 
-            \Log::info('SaleController destroy - Venta eliminada', [
+            DB::commit();
+
+            \Log::info('SaleController destroy - Venta eliminada con facturas y pagos relacionados', [
                 'sale_id' => $sale->id,
+                'invoices_deleted' => $invoices->count(),
                 'user_id' => auth()->id(),
             ]);
 
-            return back()->with('success', 'Venta eliminada exitosamente.');
+            return back()->with('success', 'Venta eliminada exitosamente. Se eliminaron ' . $invoices->count() . ' factura(s) relacionada(s) y sus pagos.');
         } catch (\Exception $e) {
+            DB::rollBack();
             \Log::error('SaleController destroy - Error:', [
                 'sale_id' => $sale->id,
                 'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return back()->with('error', 'Error al eliminar la venta: ' . $e->getMessage());
         }

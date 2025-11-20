@@ -209,7 +209,12 @@
                   <tbody class="bg-white divide-y divide-gray-200">
                     <tr v-for="invoice in invoices.data" :key="invoice.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">{{ invoice.invoice_number }}</div>
+                        <div class="text-sm font-medium text-gray-900">
+                          {{ invoice.sale?.invoice_number || invoice.invoice_number }}
+                        </div>
+                        <div v-if="invoice.sale?.invoice_number && invoice.invoice_number" class="text-xs text-gray-500">
+                          Ref: {{ invoice.invoice_number }}
+                        </div>
                       </td>
                       <td class="px-6 py-4">
                         <div class="text-sm text-gray-900">{{ invoice.client_name }}</div>

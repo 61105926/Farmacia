@@ -368,6 +368,57 @@
         </Card>
       </div>
 
+      <!-- Products Expiring Soon -->
+      <Card v-if="expiringProducts && expiringProducts.length > 0">
+        <CardHeader>
+          <CardTitle class="flex items-center">
+            <AlertTriangle class="h-5 w-5 mr-2 text-orange-500" />
+            Productos Próximos a Vencer
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha de Vencimiento</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="product in expiringProducts" :key="product.id" 
+                    class="hover:bg-gray-50"
+                    :class="getExpiringProductRowClass(product)">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
+                    <div v-if="product.description" class="text-sm text-gray-500">{{ product.description }}</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ product.code }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ product.stock_quantity }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm" :class="getExpiryDateTextClass(product)">
+                    {{ formatDate(product.expiry_date) }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <Badge :variant="getExpiringProductBadgeVariant(product)">
+                      {{ getExpiringProductStatusText(product) }}
+                    </Badge>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <Link :href="`/productos/${product.id}`" class="text-primary-600 hover:text-primary-900">
+                      Ver detalles
+                    </Link>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       <!-- Quick Actions -->
       <Card>
         <CardHeader>
@@ -417,7 +468,7 @@ import Badge from '@/Components/ui/Badge.vue'
 import { 
   Users, Building2, Package, ShoppingCart, User, 
   AlertCircle, AlertTriangle, Info, TrendingUp, TrendingDown,
-  FileText
+  FileText, Calendar
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -433,6 +484,7 @@ const props = defineProps({
   userStats: Object,
   alerts: Array,
   performanceMetrics: Object,
+  expiringProducts: Array,
   error: String
 })
 
@@ -447,7 +499,19 @@ const formatCurrency = (amount) => {
 
 const formatDate = (date) => {
   if (!date) return 'N/A'
-  return new Date(date).toLocaleDateString('es-BO')
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    if (isNaN(dateObj.getTime())) {
+      return 'N/A'
+    }
+    return dateObj.toLocaleDateString('es-BO', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+  } catch (e) {
+    return 'N/A'
+  }
 }
 
 const getAlertClasses = (type) => {
@@ -479,5 +543,33 @@ const getOrderStatusText = (status) => {
     cancelled: 'Cancelada'
   }
   return texts[status] || status
+}
+
+const getExpiringProductRowClass = (product) => {
+  if (product.is_expired) return 'bg-red-50'
+  if (product.is_expiring_soon) return 'bg-orange-50'
+  return ''
+}
+
+const getExpiryDateTextClass = (product) => {
+  if (product.is_expired) return 'text-red-600 font-medium'
+  if (product.is_expiring_soon) return 'text-orange-600 font-medium'
+  return 'text-gray-900'
+}
+
+const getExpiringProductBadgeVariant = (product) => {
+  if (product.is_expired) return 'danger'
+  if (product.is_expiring_soon) return 'warning'
+  return 'info'
+}
+
+const getExpiringProductStatusText = (product) => {
+  if (product.is_expired) {
+    return `Vencido hace ${Math.abs(product.days_until_expiry)} días`
+  }
+  if (product.is_expiring_soon) {
+    return `Vence en ${product.days_until_expiry} días`
+  }
+  return `Vence en ${product.days_until_expiry} días`
 }
 </script>

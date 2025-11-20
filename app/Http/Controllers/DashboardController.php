@@ -53,6 +53,9 @@ class DashboardController extends Controller
             
             // Métricas de rendimiento
             $performanceMetrics = $this->getPerformanceMetrics();
+            
+            // Productos próximos a vencer
+            $expiringProducts = $this->getExpiringProducts();
 
             return Inertia::render('Dashboard', [
                 'user' => $user,
@@ -67,6 +70,7 @@ class DashboardController extends Controller
                 'userStats' => $this->sanitizeData($userStats),
                 'alerts' => $this->sanitizeData($alerts),
                 'performanceMetrics' => $this->sanitizeData($performanceMetrics),
+                'expiringProducts' => $this->sanitizeData($expiringProducts),
             ]);
             
         } catch (\Exception $e) {
@@ -268,6 +272,20 @@ class DashboardController extends Controller
             ];
         }
         
+        // Productos próximos a vencer
+        $expiringProductsCount = Product::whereNotNull('expiry_date')
+            ->where('expiry_date', '<=', Carbon::today()->addDays(90))
+            ->where('is_active', true)
+            ->count();
+        if ($expiringProductsCount > 0) {
+            $alerts[] = [
+                'type' => 'warning',
+                'title' => 'Productos Próximos a Vencer',
+                'message' => "{$expiringProductsCount} productos vencen en los próximos 90 días",
+                'action' => '/productos?filter=expiring'
+            ];
+        }
+        
         // Facturas vencidas
         $overdueInvoices = Invoice::where('due_date', '<', now())
             ->where('payment_status', '!=', 'paid')
@@ -349,6 +367,36 @@ class DashboardController extends Controller
         }
         
         return $metrics;
+    }
+    
+    private function getExpiringProducts()
+    {
+        $today = Carbon::today();
+        $ninetyDaysFromNow = Carbon::today()->addDays(90);
+        
+        // Productos vencidos o que vencen en los próximos 90 días
+        return Product::whereNotNull('expiry_date')
+            ->where('expiry_date', '<=', $ninetyDaysFromNow)
+            ->where('is_active', true)
+            ->orderBy('expiry_date', 'asc')
+            ->limit(10)
+            ->get()
+            ->map(function ($product) use ($today) {
+                $expiryDate = Carbon::parse($product->expiry_date);
+                $daysUntilExpiry = $today->diffInDays($expiryDate, false);
+                
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'code' => $product->code,
+                    'description' => $product->description,
+                    'expiry_date' => $expiryDate->format('Y-m-d'),
+                    'stock_quantity' => $product->stock_quantity,
+                    'days_until_expiry' => $daysUntilExpiry,
+                    'is_expired' => $expiryDate < $today,
+                    'is_expiring_soon' => $daysUntilExpiry > 0 && $daysUntilExpiry <= 30,
+                ];
+            });
     }
     
     private function getDefaultStats()

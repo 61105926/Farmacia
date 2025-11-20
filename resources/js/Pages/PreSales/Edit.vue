@@ -107,7 +107,7 @@
                   >
                     <option value="">Seleccionar</option>
                     <option v-for="product in products" :key="product.id" :value="product.id">
-                      {{ product.description || product.name || 'Sin descripción' }}
+                      {{ product.name || 'N/A' }}{{ product.description ? ' - ' + product.description : '' }}
                     </option>
                   </select>
                 </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\Inventory;
 use App\Helpers\InertiaHelper;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -84,9 +85,23 @@ class ProductController extends Controller
 
             $products = $query->latest()->paginate(15)->withQueryString();
 
-            // Agregar acciones disponibles a cada producto
+            // Agregar acciones disponibles y fecha de vencimiento a cada producto
             $products->getCollection()->transform(function ($product) {
                 $product->availableActions = $this->getAvailableActions($product);
+                
+                // Obtener la fecha de vencimiento más próxima del inventario
+                if (Schema::hasTable('inventories')) {
+                    $nearestExpiry = Inventory::where('product_id', $product->id)
+                        ->whereNotNull('expiry_date')
+                        ->where('expiry_date', '>=', now()->toDateString())
+                        ->orderBy('expiry_date', 'asc')
+                        ->value('expiry_date');
+                    
+                    $product->nearest_expiry_date = $nearestExpiry;
+                } else {
+                    $product->nearest_expiry_date = null;
+                }
+                
                 return $product;
             });
 
@@ -198,6 +213,7 @@ class ProductController extends Controller
             'max_stock' => 'nullable|integer|min:0',
             'unit_type' => 'nullable|string|max:50',
             'is_active' => 'boolean',
+            'expiry_date' => 'nullable|date',
         ]);
 
 
@@ -230,6 +246,7 @@ class ProductController extends Controller
                 'max_stock' => $validated['max_stock'] ?? 0,
                 'unit_type' => $validated['unit_type'] ?? 'unit',
                 'is_active' => $validated['is_active'] ?? true,
+                'expiry_date' => $validated['expiry_date'] ?? null,
                 'created_by' => auth()->id(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -384,6 +401,13 @@ class ProductController extends Controller
                 }
             }
             
+            // Manejar expiry_date - puede ser null o string vacío
+            if (isset($data['expiry_date'])) {
+                if ($data['expiry_date'] === null || $data['expiry_date'] === '' || $data['expiry_date'] === 'null') {
+                    $data['expiry_date'] = null;
+                }
+            }
+            
             $validated = validator($data, [
                 'name' => 'required|string|max:255',
                 'code' => 'required|string|max:50|unique:products,code,' . $product->id,
@@ -405,6 +429,7 @@ class ProductController extends Controller
                 'requires_prescription' => 'sometimes|boolean',
                 'is_controlled' => 'sometimes|boolean',
                 'is_active' => 'sometimes|boolean',
+                'expiry_date' => 'nullable|date',
             ])->validate();
             // Generar slug si cambió el nombre
             $updateData = [
@@ -417,6 +442,7 @@ class ProductController extends Controller
                 'dosage' => !empty($validated['dosage']) ? $validated['dosage'] : null,
                 'presentation' => !empty($validated['presentation']) ? $validated['presentation'] : null,
                 'barcode' => !empty($validated['barcode']) ? $validated['barcode'] : null,
+                'expiry_date' => $validated['expiry_date'] ?? null,
                 'cost_price' => $validated['cost_price'],
                 'base_price' => $validated['base_price'] ?? $validated['cost_price'],
                 'sale_price' => $validated['sale_price'],
@@ -428,6 +454,7 @@ class ProductController extends Controller
                 'requires_prescription' => $validated['requires_prescription'] ?? false,
                 'is_controlled' => $validated['is_controlled'] ?? false,
                 'is_active' => $validated['is_active'] ?? true,
+                'expiry_date' => $validated['expiry_date'] ?? null,
                 'updated_by' => auth()->id(),
                 'updated_at' => now(),
             ];

@@ -57,12 +57,15 @@
                     v-model="form.tax_id"
                     type="text"
                     required
+                    @keypress="onlyNumbersAndHyphen"
+                    placeholder="123456789"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     :class="{ 'border-red-500': form.errors.tax_id }"
                   />
                   <span v-if="form.errors.tax_id" class="text-sm text-red-600">
                     {{ form.errors.tax_id }}
                   </span>
+                  <p class="text-xs text-gray-500 mt-1">Solo números y guiones</p>
                 </div>
 
                 <!-- Type and Category -->
@@ -110,8 +113,16 @@
                     <input
                       v-model="form.phone"
                       type="tel"
+                      @input="validatePhone"
+                      @keypress="onlyNumbersAndPhoneChars"
+                      placeholder="Ej: 591-3-8421234"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                      :class="{ 'border-red-500': form.errors.phone }"
                     />
+                    <span v-if="form.errors.phone" class="text-sm text-red-600">
+                      {{ form.errors.phone }}
+                    </span>
+                    <p class="text-xs text-gray-500 mt-1">Solo números, espacios, guiones y paréntesis</p>
                   </div>
 
                   <div>
@@ -121,8 +132,17 @@
                     <input
                       v-model="form.email"
                       type="email"
+                      @blur="validateEmail"
+                      placeholder="ejemplo@correo.com"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                      :class="{ 'border-red-500': form.errors.email || emailError }"
                     />
+                    <span v-if="form.errors.email" class="text-sm text-red-600">
+                      {{ form.errors.email }}
+                    </span>
+                    <span v-if="emailError && !form.errors.email" class="text-sm text-red-600">
+                      {{ emailError }}
+                    </span>
                   </div>
                 </div>
 
@@ -226,8 +246,13 @@
                     step="0.01"
                     min="0"
                     max="100"
+                    @keypress="onlyNumbersAndDecimal"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :class="{ 'border-red-500': form.errors.default_discount }"
                   />
+                  <span v-if="form.errors.default_discount" class="text-sm text-red-600">
+                    {{ form.errors.default_discount }}
+                  </span>
                 </div>
 
                 <!-- Credit Limit -->
@@ -240,8 +265,13 @@
                     type="number"
                     step="0.01"
                     min="0"
+                    @keypress="onlyNumbersAndDecimal"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :class="{ 'border-red-500': form.errors.credit_limit }"
                   />
+                  <span v-if="form.errors.credit_limit" class="text-sm text-red-600">
+                    {{ form.errors.credit_limit }}
+                  </span>
                 </div>
 
                 <!-- Salesperson -->
@@ -303,10 +333,10 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useForm, Link } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
-
 
 const props = defineProps({
   priceLists: Array,
@@ -314,6 +344,8 @@ const props = defineProps({
   salespeople: Array,
   collectors: Array,
 })
+
+const emailError = ref('')
 
 const form = useForm({
   business_name: '',
@@ -340,7 +372,52 @@ const form = useForm({
   notes: '',
 })
 
+// Validaciones
+const onlyNumbersAndPhoneChars = (event) => {
+  const char = String.fromCharCode(event.which)
+  // Permitir números, espacios, guiones, paréntesis, + y punto
+  if (!/[0-9\s\-\(\)\+\.]/.test(char)) {
+    event.preventDefault()
+  }
+}
+
+const validatePhone = () => {
+  // Limpiar caracteres no permitidos
+  form.phone = form.phone.replace(/[^0-9\s\-\(\)\+\.]/g, '')
+}
+
+const onlyNumbersAndHyphen = (event) => {
+  const char = String.fromCharCode(event.which)
+  if (!/[0-9\-]/.test(char)) {
+    event.preventDefault()
+  }
+}
+
+const onlyNumbersAndDecimal = (event) => {
+  const char = String.fromCharCode(event.which)
+  // Permitir números y punto decimal
+  if (!/[0-9.]/.test(char)) {
+    event.preventDefault()
+  }
+  // Evitar múltiples puntos decimales
+  const input = event.target
+  if (char === '.' && input.value.includes('.')) {
+    event.preventDefault()
+  }
+}
+
+const validateEmail = () => {
+  emailError.value = ''
+  if (form.email && form.email.trim() !== '') {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.email)) {
+      emailError.value = 'Por favor ingrese un email válido'
+    }
+  }
+}
+
 const submit = () => {
+  emailError.value = ''
   form.post("/clientes")
 }
 </script>

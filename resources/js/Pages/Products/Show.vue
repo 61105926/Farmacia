@@ -58,29 +58,62 @@
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Marca/Laboratorio</label>
-                  <div class="text-sm text-gray-900">{{ product.brand || '—' }}</div>
+                  <div class="text-sm text-gray-900">{{ formatField(product.brand) }}</div>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Principio activo</label>
-                  <div class="text-sm text-gray-900">{{ product.active_ingredient || '—' }}</div>
+                  <div class="text-sm text-gray-900">{{ formatField(product.active_ingredient) }}</div>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Dosificación</label>
-                  <div class="text-sm text-gray-900">{{ product.dosage || '—' }}</div>
+                  <div class="text-sm text-gray-900">{{ formatField(product.dosage) }}</div>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Presentación</label>
-                  <div class="text-sm text-gray-900">{{ product.presentation || '—' }}</div>
+                  <div class="text-sm text-gray-900">{{ formatField(product.presentation) }}</div>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-500">Código de barras</label>
-                  <div class="text-sm text-gray-900">{{ product.barcode || '—' }}</div>
+                  <div class="text-sm text-gray-900">{{ formatField(product.barcode) }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-500">SKU</label>
+                  <div class="text-sm text-gray-900">{{ formatField(product.sku) }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-500">Tipo de Unidad</label>
+                  <div class="text-sm text-gray-900">{{ formatField(product.unit_type) }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-500">Unidades por Paquete</label>
+                  <div class="text-sm text-gray-900">{{ product.units_per_package || 1 }}</div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-500">Registro Sanitario</label>
+                  <div class="text-sm text-gray-900">{{ formatField(product.sanitary_registration) }}</div>
+                </div>
+                <div v-if="product.sanitary_expiry_date">
+                  <label class="block text-sm font-medium text-gray-500">Vencimiento Registro Sanitario</label>
+                  <div class="text-sm text-gray-900">{{ formatDate(product.sanitary_expiry_date) }}</div>
+                </div>
+                <div v-if="product.expiry_date">
+                  <label class="block text-sm font-medium text-gray-500">Fecha de Vencimiento del Producto</label>
+                  <div class="text-sm text-gray-900" :class="getExpiryDateClass(product.expiry_date)">
+                    {{ formatDate(product.expiry_date) }}
+                    <span v-if="isExpired(product.expiry_date)" class="ml-2 text-red-600 font-medium">⚠️ Vencido</span>
+                    <span v-else-if="isExpiringSoon(product.expiry_date)" class="ml-2 text-orange-600 font-medium">⚠️ Por vencer</span>
+                  </div>
                 </div>
               </div>
 
               <div class="mt-6">
                 <label class="block text-sm font-medium text-gray-500">Descripción</label>
-                <div class="text-sm text-gray-900 whitespace-pre-line">{{ product.description || '—' }}</div>
+                <div class="text-sm text-gray-900 whitespace-pre-line">{{ formatField(product.description) }}</div>
+              </div>
+
+              <div v-if="product.notes" class="mt-6">
+                <label class="block text-sm font-medium text-gray-500">Notas</label>
+                <div class="text-sm text-gray-900 whitespace-pre-line">{{ product.notes }}</div>
               </div>
             </CardContent>
           </Card>
@@ -121,14 +154,19 @@
             <CardContent class="space-y-3">
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Stock actual</span>
-                <span class="text-sm font-medium" :class="stockColorClass">{{ product.stock_quantity }}</span>
+                <span class="text-sm font-medium" :class="stockColorClass">{{ product.stock_quantity || 0 }}</span>
               </div>
               <div class="flex items-center justify-between">
                 <span class="text-sm text-gray-600">Stock mínimo</span>
-                <span class="text-sm text-gray-900">{{ product.min_stock }}</span>
+                <span class="text-sm text-gray-900">{{ product.min_stock || 0 }}</span>
               </div>
-              <div v-if="product.stock_quantity === 0" class="text-xs text-red-600">Sin stock</div>
-              <div v-else-if="product.stock_quantity <= product.min_stock" class="text-xs text-orange-600">Stock bajo</div>
+              <div v-if="product.max_stock" class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Stock máximo</span>
+                <span class="text-sm text-gray-900">{{ product.max_stock }}</span>
+              </div>
+              <div v-if="product.stock_quantity === 0" class="text-xs text-red-600 font-medium">⚠️ Sin stock</div>
+              <div v-else-if="product.stock_quantity <= product.min_stock" class="text-xs text-orange-600 font-medium">⚠️ Stock bajo</div>
+              <div v-else class="text-xs text-green-600 font-medium">✓ Stock normal</div>
             </CardContent>
           </Card>
 
@@ -146,6 +184,26 @@
               >
                 {{ product.is_active ? 'Activo' : 'Inactivo' }}
               </span>
+            </CardContent>
+          </Card>
+
+          <Card v-if="stats && (stats.total_sales > 0 || stats.total_presales > 0)">
+            <CardHeader>
+              <CardTitle>Estadísticas</CardTitle>
+            </CardHeader>
+            <CardContent class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Total Ventas</span>
+                <span class="text-sm font-medium text-gray-900">{{ stats.total_sales || 0 }} unidades</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Total Preventas</span>
+                <span class="text-sm font-medium text-gray-900">{{ stats.total_presales || 0 }} unidades</span>
+              </div>
+              <div v-if="stats.total_revenue > 0" class="flex items-center justify-between">
+                <span class="text-sm text-gray-600">Ingresos Totales</span>
+                <span class="text-sm font-medium text-green-600">{{ formatCurrency(stats.total_revenue) }}</span>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -166,13 +224,47 @@ const { can } = usePermissions()
 
 const props = defineProps({
   product: Object,
+  stats: {
+    type: Object,
+    default: () => ({
+      total_sales: 0,
+      total_presales: 0,
+      total_revenue: 0,
+    })
+  },
 })
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat('es-CO', {
+  if (!price && price !== 0) return '0.00'
+  return new Intl.NumberFormat('es-BO', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price || 0)
+}
+
+const formatField = (value) => {
+  if (!value || value === null || value === undefined || value === '' || value === '[]') {
+    return '—'
+  }
+  return value
+}
+
+const formatDate = (date) => {
+  if (!date) return '—'
+  return new Date(date).toLocaleDateString('es-BO', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('es-BO', {
+    style: 'currency',
+    currency: 'BOB',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount || 0)
 }
 
 const stockColorClass = computed(() => {
@@ -180,6 +272,26 @@ const stockColorClass = computed(() => {
   if (props.product.stock_quantity <= props.product.min_stock) return 'text-orange-600'
   return 'text-gray-900'
 })
+
+const isExpired = (date) => {
+  if (!date) return false
+  return new Date(date) < new Date()
+}
+
+const isExpiringSoon = (date) => {
+  if (!date) return false
+  const expiryDate = new Date(date)
+  const today = new Date()
+  const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24))
+  return daysUntilExpiry > 0 && daysUntilExpiry <= 30
+}
+
+const getExpiryDateClass = (date) => {
+  if (!date) return ''
+  if (isExpired(date)) return 'text-red-600 font-medium'
+  if (isExpiringSoon(date)) return 'text-orange-600 font-medium'
+  return 'text-gray-900'
+}
 
 const toggleStatus = () => {
   const action = props.product.is_active ? 'desactivar' : 'activar'

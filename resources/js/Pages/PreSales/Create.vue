@@ -107,7 +107,7 @@
                   >
                     <option value="">Seleccionar</option>
                     <option v-for="product in products" :key="product.id" :value="product.id">
-                      {{ product.description || product.name || 'Sin descripción' }}
+                      {{ product.name || 'N/A' }}{{ product.description ? ' - ' + product.description : '' }}
                     </option>
                   </select>
                 </div>
@@ -118,6 +118,7 @@
                   <input
                     v-model.number="item.quantity"
                     @input="validateQuantity(index)"
+                    @keypress="onlyNumbersAndDecimal"
                     type="number"
                     step="0.001"
                     min="0"
@@ -157,6 +158,7 @@
                   <input
                     v-model.number="item.discount"
                     @input="calculateItemTotal(index)"
+                    @keypress="onlyNumbersAndDecimal"
                     type="number"
                     step="0.01"
                     min="0"
@@ -435,6 +437,19 @@ const submitForm = () => {
       }
     }
   })
+}
+
+const onlyNumbersAndDecimal = (event) => {
+  const char = String.fromCharCode(event.which)
+  // Permitir números y punto decimal
+  if (!/[0-9.]/.test(char)) {
+    event.preventDefault()
+  }
+  // Evitar múltiples puntos decimales
+  const input = event.target
+  if (char === '.' && input.value.includes('.')) {
+    event.preventDefault()
+  }
 }
 
 const formatCurrency = (amount) => {

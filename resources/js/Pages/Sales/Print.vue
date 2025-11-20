@@ -109,7 +109,8 @@
                   {{ item.product?.code || 'N/A' }}
                 </td>
                 <td class="border border-gray-300 print:border-black px-4 py-2 text-sm text-gray-900">
-                  {{ item.product?.description || item.product?.name || 'N/A' }}
+                  {{ item.product?.name || 'N/A' }}
+                  <span v-if="item.product?.description"> - {{ item.product.description }}</span>
                 </td>
                 <td class="border border-gray-300 print:border-black px-4 py-2 text-center text-sm text-gray-900">
                   {{ item.quantity }}

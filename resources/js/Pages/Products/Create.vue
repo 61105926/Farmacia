@@ -274,6 +274,21 @@
               </label>
             </div>
             
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Fecha de Vencimiento
+                </label>
+                <input
+                  v-model="form.expiry_date"
+                  type="date"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  :class="{ 'border-red-500': errors.expiry_date }"
+                />
+                <p v-if="errors.expiry_date" class="mt-1 text-sm text-red-600">{{ errors.expiry_date }}</p>
+              </div>
+            </div>
+            
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 Notas
@@ -344,6 +359,7 @@ const form = reactive({
   unit_type: 'unidad',
   is_active: true,
   notes: '',
+  expiry_date: '',
 })
 
 // Debug: Log categories

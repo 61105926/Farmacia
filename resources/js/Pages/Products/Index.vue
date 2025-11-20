@@ -203,7 +203,7 @@
             <thead>
               <tr class="border-b">
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Producto</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-500">Código</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-500">Fecha de Vencimiento</th>
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Proveedor</th>
                 <th class="text-right py-3 px-4 font-medium text-gray-500">Stock</th>
                 <th class="text-right py-3 px-4 font-medium text-gray-500">Precio</th>
@@ -220,7 +220,16 @@
                   </div>
                 </td>
                 <td class="py-3 px-4">
-                  <Badge variant="outline">{{ product.code }}</Badge>
+                  <div v-if="product.expiry_date" :class="getExpiryDateClass(product.expiry_date)">
+                    {{ formatDate(product.expiry_date) }}
+                  </div>
+                  <div v-else-if="product.nearest_expiry_date" :class="getExpiryDateClass(product.nearest_expiry_date)">
+                    {{ formatDate(product.nearest_expiry_date) }}
+                    <span class="text-xs text-gray-500 ml-1">(Inventario)</span>
+                  </div>
+                  <div v-else class="text-sm text-gray-400">
+                    N/A
+                  </div>
                 </td>
                 <td class="py-3 px-4">
                   <span class="text-sm text-gray-600">{{ product.brand || 'Sin proveedor' }}</span>
@@ -587,6 +596,32 @@ const getStockClass = (stock, minStock) => {
   if (stock <= 0) return 'text-red-600 font-medium'
   if (stock <= minStock) return 'text-yellow-600 font-medium'
   return 'text-green-600 font-medium'
+}
+
+const formatDate = (date) => {
+  if (!date) return 'N/A'
+  return new Date(date).toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
+
+const getExpiryDateClass = (expiryDate) => {
+  if (!expiryDate) return 'text-sm text-gray-400'
+  
+  const expiry = new Date(expiryDate)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  expiry.setHours(0, 0, 0, 0)
+  
+  const diffTime = expiry - today
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays < 0) return 'text-sm font-medium text-red-600' // Vencido
+  if (diffDays <= 7) return 'text-sm font-medium text-orange-600' // Próximo a vencer (7 días)
+  if (diffDays <= 30) return 'text-sm font-medium text-yellow-600' // Próximo a vencer (30 días)
+  return 'text-sm text-gray-900' // Normal
 }
 
 const openStockAdjustmentModal = () => {

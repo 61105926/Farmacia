@@ -120,14 +120,18 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Número de Factura
+                  Número de Factura <span class="text-red-500">*</span>
                 </label>
                 <input
                   v-model="form.invoice_number"
                   type="text"
+                  required
                   placeholder="Ej: FAC-001-2024"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                 />
+                <div v-if="errors.invoice_number" class="text-red-500 text-sm mt-1">
+                  {{ errors.invoice_number }}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -169,7 +173,7 @@
                   >
                     <option value="">Seleccionar</option>
                     <option v-for="product in products" :key="product.id" :value="product.id">
-                      {{ product.description || product.name || 'Sin descripción' }}
+                      {{ product.name || 'N/A' }}{{ product.description ? ' - ' + product.description : '' }}
                     </option>
                   </select>
                 </div>
@@ -467,6 +471,12 @@ const submitForm = () => {
   // Validar estado de pago
   if (!form.payment_status || form.payment_status === '') {
     alert('Debe seleccionar un estado de pago')
+    return
+  }
+
+  // Validar número de factura
+  if (!form.invoice_number || form.invoice_number.trim() === '') {
+    alert('El número de factura es obligatorio')
     return
   }
 

@@ -119,14 +119,19 @@
 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Número de Factura
+                    Número de Factura <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="form.invoice_number"
                     type="text"
+                    required
                     placeholder="Ej: FAC-001-2024"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :class="{ 'border-red-500': form.errors.invoice_number }"
                   />
+                  <span v-if="form.errors.invoice_number" class="text-sm text-red-600">
+                    {{ form.errors.invoice_number }}
+                  </span>
                 </div>
 
                 <div>
@@ -166,7 +171,7 @@
                         >
                           <option value="">Seleccionar producto</option>
                           <option v-for="product in products" :key="product.id" :value="product.id">
-                            {{ product.description || product.name || 'Sin descripción' }} ({{ product.code }}) - Stock: {{ product.stock_quantity }}
+                            {{ product.name || 'N/A' }}{{ product.description ? ' - ' + product.description : '' }} ({{ product.code }}) - Stock: {{ product.stock_quantity }}
                           </option>
                         </select>
                       </div>
@@ -219,7 +224,12 @@
                       class="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
                     >
                       <div class="flex-1">
-                        <div class="text-sm font-medium text-gray-900">{{ item.product_name || 'Producto sin nombre' }}</div>
+                        <div class="text-sm font-medium text-gray-900">
+                          {{ item.product_name || 'Producto sin nombre' }}
+                          <span v-if="item.product_description" class="text-gray-600 font-normal">
+                            - {{ item.product_description }}
+                          </span>
+                        </div>
                         <div class="text-xs text-gray-500">{{ item.product_code || 'Sin código' }}</div>
                         <div v-if="item.discount > 0" class="text-xs text-green-600 mt-1">
                           Descuento: {{ item.discount }}%

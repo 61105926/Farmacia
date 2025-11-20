@@ -45,11 +45,16 @@
                     v-model="form.email"
                     type="email"
                     required
+                    @blur="validateEmail"
+                    placeholder="ejemplo@correo.com"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    :class="{ 'border-red-500': form.errors.email }"
+                    :class="{ 'border-red-500': form.errors.email || emailError }"
                   />
                   <span v-if="form.errors.email" class="text-sm text-red-600">
                     {{ form.errors.email }}
+                  </span>
+                  <span v-if="emailError && !form.errors.email" class="text-sm text-red-600">
+                    {{ emailError }}
                   </span>
                 </div>
 
@@ -91,8 +96,16 @@
                     <input
                       v-model="form.phone"
                       type="tel"
+                      @input="validatePhone"
+                      @keypress="onlyNumbersAndPhoneChars"
+                      placeholder="Ej: 591-3-8421234"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                      :class="{ 'border-red-500': form.errors.phone }"
                     />
+                    <span v-if="form.errors.phone" class="text-sm text-red-600">
+                      {{ form.errors.phone }}
+                    </span>
+                    <p class="text-xs text-gray-500 mt-1">Solo números, espacios, guiones y paréntesis</p>
                   </div>
 
                   <div>
@@ -102,8 +115,15 @@
                     <input
                       v-model="form.document_number"
                       type="text"
+                      @keypress="onlyNumbers"
+                      placeholder="12345678"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                      :class="{ 'border-red-500': form.errors.document_number }"
                     />
+                    <span v-if="form.errors.document_number" class="text-sm text-red-600">
+                      {{ form.errors.document_number }}
+                    </span>
+                    <p class="text-xs text-gray-500 mt-1">Solo números</p>
                   </div>
                 </div>
 
@@ -244,10 +264,12 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useForm, Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 
+const emailError = ref('')
 
 const props = defineProps({
   user: Object,
@@ -270,7 +292,39 @@ const form = useForm({
   status: props.user.status,
 })
 
+// Validaciones
+const onlyNumbers = (event) => {
+  const char = String.fromCharCode(event.which)
+  if (!/[0-9]/.test(char)) {
+    event.preventDefault()
+  }
+}
+
+const onlyNumbersAndPhoneChars = (event) => {
+  const char = String.fromCharCode(event.which)
+  // Permitir números, espacios, guiones, paréntesis, + y punto
+  if (!/[0-9\s\-\(\)\+\.]/.test(char)) {
+    event.preventDefault()
+  }
+}
+
+const validatePhone = () => {
+  // Limpiar caracteres no permitidos
+  form.phone = form.phone.replace(/[^0-9\s\-\(\)\+\.]/g, '')
+}
+
+const validateEmail = () => {
+  emailError.value = ''
+  if (form.email && form.email.trim() !== '') {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.email)) {
+      emailError.value = 'Por favor ingrese un email válido'
+    }
+  }
+}
+
 const submit = () => {
+  emailError.value = ''
   form.put(`/usuarios/${props.user.id}`)
 }
 

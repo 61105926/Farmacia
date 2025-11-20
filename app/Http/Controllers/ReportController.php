@@ -83,7 +83,7 @@ class ReportController extends Controller
 
     public function sales(Request $request)
     {
-        $query = Invoice::with(['client', 'creator'])
+        $query = Invoice::with(['client', 'creator', 'sale:id,invoice_number'])
             ->where('status', '!=', 'cancelled');
 
         // Filtros

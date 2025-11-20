@@ -270,6 +270,29 @@
               </CardContent>
             </Card>
 
+            <!-- Fecha de Vencimiento -->
+            <Card>
+              <CardHeader>
+                <CardTitle>Fecha de Vencimiento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Fecha de Vencimiento
+                  </label>
+                  <input
+                    v-model="form.expiry_date"
+                    type="date"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :class="{ 'border-red-500': form.errors.expiry_date }"
+                  />
+                  <span v-if="form.errors.expiry_date" class="text-sm text-red-600">
+                    {{ form.errors.expiry_date }}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
             <!-- Estado -->
             <Card>
               <CardHeader>
@@ -341,6 +364,7 @@ const form = useForm({
   requires_prescription: props.product.requires_prescription,
   is_controlled: props.product.is_controlled,
   is_active: props.product.is_active,
+  expiry_date: props.product.expiry_date ? new Date(props.product.expiry_date).toISOString().split('T')[0] : '',
 })
 
 const submit = () => {
