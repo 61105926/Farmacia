@@ -439,6 +439,7 @@
               <p><strong>Columna L:</strong> Código de Barras (opcional, único)</p>
               <p><strong>Columna M:</strong> Lote (opcional)</p>
               <p><strong>Columna N:</strong> Presentación (opcional)</p>
+              <p><strong>Columna O:</strong> Fecha de Vencimiento (opcional, formato: YYYY-MM-DD o DD/MM/YYYY)</p>
             </div>
             <p class="text-xs text-blue-600 mt-2 italic">
               La primera fila debe contener los encabezados. Los datos empiezan desde la fila 2.

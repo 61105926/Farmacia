@@ -143,10 +143,7 @@
                       <td class="py-3">
                         <div>
                           <p class="font-medium">
-                            {{ item.product?.name || 'N/A' }}
-                            <span v-if="item.product?.description" class="text-gray-600 font-normal">
-                              - {{ item.product.description }}
-                            </span>
+                            {{ item.product?.description || 'N/A' }}
                           </p>
                           <p class="text-sm text-gray-500">{{ item.product?.code || 'N/A' }}</p>
                         </div>

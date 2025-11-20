@@ -33,17 +33,12 @@
         </nav>
       </div>
 
-      <!-- Center Section - Search -->
-      <div class="flex-1 max-w-lg mx-4">
-        <div class="relative">
-          <Search class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Buscar productos, clientes, ventas..."
-            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-sm"
-            v-model="searchQuery"
-            @keyup.enter="handleSearch"
-          />
+      <!-- Center Section - System Title -->
+      <div class="flex-1 max-w-2xl mx-4">
+        <div class="text-center">
+          <p class="text-sm font-bold text-primary-600 uppercase tracking-wide">
+            SISTEMA WEB PARA LA GESTIÓN DE PREVENTAS, VENTAS Y CUENTAS POR COBRAR
+          </p>
         </div>
       </div>
 
@@ -242,7 +237,6 @@ import { ref, computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import {
   Menu,
-  Search,
   Bell,
   Settings,
   ChevronRight,
@@ -270,15 +264,6 @@ defineEmits(['toggleSidebar', 'logout'])
 
 const page = usePage()
 const user = computed(() => page.props.auth.user)
-
-// Search
-const searchQuery = ref('')
-const handleSearch = () => {
-  if (searchQuery.value.trim()) {
-    // Implement search functionality
-    console.log('Searching for:', searchQuery.value)
-  }
-}
 
 // Notifications
 const showNotifications = ref(false)

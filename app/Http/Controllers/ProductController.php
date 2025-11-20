@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Shared\Date as PhpSpreadsheetDate;
+use Carbon\Carbon;
 
 class ProductController extends Controller
 {
@@ -1064,7 +1066,7 @@ class ProductController extends Controller
                     // Mapear columnas del Excel
                     // Orden esperado: A=Nombre, B=Código, C=Descripción, D=Categoría, E=Marca, F=Precio Costo, 
                     // G=Precio Venta, H=Stock, I=Stock Mínimo, J=Tipo Unidad, K=Activo, 
-                    // L=Código de Barras, M=Lote, N=Presentación
+                    // L=Código de Barras, M=Lote, N=Presentación, O=Fecha de Vencimiento
                     $data = [
                         'name' => isset($row[0]) ? trim((string)$row[0]) : null,
                         'code' => isset($row[1]) ? trim((string)$row[1]) : null,
@@ -1080,6 +1082,7 @@ class ProductController extends Controller
                         'barcode' => isset($row[11]) ? trim((string)$row[11]) : null, // Columna L
                         'lot' => isset($row[12]) ? trim((string)$row[12]) : null, // Columna M - Lote (se guardará en SKU)
                         'presentation' => isset($row[13]) ? trim((string)$row[13]) : null, // Columna N
+                        'expiry_date' => isset($row[14]) ? $this->parseDate($row[14]) : null, // Columna O - Fecha de Vencimiento
                     ];
 
                     // Validar campos requeridos
@@ -1121,6 +1124,7 @@ class ProductController extends Controller
                         'max_stock' => 0,
                         'unit_type' => $data['unit_type'] ?? 'unit',
                         'is_active' => $data['is_active'] ?? true,
+                        'expiry_date' => $data['expiry_date'] ?? null,
                         'updated_at' => now(),
                     ];
                     
@@ -1270,6 +1274,62 @@ class ProductController extends Controller
             
             return redirect()->route('products.index')
                 ->with('error', 'Error al descargar la plantilla: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Parse date from Excel cell value
+     * Supports multiple formats: YYYY-MM-DD, DD/MM/YYYY, Excel date serial number
+     */
+    private function parseDate($value)
+    {
+        if (empty($value) || $value === null) {
+            return null;
+        }
+
+        // Si es un número (fecha serial de Excel)
+        if (is_numeric($value)) {
+            try {
+                // PhpSpreadsheet puede convertir fechas seriales
+                $date = PhpSpreadsheetDate::excelToDateTimeObject($value);
+                return Carbon::instance($date)->format('Y-m-d');
+            } catch (\Exception $e) {
+                return null;
+            }
+        }
+
+        $value = trim((string)$value);
+        
+        // Intentar formato YYYY-MM-DD
+        try {
+            $date = Carbon::createFromFormat('Y-m-d', $value);
+            return $date->format('Y-m-d');
+        } catch (\Exception $e) {
+            // Continuar con otros formatos
+        }
+
+        // Intentar formato DD/MM/YYYY
+        try {
+            $date = Carbon::createFromFormat('d/m/Y', $value);
+            return $date->format('Y-m-d');
+        } catch (\Exception $e) {
+            // Continuar con otros formatos
+        }
+
+        // Intentar formato DD-MM-YYYY
+        try {
+            $date = Carbon::createFromFormat('d-m-Y', $value);
+            return $date->format('Y-m-d');
+        } catch (\Exception $e) {
+            // Continuar con otros formatos
+        }
+
+        // Intentar parseo automático
+        try {
+            $date = Carbon::parse($value);
+            return $date->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
         }
     }
 }

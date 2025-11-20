@@ -171,7 +171,7 @@
                         >
                           <option value="">Seleccionar producto</option>
                           <option v-for="product in products" :key="product.id" :value="product.id">
-                            {{ product.name || 'N/A' }}{{ product.description ? ' - ' + product.description : '' }} ({{ product.code }}) - Stock: {{ product.stock_quantity }}
+                            {{ product.description || product.name || 'N/A' }} ({{ product.code }}) - Stock: {{ product.stock_quantity }}
                           </option>
                         </select>
                       </div>
@@ -225,10 +225,7 @@
                     >
                       <div class="flex-1">
                         <div class="text-sm font-medium text-gray-900">
-                          {{ item.product_name || 'Producto sin nombre' }}
-                          <span v-if="item.product_description" class="text-gray-600 font-normal">
-                            - {{ item.product_description }}
-                          </span>
+                          {{ item.product_description || item.product_name || 'Producto sin descripción' }}
                         </div>
                         <div class="text-xs text-gray-500">{{ item.product_code || 'Sin código' }}</div>
                         <div v-if="item.discount > 0" class="text-xs text-green-600 mt-1">

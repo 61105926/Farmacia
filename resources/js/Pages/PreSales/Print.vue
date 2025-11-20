@@ -77,8 +77,7 @@
             <tr v-for="item in presale.items" :key="item.id">
               <td class="border border-gray-300 px-4 py-2">{{ item.product?.code || 'N/A' }}</td>
               <td class="border border-gray-300 px-4 py-2">
-                {{ item.product?.name || 'N/A' }}
-                <span v-if="item.product?.description"> - {{ item.product.description }}</span>
+                {{ item.product?.description || 'N/A' }}
               </td>
               <td class="border border-gray-300 px-4 py-2 text-center">{{ item.quantity }}</td>
               <td class="border border-gray-300 px-4 py-2 text-right">{{ formatCurrency(item.unit_price) }}</td>
