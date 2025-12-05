@@ -399,6 +399,38 @@ class AccountReceivableController extends Controller
 
             DB::commit();
 
+            // Crear notificación para el usuario que registró el pago
+            try {
+                $payment->load('client', 'invoice');
+                $clientName = $payment->client->name ?? 'N/A';
+                $invoiceNumber = $payment->invoice ? $payment->invoice->invoice_number : 'N/A';
+                
+                \App\Helpers\NotificationHelper::success(
+                    Auth::user(),
+                    'Pago Registrado Exitosamente',
+                    "Pago de $" . number_format($payment->amount, 2) . " registrado - Cliente: {$clientName}" . ($payment->invoice_id ? " - Factura: {$invoiceNumber}" : ''),
+                    route('account-receivables.index')
+                );
+
+                // Notificar a administradores sobre nuevo pago
+                $admins = \App\Models\User::role(['super-admin', 'Administrador', 'administrador'])->get();
+                if ($admins->isNotEmpty()) {
+                    \App\Helpers\NotificationHelper::createForUsers(
+                        $admins->all(),
+                        'Nuevo Pago Registrado',
+                        "Pago de $" . number_format($payment->amount, 2) . " registrado por " . Auth::user()->name . " - Cliente: {$clientName}",
+                        'success',
+                        route('account-receivables.index')
+                    );
+                }
+            } catch (\Exception $e) {
+                // No fallar el registro del pago si hay error en notificaciones
+                \Log::warning('AccountReceivableController createPayment - Error al crear notificaciones', [
+                    'error' => $e->getMessage(),
+                    'payment_id' => $payment->id
+                ]);
+            }
+
             return redirect()->route('account-receivables.payments')
                 ->with('success', 'Pago registrado exitosamente');
 
@@ -539,35 +571,6 @@ class AccountReceivableController extends Controller
         }
         
         $ticket .= str_repeat("=", $lineWidth) . "\n";
-        $ticket .= "\n";
-
-        // Observaciones
-        if ($payment->notes) {
-            $ticket .= "OBSERVACIONES:\n";
-            $ticket .= str_repeat("-", $lineWidth) . "\n";
-            $ticket .= $this->wrapText($payment->notes, $lineWidth) . "\n";
-            $ticket .= "\n";
-        }
-
-        // Información de aprobación
-        if ($payment->approved_at && $payment->approver) {
-            $ticket .= "PAGO APROBADO\n";
-            $ticket .= str_repeat("-", $lineWidth) . "\n";
-            $ticket .= "Aprobado por: " . $payment->approver->name . "\n";
-            $ticket .= "Fecha: " . $payment->approved_at->format('d/m/Y H:i') . "\n";
-            $ticket .= "\n";
-        }
-
-        // Firmas
-        $ticket .= str_repeat("-", $lineWidth) . "\n";
-        $ticket .= "\n";
-        $ticket .= "RECIBIDO POR:\n";
-        $ticket .= ($payment->creator->name ?? 'Sistema') . "\n";
-        $ticket .= $payment->created_at->format('d/m/Y H:i') . "\n";
-        $ticket .= "\n";
-        $ticket .= "ENTREGADO POR:\n";
-        $ticket .= $this->truncateText($clientName, $lineWidth) . "\n";
-        $ticket .= "\n";
         $ticket .= "\n";
 
         // Footer

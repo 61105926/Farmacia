@@ -524,6 +524,35 @@ class PresaleController extends Controller
 
             DB::commit();
 
+            // Crear notificación para el usuario que creó la preventa
+            try {
+                $presale->load('client');
+                \App\Helpers\NotificationHelper::info(
+                    auth()->user(),
+                    'Preventa Creada Exitosamente',
+                    "Preventa {$presale->code} creada por $" . number_format($presale->total, 2) . " - Cliente: " . ($presale->client->name ?? 'N/A'),
+                    route('presales.show', $presale)
+                );
+
+                // Notificar a administradores sobre nueva preventa
+                $admins = User::role(['super-admin', 'Administrador', 'administrador'])->get();
+                if ($admins->isNotEmpty()) {
+                    \App\Helpers\NotificationHelper::createForUsers(
+                        $admins->all(),
+                        'Nueva Preventa Registrada',
+                        "Preventa {$presale->code} por $" . number_format($presale->total, 2) . " creada por " . auth()->user()->name,
+                        'info',
+                        route('presales.show', $presale)
+                    );
+                }
+            } catch (\Exception $e) {
+                // No fallar la creación de la preventa si hay error en notificaciones
+                Log::warning('PresaleController store - Error al crear notificaciones', [
+                    'error' => $e->getMessage(),
+                    'presale_id' => $presale->id
+                ]);
+            }
+
             Log::info('PresaleController store - Preventa creada exitosamente', [
                 'presale_id' => $presale->id,
                 'presale_code' => $presale->code,

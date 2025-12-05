@@ -37,7 +37,7 @@
       <div class="flex-1 max-w-2xl mx-4">
         <div class="text-center">
           <p class="text-sm font-bold text-primary-600 uppercase tracking-wide">
-            SISTEMA WEB PARA LA GESTIÓN DE PREVENTAS, VENTAS Y CUENTAS POR COBRAR
+            SISPANDO
           </p>
         </div>
       </div>
@@ -52,10 +52,10 @@
           >
             <Bell class="w-5 h-5" />
             <span
-              v-if="unreadNotifications > 0"
+              v-if="unreadCount > 0"
               class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center"
             >
-              {{ unreadNotifications > 9 ? '9+' : unreadNotifications }}
+              {{ unreadCount > 9 ? '9+' : unreadCount }}
             </span>
           </button>
 
@@ -65,43 +65,50 @@
             @click.outside="closeNotifications"
             class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
           >
-            <div class="p-4 border-b border-gray-200">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
               <h3 class="text-sm font-semibold text-gray-900">Notificaciones</h3>
+              <button
+                v-if="unreadNotifications > 0"
+                @click="markAllAsRead"
+                class="text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Marcar todas como leídas
+              </button>
             </div>
             <div class="max-h-80 overflow-y-auto">
-              <div v-if="notifications.length === 0" class="p-4 text-center text-gray-500 text-sm">
+              <div v-if="loadingNotifications" class="p-4 text-center text-gray-500 text-sm">
+                Cargando...
+              </div>
+              <div v-else-if="notifications.length === 0" class="p-4 text-center text-gray-500 text-sm">
                 No hay notificaciones
               </div>
               <div v-else>
                 <div
                   v-for="notification in notifications"
                   :key="notification.id"
-                  class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                  @click="markAsRead(notification.id)"
+                  class="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"
+                  @click="markAsRead(notification)"
                 >
                   <div class="flex items-start space-x-3">
                     <div class="flex-shrink-0">
                       <div
-                        class="w-2 h-2 rounded-full"
+                        class="w-2 h-2 rounded-full mt-2"
                         :class="notification.read ? 'bg-gray-300' : 'bg-blue-500'"
                       ></div>
                     </div>
                     <div class="flex-1 min-w-0">
-                      <p class="text-sm font-medium text-gray-900">{{ notification.title }}</p>
+                      <div class="flex items-center justify-between">
+                        <p class="text-sm font-medium text-gray-900">{{ notification.title }}</p>
+                        <p v-if="notification.user && isAdmin" class="text-xs text-gray-400">
+                          {{ notification.user.name }}
+                        </p>
+                      </div>
                       <p class="text-sm text-gray-500 truncate">{{ notification.message }}</p>
                       <p class="text-xs text-gray-400 mt-1">{{ formatTime(notification.created_at) }}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div class="p-3 border-t border-gray-200">
-              <Link
-                href="/notificaciones"
-                class="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Ver todas las notificaciones
-              </Link>
             </div>
           </div>
         </div>
@@ -233,8 +240,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { Link, usePage } from '@inertiajs/vue3'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { Link, usePage, router } from '@inertiajs/vue3'
+import axios from 'axios'
 import {
   Menu,
   Bell,
@@ -264,44 +272,95 @@ defineEmits(['toggleSidebar', 'logout'])
 
 const page = usePage()
 const user = computed(() => page.props.auth.user)
+const isAdmin = computed(() => {
+  const roles = page.props.auth?.roles || []
+  return roles.some(role => ['super-admin', 'Administrador', 'administrador'].includes(role))
+})
 
 // Notifications
 const showNotifications = ref(false)
-const notifications = ref([
-  {
-    id: 1,
-    title: 'Nuevo pedido recibido',
-    message: 'Cliente ABC acaba de realizar un pedido por $2,500',
-    created_at: '2025-09-17T10:30:00Z',
-    read: false
-  },
-  {
-    id: 2,
-    title: 'Stock bajo',
-    message: 'Paracetamol 500mg tiene solo 10 unidades en stock',
-    created_at: '2025-09-17T09:15:00Z',
-    read: false
+const notifications = ref([])
+const loadingNotifications = ref(false)
+let notificationInterval = null
+
+// Obtener notificaciones del backend
+const fetchNotifications = async () => {
+  if (!user.value) return
+  
+  try {
+    loadingNotifications.value = true
+    const response = await axios.get('/api/notifications')
+    notifications.value = response.data.notifications || []
+  } catch (error) {
+    console.error('Error al obtener notificaciones:', error)
+  } finally {
+    loadingNotifications.value = false
   }
-])
+}
+
+// Obtener notificaciones iniciales desde props
+const initialNotifications = computed(() => page.props.notifications?.recent || [])
+const unreadCount = computed(() => page.props.notifications?.unread_count || 0)
+
+// Sincronizar notificaciones iniciales
+watch(initialNotifications, (newNotifications) => {
+  if (newNotifications && newNotifications.length > 0) {
+    notifications.value = newNotifications
+  }
+}, { immediate: true })
 
 const unreadNotifications = computed(() =>
   notifications.value.filter(n => !n.read).length
 )
 
-const toggleNotifications = () => {
+const toggleNotifications = async () => {
   showNotifications.value = !showNotifications.value
+  if (showNotifications.value) {
+    // Recargar notificaciones al abrir el dropdown
+    await fetchNotifications()
+  }
 }
 
 const closeNotifications = () => {
   showNotifications.value = false
 }
 
-const markAsRead = (id) => {
-  const notification = notifications.value.find(n => n.id === id)
-  if (notification) {
+const markAsRead = async (notification) => {
+  if (notification.read) return
+  
+  try {
+    await axios.post(`/api/notifications/${notification.id}/read`)
     notification.read = true
+    // Actualizar contador
+    await fetchNotifications()
+  } catch (error) {
+    console.error('Error al marcar notificación como leída:', error)
   }
 }
+
+const markAllAsRead = async () => {
+  try {
+    await axios.post('/api/notifications/read-all')
+    notifications.value.forEach(n => n.read = true)
+    await fetchNotifications()
+  } catch (error) {
+    console.error('Error al marcar todas como leídas:', error)
+  }
+}
+
+// Actualizar notificaciones periódicamente cada 30 segundos
+onMounted(() => {
+  if (user.value) {
+    fetchNotifications()
+    notificationInterval = setInterval(fetchNotifications, 30000) // 30 segundos
+  }
+})
+
+onUnmounted(() => {
+  if (notificationInterval) {
+    clearInterval(notificationInterval)
+  }
+})
 
 // User Menu
 const showUserMenu = ref(false)
@@ -317,21 +376,7 @@ const closeUserMenu = () => {
 const handleLogout = () => {
   showUserMenu.value = false
   if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-    const form = document.createElement('form')
-    form.method = 'POST'
-    form.action = '/logout'
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-    if (csrfToken) {
-      const tokenInput = document.createElement('input')
-      tokenInput.type = 'hidden'
-      tokenInput.name = '_token'
-      tokenInput.value = csrfToken
-      form.appendChild(tokenInput)
-    }
-
-    document.body.appendChild(form)
-    form.submit()
+    router.post('/logout')
   }
 }
 

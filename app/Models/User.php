@@ -91,6 +91,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Relación con notificaciones
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Obtener notificaciones no leídas
+     */
+    public function unreadNotifications(): HasMany
+    {
+        return $this->notifications()->where('read', false);
+    }
+
+    /**
      * Verificar si el usuario tiene un permiso específico
      * Compatible con Spatie Permission (usa hasPermissionTo)
      */

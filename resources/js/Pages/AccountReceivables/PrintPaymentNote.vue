@@ -158,55 +158,6 @@
         </div>
       </div>
 
-      <!-- Notes -->
-      <div v-if="payment.notes" class="mb-6 print:mb-4">
-        <div class="border-2 border-gray-300 print:border-black p-4 print:p-3">
-          <h3 class="text-base font-bold text-gray-900 mb-3 print:mb-2 uppercase tracking-wide border-b border-gray-400 print:border-black pb-2">
-            Observaciones
-          </h3>
-          <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{{ payment.notes }}</p>
-        </div>
-      </div>
-
-      <!-- Approval Information -->
-      <div v-if="payment.approved_at" class="mb-6 print:mb-4">
-        <div class="border-2 border-green-600 print:border-black p-4 print:p-3 bg-green-50 print:bg-white">
-          <div class="flex items-center gap-2 mb-3 print:mb-2 border-b border-green-400 print:border-black pb-2">
-            <CheckCircle class="h-5 w-5 text-green-600 print:text-black" />
-            <p class="text-base font-bold text-gray-900 uppercase tracking-wide">Pago Aprobado</p>
-          </div>
-          <div class="text-sm text-gray-700 space-y-1">
-            <div class="flex">
-              <span class="font-semibold w-40">Aprobado por:</span>
-              <span>{{ payment.approver?.name || 'N/A' }}</span>
-            </div>
-            <div class="flex">
-              <span class="font-semibold w-40">Fecha de aprobación:</span>
-              <span>{{ formatDateTime(payment.approved_at) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Signatures Section -->
-      <div class="mt-12 print:mt-10 mb-8 print:mb-6">
-        <div class="grid grid-cols-2 gap-8 print:gap-6">
-          <div class="text-center">
-            <div class="border-t-2 border-gray-800 print:border-black pt-2 mt-16 print:mt-12">
-              <p class="text-sm font-semibold text-gray-900">RECIBIDO POR</p>
-              <p class="text-xs text-gray-600 mt-2">{{ payment.creator?.name || 'Sistema' }}</p>
-              <p class="text-xs text-gray-500 mt-1">{{ formatDateTime(payment.created_at) }}</p>
-            </div>
-          </div>
-          <div class="text-center">
-            <div class="border-t-2 border-gray-800 print:border-black pt-2 mt-16 print:mt-12">
-              <p class="text-sm font-semibold text-gray-900">ENTREGADO POR</p>
-              <p class="text-xs text-gray-600 mt-2">{{ payment.client?.business_name || payment.client?.trade_name || 'Cliente' }}</p>
-              <p class="text-xs text-gray-500 mt-1">_________________________</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- Footer -->
       <div class="mt-8 print:mt-6 border-t-2 border-gray-800 print:border-black pt-4 print:pt-3">
@@ -233,7 +184,7 @@
 
 <script setup>
 import { router } from '@inertiajs/vue3'
-import { Printer, ArrowLeft, CheckCircle } from 'lucide-vue-next'
+import { Printer, ArrowLeft } from 'lucide-vue-next'
 
 const props = defineProps({
   payment: {

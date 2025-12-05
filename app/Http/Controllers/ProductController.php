@@ -30,13 +30,13 @@ class ProductController extends Controller
             if (!Schema::hasTable('products')) {
             return Inertia::render('Products/Index', [
                 'products' => [],
-                'categories' => [],
-                'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'category', 'status', 'stock_status'])),
+                'presentations' => [],
+                'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'presentation', 'status', 'stock_status'])),
                 'error' => 'La tabla de productos no existe. Por favor, crea las tablas primero.'
             ]);
             }
 
-            $receivedFilters = $request->only(['search', 'category', 'status', 'stock_status']);
+            $receivedFilters = $request->only(['search', 'presentation', 'status', 'stock_status']);
             
 
             $query = Product::with('category');
@@ -50,13 +50,10 @@ class ProductController extends Controller
                 });
             }
 
-            // Filtro de categoría
-            $category = $request->input('category');
-            if ($category && $category !== '' && $category !== null) {
-                $categoryId = is_numeric($category) ? (int) $category : null;
-                if ($categoryId) {
-                    $query->where('category_id', $categoryId);
-                }
+            // Filtro de presentación
+            $presentation = $request->input('presentation');
+            if ($presentation && $presentation !== '' && $presentation !== null) {
+                $query->where('presentation', $presentation);
             }
 
             // Filtro de estado
@@ -107,15 +104,14 @@ class ProductController extends Controller
                 return $product;
             });
 
-            // Cargar categorías para filtros (solo categorías activas, ordenadas)
-            $categories = Schema::hasTable('product_categories') ?
-                Category::select('id', 'name')
-                    ->where('is_active', true)
-                    ->whereNull('parent_id') // Solo categorías principales para filtros
-                    ->orderBy('sort_order', 'asc')
-                    ->orderBy('name', 'asc')
-                    ->get() :
-                collect();
+            // Cargar presentaciones únicas para filtros
+            $presentations = Product::whereNotNull('presentation')
+                ->where('presentation', '!=', '')
+                ->distinct()
+                ->orderBy('presentation', 'asc')
+                ->pluck('presentation')
+                ->filter()
+                ->values();
 
             // Estadísticas de productos
             $stats = [
@@ -127,12 +123,12 @@ class ProductController extends Controller
             ];
 
             // Ensure filters are always passed, even if empty
-            $currentFilters = $request->only(['search', 'category', 'status', 'stock_status']);
+            $currentFilters = $request->only(['search', 'presentation', 'status', 'stock_status']);
             $sanitizedFilters = InertiaHelper::sanitizeFilters($currentFilters);
 
             return Inertia::render('Products/Index', [
                 'products' => $products, // No sanitizar para mantener estructura de paginación
-                'categories' => InertiaHelper::sanitizeData($categories),
+                'presentations' => InertiaHelper::sanitizeData($presentations),
                 'filters' => $sanitizedFilters,
                 'stats' => InertiaHelper::sanitizeData($stats),
             ]);
@@ -142,8 +138,8 @@ class ProductController extends Controller
             
             return Inertia::render('Products/Index', [
                 'products' => [],
-                'categories' => [],
-                'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'category', 'status', 'stock_status'])),
+                'presentations' => [],
+                'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'presentation', 'status', 'stock_status'])),
                 'error' => 'Error al cargar productos: ' . $e->getMessage()
             ]);
         }
@@ -1045,9 +1041,11 @@ class ProductController extends Controller
             // Skip header row (first row)
             $headerRow = array_shift($rows);
             
-            // Mapeo de columnas esperadas (puedes ajustar según tu Excel)
-            // Asumimos que el Excel tiene estas columnas en orden:
-            // nombre, codigo, descripcion, categoria, marca, precio_costo, precio_venta, stock, stock_minimo, tipo_unidad
+            // Mapeo de columnas esperadas
+            // El Excel debe tener estas columnas en orden:
+            // A=Nombre (requerido), B=Código (requerido), C=Descripción (requerido), D=Categoría (opcional), E=Marca (opcional), 
+            // F=Precio Costo, G=Precio Venta, H=Stock, I=Stock Mínimo, J=Tipo Unidad, K=Activo, 
+            // L=Código de Barras (opcional), M=Lote (opcional), N=Presentación (opcional), O=Fecha de Vencimiento (opcional)
             $imported = 0;
             $updated = 0;
             $created = 0;
@@ -1064,9 +1062,9 @@ class ProductController extends Controller
 
                 try {
                     // Mapear columnas del Excel
-                    // Orden esperado: A=Nombre, B=Código, C=Descripción, D=Categoría, E=Marca, F=Precio Costo, 
+                    // Orden esperado: A=Nombre (requerido), B=Código (requerido), C=Descripción (requerido), D=Categoría (opcional), E=Marca (opcional), F=Precio Costo, 
                     // G=Precio Venta, H=Stock, I=Stock Mínimo, J=Tipo Unidad, K=Activo, 
-                    // L=Código de Barras, M=Lote, N=Presentación, O=Fecha de Vencimiento
+                    // L=Código de Barras (opcional), M=Lote (opcional), N=Presentación (opcional), O=Fecha de Vencimiento (opcional)
                     $data = [
                         'name' => isset($row[0]) ? trim((string)$row[0]) : null,
                         'code' => isset($row[1]) ? trim((string)$row[1]) : null,
@@ -1086,8 +1084,12 @@ class ProductController extends Controller
                     ];
 
                     // Validar campos requeridos
-                    if (empty($data['name']) || empty($data['code'])) {
-                        $errors[] = "Fila {$rowNumber}: Nombre y código son requeridos";
+                    if (empty($data['name']) || empty($data['code']) || empty($data['description'])) {
+                        $missingFields = [];
+                        if (empty($data['name'])) $missingFields[] = 'Nombre';
+                        if (empty($data['code'])) $missingFields[] = 'Código';
+                        if (empty($data['description'])) $missingFields[] = 'Descripción';
+                        $errors[] = "Fila {$rowNumber}: Los siguientes campos son requeridos: " . implode(', ', $missingFields);
                         $skipped++;
                         continue;
                     }
@@ -1110,7 +1112,7 @@ class ProductController extends Controller
                     // IMPORTANTE: NO actualizar stock_quantity durante la importación para no afectar el recálculo
                     $productData = [
                         'name' => trim($data['name']),
-                        'description' => !empty($data['description']) ? trim($data['description']) : null,
+                        'description' => trim($data['description']), // Descripción es requerida
                         'category_id' => $categoryId,
                         'brand' => !empty($data['brand']) ? trim($data['brand']) : null,
                         'presentation' => !empty($data['presentation']) ? trim($data['presentation']) : null,

@@ -382,6 +382,35 @@ class SaleController extends Controller
 
             DB::commit();
 
+            // Crear notificación para el usuario que creó la venta
+            try {
+                $sale->load('client');
+                \App\Helpers\NotificationHelper::success(
+                    auth()->user(),
+                    'Venta Creada Exitosamente',
+                    "Venta {$sale->code} creada por $" . number_format($sale->total, 2) . " - Cliente: " . ($sale->client->name ?? 'N/A'),
+                    route('sales.show', $sale)
+                );
+
+                // Notificar a administradores sobre nueva venta
+                $admins = \App\Models\User::role(['super-admin', 'Administrador', 'administrador'])->get();
+                if ($admins->isNotEmpty()) {
+                    \App\Helpers\NotificationHelper::createForUsers(
+                        $admins->all(),
+                        'Nueva Venta Registrada',
+                        "Venta {$sale->code} por $" . number_format($sale->total, 2) . " creada por " . auth()->user()->name,
+                        'info',
+                        route('sales.show', $sale)
+                    );
+                }
+            } catch (\Exception $e) {
+                // No fallar la creación de la venta si hay error en notificaciones
+                Log::warning('SaleController store - Error al crear notificaciones', [
+                    'error' => $e->getMessage(),
+                    'sale_id' => $sale->id
+                ]);
+            }
+
             Log::info('SaleController store - Venta creada exitosamente', [
                 'sale_id' => $sale->id,
                 'sale_code' => $sale->code,
@@ -601,7 +630,8 @@ class SaleController extends Controller
     {
         // Permitir eliminar ventas en estado draft (borrador)
         if ($sale->status !== 'draft') {
-            return back()->with('error', 'Solo se pueden eliminar ventas en estado borrador.');
+            return redirect()->route('sales.index')
+                ->with('error', 'Solo se pueden eliminar ventas en estado borrador.');
         }
 
         DB::beginTransaction();
@@ -638,7 +668,8 @@ class SaleController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return back()->with('success', 'Venta eliminada exitosamente. Se eliminaron ' . $invoices->count() . ' factura(s) relacionada(s) y sus pagos.');
+            return redirect()->route('sales.index')
+                ->with('success', 'Venta eliminada exitosamente. Se eliminaron ' . $invoices->count() . ' factura(s) relacionada(s) y sus pagos.');
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('SaleController destroy - Error:', [
@@ -646,7 +677,8 @@ class SaleController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return back()->with('error', 'Error al eliminar la venta: ' . $e->getMessage());
+            return redirect()->route('sales.index')
+                ->with('error', 'Error al eliminar la venta: ' . $e->getMessage());
         }
     }
 

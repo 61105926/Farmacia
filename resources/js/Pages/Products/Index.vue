@@ -120,16 +120,16 @@
             />
           </div>
           <div>
-            <Label for="category">Categoría</Label>
+            <Label for="presentation">Presentación</Label>
             <select
-              id="category"
-              v-model="filters.category"
+              id="presentation"
+              v-model="filters.presentation"
               @change="applyFilters"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
             >
-              <option value="">Todas las categorías</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">
-                {{ category.name }}
+              <option value="">Todas las presentaciones</option>
+              <option v-for="presentation in presentations" :key="presentation" :value="presentation">
+                {{ presentation }}
               </option>
             </select>
           </div>
@@ -427,7 +427,7 @@
             <div class="text-xs text-blue-700 space-y-1">
               <p><strong>Columna A:</strong> Nombre (requerido)</p>
               <p><strong>Columna B:</strong> Código (requerido, único)</p>
-              <p><strong>Columna C:</strong> Descripción (opcional)</p>
+              <p><strong>Columna C:</strong> Descripción (requerido)</p>
               <p><strong>Columna D:</strong> Categoría (opcional, nombre exacto)</p>
               <p><strong>Columna E:</strong> Marca (opcional)</p>
               <p><strong>Columna F:</strong> Precio Costo (numérico)</p>
@@ -527,7 +527,7 @@ import { debounce } from 'lodash-es'
 
 const props = defineProps({
   products: Object,
-  categories: Array,
+  presentations: Array,
   stats: Object,
   filters: Object,
   error: String
@@ -554,7 +554,7 @@ const stockAdjustment = reactive({
 // Initialize filters from props or empty values
 const filters = reactive({
   search: props.filters?.search || '',
-  category: props.filters?.category || '',
+  presentation: props.filters?.presentation || '',
   status: props.filters?.status || '',
   stock_status: props.filters?.stock_status || ''
 })
@@ -570,7 +570,7 @@ watch(() => props.filters, (newFilters) => {
   if (newFilters !== undefined) {
     console.log('Updating reactive filters with:', newFilters)
     filters.search = newFilters.search || ''
-    filters.category = newFilters.category || ''
+    filters.presentation = newFilters.presentation || ''
     filters.status = newFilters.status || ''
     filters.stock_status = newFilters.stock_status || ''
     console.log('Reactive filters after update:', filters)
@@ -692,7 +692,7 @@ const deleteProduct = (product) => {
 const debouncedSearch = debounce(() => {
   const searchParams = {}
   if (filters.search) searchParams.search = filters.search
-  if (filters.category) searchParams.category = filters.category
+  if (filters.presentation) searchParams.presentation = filters.presentation
   if (filters.status) searchParams.status = filters.status
   if (filters.stock_status) searchParams.stock_status = filters.stock_status
 
@@ -716,12 +716,9 @@ const applyFilters = () => {
   if (filters.search && filters.search.trim()) {
     currentFilters.search = filters.search.trim()
   }
-  // Para category, convertir a número si existe
-  if (filters.category && filters.category !== '') {
-    const categoryNum = parseInt(filters.category, 10)
-    if (!isNaN(categoryNum)) {
-      currentFilters.category = categoryNum
-    }
+  // Para presentation, enviar como string
+  if (filters.presentation && filters.presentation !== '') {
+    currentFilters.presentation = String(filters.presentation)
   }
   // Para status y stock_status, enviar como string
   if (filters.status && filters.status !== '') {
@@ -748,7 +745,7 @@ const clearFilters = () => {
 
   // Reset all filters
   filters.search = ''
-  filters.category = ''
+  filters.presentation = ''
   filters.status = ''
   filters.stock_status = ''
 

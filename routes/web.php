@@ -23,6 +23,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Rutas de Notificaciones
+    Route::get('/api/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/api/notifications/{notification}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/api/notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::delete('/api/notifications/{notification}', [App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
+
     // Rutas de Farmacias (Clientes)
     Route::get('/pharmacies/export', [App\Http\Controllers\PharmacyController::class, 'export'])->name('pharmacies.export');
     Route::post('/pharmacies/{pharmacy}/toggle-status', [App\Http\Controllers\PharmacyController::class, 'toggleStatus'])->name('pharmacies.toggle-status');
