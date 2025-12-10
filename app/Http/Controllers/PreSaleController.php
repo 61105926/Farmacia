@@ -1356,37 +1356,78 @@ class PresaleController extends Controller
     /**
      * Destroy presale
      */
-    public function destroy(Presale $presale): RedirectResponse
+    public function destroy(Request $request, $presale): RedirectResponse
     {
+        // Si viene como modelo (route model binding) o como ID
+        if (!$presale instanceof Presale) {
+            $presale = Presale::findOrFail($presale);
+        }
+
+        Log::info('PresaleController destroy - Método llamado', [
+            'presale_id' => $presale->id,
+            'presale_code' => $presale->code,
+            'user_id' => auth()->id(),
+            'route_name' => $request->route()->getName(),
+            'request_method' => $request->method()
+        ]);
+
         if ($presale->status !== 'draft') {
+            Log::warning('PresaleController destroy - Preventa no está en estado borrador', [
+                'presale_id' => $presale->id,
+                'status' => $presale->status
+            ]);
             return back()->with('error', 'Solo se pueden eliminar preventas en estado borrador.');
+        }
+
+        // Verificar si hay ventas relacionadas
+        $relatedSales = \App\Models\Sale::where('presale_id', $presale->id)->count();
+        if ($relatedSales > 0) {
+            return back()->with('error', 'No se puede eliminar la preventa porque ya tiene ventas relacionadas.');
         }
 
         DB::beginTransaction();
         try {
-            // Eliminar items primero
-            $presale->items()->delete();
+            // Eliminar items primero - usar eliminación directa en la base de datos
+            PresaleItem::where('presale_id', $presale->id)->delete();
 
-            // Eliminar preventa
-            $presale->delete();
+            // Guardar información antes de eliminar
+            $presaleId = $presale->id;
+            $presaleCode = $presale->code;
+
+            // Eliminar preventa - usar eliminación directa
+            $deleted = $presale->delete();
+            
+            if (!$deleted) {
+                throw new \Exception('No se pudo eliminar la preventa de la base de datos.');
+            }
 
             DB::commit();
 
             Log::info('PresaleController destroy - Preventa eliminada', [
-                'presale_id' => $presale->id,
+                'presale_id' => $presaleId,
+                'presale_code' => $presaleCode,
                 'user_id' => auth()->id()
             ]);
 
             return redirect()->route('presales.index')
-                ->with('success', 'Preventa eliminada exitosamente.');
+                ->with('success', "Preventa {$presaleCode} eliminada exitosamente.");
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('PresaleController destroy - Error', [
-                'presale_id' => $presale->id,
-                'message' => $e->getMessage()
+                'presale_id' => $presale->id ?? null,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
-            return back()->with('error', 'Error al eliminar la preventa.');
+            
+            $errorMessage = 'Error al eliminar la preventa.';
+            if (str_contains($e->getMessage(), 'foreign key constraint')) {
+                $errorMessage = 'No se puede eliminar la preventa porque tiene registros relacionados.';
+            } elseif (str_contains($e->getMessage(), 'Integrity constraint violation')) {
+                $errorMessage = 'No se puede eliminar la preventa porque tiene registros relacionados.';
+            }
+            
+            return back()->with('error', $errorMessage);
         }
     }
 }

@@ -37,7 +37,7 @@
                         {{ !products || products.length === 0 ? 'No hay productos disponibles' : 'Seleccionar producto' }}
                       </option>
                       <option v-for="product in products" :key="product.id" :value="product.id">
-                        {{ product.name }} ({{ product.code }}) - Stock: {{ product.stock_quantity || 0 }}
+                        {{ product.description || 'N/A' }} ({{ product.code }}) - Stock: {{ product.stock_quantity || 0 }}
                       </option>
                     </select>
                     <span v-if="form.errors.product_id" class="text-sm text-red-600">
@@ -245,17 +245,17 @@
               </CardHeader>
               <CardContent class="space-y-3">
                 <div>
-                  <div class="text-xs text-gray-500">Nombre</div>
-                  <div class="text-sm font-medium text-gray-900">{{ selectedProduct.name }}</div>
+                  <div class="text-xs text-gray-500">Descripción</div>
+                  <div class="text-sm font-medium text-gray-900">{{ selectedProduct?.description || 'N/A' }}</div>
                 </div>
                 <div>
                   <div class="text-xs text-gray-500">Código</div>
-                  <div class="text-sm text-gray-900">{{ selectedProduct.code }}</div>
+                  <div class="text-sm text-gray-900">{{ selectedProduct?.code || 'N/A' }}</div>
                 </div>
                 <div>
                   <div class="text-xs text-gray-500">Stock Actual</div>
                   <div class="text-sm font-medium" :class="stockColorClass">
-                    {{ selectedProduct.stock_quantity }}
+                    {{ selectedProduct?.stock_quantity || 0 }}
                   </div>
                 </div>
                 <div v-if="form.quantity && form.transaction_type">
@@ -351,9 +351,6 @@ const props = defineProps({
 })
 
 // Debug: mostrar productos recibidos
-console.log('Productos recibidos en props:', props.products)
-console.log('Cantidad de productos:', props.products?.length || 0)
-
 const form = useForm({
   product_id: '',
   movement_type: '',

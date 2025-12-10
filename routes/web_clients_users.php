@@ -106,15 +106,21 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [App\Http\Controllers\PreSaleController::class, 'index'])->name('index');
         Route::get('/crear', [App\Http\Controllers\PreSaleController::class, 'create'])->name('create');
         Route::post('/', [App\Http\Controllers\PreSaleController::class, 'store'])->name('store');
-        Route::get('/{presale}', [App\Http\Controllers\PreSaleController::class, 'show'])->name('show');
-        Route::get('/{presale}/editar', [App\Http\Controllers\PreSaleController::class, 'edit'])->name('edit');
-        Route::put('/{presale}', [App\Http\Controllers\PreSaleController::class, 'update'])->name('update');
-        Route::delete('/{presale}', [App\Http\Controllers\PreSaleController::class, 'destroy'])->name('destroy');
+        
+        // Rutas específicas ANTES de las genéricas (importante: orden correcto)
+        // Usar where para restringir a números y evitar conflictos con rutas específicas
+        Route::post('/{presale}/eliminar', [App\Http\Controllers\PreSaleController::class, 'destroy'])->name('destroy.post');
         Route::post('/{presale}/enviar', [App\Http\Controllers\PreSaleController::class, 'submit'])->name('submit');
         Route::post('/{presale}/aprobar', [App\Http\Controllers\PreSaleController::class, 'approve'])->name('approve');
         Route::post('/{presale}/rechazar', [App\Http\Controllers\PreSaleController::class, 'reject'])->name('reject');
         Route::post('/{presale}/convertir', [App\Http\Controllers\PreSaleController::class, 'convertToSale'])->name('convert');
+        Route::get('/{presale}/editar', [App\Http\Controllers\PreSaleController::class, 'edit'])->name('edit');
         Route::get('/{presale}/imprimir', [App\Http\Controllers\PreSaleController::class, 'print'])->name('print');
+        
+        // Rutas genéricas al final (estas capturan cualquier otra cosa)
+        Route::get('/{presale}', [App\Http\Controllers\PreSaleController::class, 'show'])->name('show');
+        Route::put('/{presale}', [App\Http\Controllers\PreSaleController::class, 'update'])->name('update');
+        Route::delete('/{presale}', [App\Http\Controllers\PreSaleController::class, 'destroy'])->name('destroy');
     });
 
     // Ventas
@@ -135,16 +141,16 @@ Route::middleware(['auth'])->group(function () {
         
         // Rutas específicas con /editar, /imprimir, etc. DEBEN estar antes de /{sale}
         // Usar where para restringir a números y evitar conflictos con rutas específicas
-        Route::get('/{sale}/editar', [App\Http\Controllers\SaleController::class, 'edit'])->name('edit')->where('sale', '[0-9]+');
-        Route::get('/{sale}/imprimir', [App\Http\Controllers\SaleController::class, 'print'])->name('print')->where('sale', '[0-9]+');
-        Route::post('/{sale}/completar', [App\Http\Controllers\SaleController::class, 'complete'])->name('complete')->where('sale', '[0-9]+');
-        Route::post('/{sale}/cancelar', [App\Http\Controllers\SaleController::class, 'cancel'])->name('cancel')->where('sale', '[0-9]+');
-        Route::post('/{sale}/factura', [App\Http\Controllers\SaleController::class, 'generateInvoice'])->name('invoice')->where('sale', '[0-9]+');
+        Route::get('/{sale}/editar', [App\Http\Controllers\SaleController::class, 'edit'])->name('edit');
+        Route::get('/{sale}/imprimir', [App\Http\Controllers\SaleController::class, 'print'])->name('print');
+        Route::post('/{sale}/completar', [App\Http\Controllers\SaleController::class, 'complete'])->name('complete');
+        Route::post('/{sale}/cancelar', [App\Http\Controllers\SaleController::class, 'cancel'])->name('cancel');
+        Route::post('/{sale}/factura', [App\Http\Controllers\SaleController::class, 'generateInvoice'])->name('invoice');
         
         // Rutas genéricas al final (estas capturan cualquier otra cosa)
-        Route::get('/{sale}', [App\Http\Controllers\SaleController::class, 'show'])->name('show')->where('sale', '[0-9]+');
-        Route::put('/{sale}', [App\Http\Controllers\SaleController::class, 'update'])->name('update')->where('sale', '[0-9]+');
-        Route::delete('/{sale}', [App\Http\Controllers\SaleController::class, 'destroy'])->name('destroy')->where('sale', '[0-9]+');
+        Route::get('/{sale}', [App\Http\Controllers\SaleController::class, 'show'])->name('show');
+        Route::put('/{sale}', [App\Http\Controllers\SaleController::class, 'update'])->name('update');
+        Route::delete('/{sale}', [App\Http\Controllers\SaleController::class, 'destroy'])->name('destroy');
     });
 
     // Cuentas por Cobrar

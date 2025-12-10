@@ -65,6 +65,18 @@
             <XCircle class="h-4 w-4 mr-2" />
             Cancelar
           </Button>
+
+          <!-- Eliminar (solo si es borrador) -->
+          <Button
+            v-if="presale.status === 'draft' && can('presales.delete')"
+            @click="deletePresale"
+            title="Eliminar preventa"
+            variant="outline"
+            class="text-red-600 border-red-300 hover:bg-red-50"
+          >
+            <Trash2 class="h-4 w-4 mr-2" />
+            Eliminar
+          </Button>
         </div>
       </div>
 
@@ -294,6 +306,16 @@
                 <XCircle class="h-4 w-4 mr-2" />
                 Cancelar Preventa
               </Button>
+
+              <Button
+                v-if="presale.status === 'draft' && can('presales.delete')"
+                variant="outline"
+                class="w-full justify-start text-red-600 border-red-300 hover:bg-red-50"
+                @click="deletePresale"
+              >
+                <Trash2 class="h-4 w-4 mr-2" />
+                Eliminar Preventa
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -342,7 +364,8 @@ import {
   Clock,
   CheckCircle2,
   X,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -491,5 +514,42 @@ const cancelPresale = () => {
       })
     }
   )
+}
+
+const deletePresale = () => {
+  showConfirm({
+    title: 'Eliminar Preventa',
+    message: '¿Estás seguro de que quieres eliminar esta preventa? Esta acción no se puede deshacer.',
+    confirmText: 'Eliminar',
+    onConfirm: () => {
+      // Usar POST con ruta específica /eliminar (más confiable que DELETE)
+      router.post(`/preventas/${props.presale.id}/eliminar`, {}, {
+        preserveScroll: false,
+        preserveState: false,
+        onSuccess: (page) => {
+          const message = page?.props?.flash?.success || 'La preventa ha sido eliminada exitosamente.'
+          router.visit('/preventas', {
+            onSuccess: () => {
+              showAlert({
+                type: 'success',
+                title: 'Preventa eliminada',
+                message: message
+              })
+            }
+          })
+        },
+        onError: (errors) => {
+          const errorMessage = errors?.message || 
+                              errors?.error || 
+                              (typeof errors === 'string' ? errors : 'No se pudo eliminar la preventa. Por favor, intente nuevamente.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errorMessage
+          })
+        }
+      })
+    }
+  })
 }
 </script>

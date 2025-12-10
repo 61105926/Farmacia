@@ -107,7 +107,7 @@
               >
                 <option value="">Todos los productos</option>
                 <option v-for="product in products" :key="product.id" :value="product.id">
-                  {{ product.name }} ({{ product.code }})
+                  {{ product.description || product.name || 'N/A' }} ({{ product.code }})
                 </option>
               </select>
             </div>
@@ -224,7 +224,7 @@
                   </td>
                   <td class="px-6 py-4">
                     <div>
-                      <div class="text-sm font-medium text-gray-900">{{ movement.product.name }}</div>
+                      <div class="text-sm font-medium text-gray-900">{{ movement.product.description || movement.product.name || 'N/A' }}</div>
                       <div class="text-sm text-gray-500">{{ movement.product.code }}</div>
                     </div>
                   </td>

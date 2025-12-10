@@ -579,7 +579,6 @@ class AccountReceivableController extends Controller
         $ticket .= $this->centerText("Gracias por su pago", $lineWidth) . "\n";
         $ticket .= "\n";
         $ticket .= "\n";
-        $ticket .= "\x1B" . "m"; // Corte de papel (ESC m para algunas impresoras)
         $ticket .= "\n";
 
         return $ticket;

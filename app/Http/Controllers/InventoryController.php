@@ -77,7 +77,7 @@ class InventoryController extends Controller
 
         return Inertia::render('Inventory/Index', [
             'movements' => InertiaHelper::sanitizeData($movements),
-            'products' => Product::active()->get(['id', 'name', 'code']),
+            'products' => Product::active()->get(['id', 'name', 'code', 'description']),
             'movementTypes' => Inventory::getMovementTypes(),
             'transactionTypes' => Inventory::getTransactionTypes(),
             'stats' => $stats,
@@ -114,7 +114,7 @@ class InventoryController extends Controller
 
         return Inertia::render('Inventory/Movements', [
             'movements' => $movements,
-            'products' => Product::active()->get(['id', 'name', 'code']),
+            'products' => Product::active()->get(['id', 'name', 'code', 'description']),
             'filters' => $request->only(['product_id', 'date_from', 'date_to']),
         ]);
     }
@@ -169,13 +169,13 @@ class InventoryController extends Controller
 
             // Cargar productos activos, si no hay, cargar todos
             $products = Product::active()
-                ->select('id', 'name', 'code', 'stock_quantity', 'cost_price')
+                ->select('id', 'name', 'code', 'description', 'stock_quantity', 'cost_price')
                 ->orderBy('name', 'asc')
                 ->get();
             
             // Si no hay productos activos, cargar todos los productos
             if ($products->isEmpty()) {
-                $products = Product::select('id', 'name', 'code', 'stock_quantity', 'cost_price')
+                $products = Product::select('id', 'name', 'code', 'description', 'stock_quantity', 'cost_price')
                     ->orderBy('name', 'asc')
                     ->get();
             }

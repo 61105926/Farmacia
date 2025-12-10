@@ -123,9 +123,7 @@ class UserController extends Controller
      */
     public function show(User $user): Response
     {
-        $user->load(['roles', 'sessions' => function($q) {
-            $q->latest()->limit(10);
-        }]);
+        $user->load('roles');
 
         return Inertia::render('Users/Show', [
             'user' => $user,

@@ -303,16 +303,14 @@
                       </Button>
 
                       <!-- Eliminar (solo borradores) -->
-                      <Button
+                      <button
                         v-if="presale.status === 'draft' && can('presales.delete')"
-                        variant="outline"
-                        size="sm"
-                        @click="deletePresale(presale.id)"
+                        @click.prevent="deletePresale(presale.id)"
                         title="Eliminar"
-                        class="text-red-600 hover:text-red-700"
+                        class="inline-flex items-center px-2 py-1 border border-red-300 rounded text-sm font-medium text-red-600 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                       >
                         <Trash2 class="h-4 w-4" />
-                      </Button>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -550,20 +548,35 @@ const cancelPresale = (id) => {
 }
 
 const deletePresale = (id) => {
-  showConfirm(
-    'Eliminar Preventa',
-    '¿Estás seguro de que quieres eliminar esta preventa? Esta acción no se puede deshacer.',
-    'Eliminar',
-    () => {
-      router.delete(`/preventas/${id}`, {
-        onSuccess: () => {
-          showAlert('success', 'Preventa eliminada', 'La preventa ha sido eliminada exitosamente.')
+  showConfirm({
+    title: 'Eliminar Preventa',
+    message: '¿Estás seguro de que quieres eliminar esta preventa? Esta acción no se puede deshacer.',
+    confirmText: 'Eliminar',
+    onConfirm: () => {
+      router.post(`/preventas/${id}/eliminar`, {}, {
+        preserveScroll: true,
+        preserveState: false,
+        onSuccess: (page) => {
+          router.reload({ only: ['presales', 'stats'] })
+          const message = page?.props?.flash?.success || 'La preventa ha sido eliminada exitosamente.'
+          showAlert({
+            type: 'success',
+            title: 'Preventa eliminada',
+            message: message
+          })
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo eliminar la preventa.')
+          const errorMessage = errors?.message || 
+                              errors?.error || 
+                              (typeof errors === 'string' ? errors : 'No se pudo eliminar la preventa. Por favor, intente nuevamente.')
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: errorMessage
+          })
         }
       })
     }
-  )
+  })
 }
 </script>

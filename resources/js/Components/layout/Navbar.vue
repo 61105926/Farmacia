@@ -36,7 +36,7 @@
       <!-- Center Section - System Title -->
       <div class="flex-1 max-w-2xl mx-4">
         <div class="text-center">
-          <p class="text-sm font-bold text-primary-600 uppercase tracking-wide">
+          <p class="text-2xl font-bold text-primary-600 uppercase tracking-wide">
             SISPANDO
           </p>
         </div>
