@@ -8,7 +8,7 @@
             ← Volver a clientes
           </Link>
           <h1 class="text-2xl font-bold text-gray-900">{{ client.business_name }}</h1>
-          <p class="text-sm text-gray-600 mt-1">{{ client.trade_name || 'Sin nombre comercial' }}</p>
+          <p class="text-sm text-gray-600 mt-1">{{ client.trade_name || 'Sin razón social' }}</p>
           <div class="flex items-center gap-2 mt-2">
             <span
               class="px-2 py-1 text-xs font-medium rounded-full"

@@ -22,7 +22,7 @@
                 <!-- Business Name -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Razón Social <span class="text-red-500">*</span>
+                    Nombre Comercial <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="form.business_name"
@@ -39,7 +39,7 @@
                 <!-- Trade Name -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre Comercial
+                    Razón Social
                   </label>
                   <input
                     v-model="form.trade_name"

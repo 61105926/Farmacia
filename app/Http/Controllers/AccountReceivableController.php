@@ -467,121 +467,81 @@ class AccountReceivableController extends Controller
      */
     private function generateThermalTicket($payment): string
     {
-        $lineWidth = 42; // Ancho típico para impresoras térmicas (80mm)
-
-        $ticket = "";
+        $lw = 42;
+        $sep = str_repeat("-", $lw) . "\n";
+        $t = "";
 
         // Encabezado
-        $ticket .= $this->centerText("FARMACIA PANDO", $lineWidth) . "\n";
-        $ticket .= $this->centerText("NOTA DE PAGO", $lineWidth) . "\n";
-        $ticket .= str_repeat("=", $lineWidth) . "\n";
-        $ticket .= "\n";
+        $t .= $this->centerText("FARMACIA PANDO", $lw) . "\n";
+        $t .= $this->centerText("NOTA DE PAGO", $lw) . "\n";
+        $t .= $sep;
 
-        // Número de nota y fecha
-        $ticket .= "Nº: " . $payment->payment_number . "\n";
-        $ticket .= "Fecha: " . $payment->payment_date->format('d/m/Y H:i') . "\n";
-        $ticket .= str_repeat("-", $lineWidth) . "\n";
-        $ticket .= "\n";
+        // Nº y fecha
+        $t .= "Nº: " . $payment->payment_number . "\n";
+        $t .= "Fecha: " . $payment->payment_date->format('d/m/Y H:i') . "\n";
+        $t .= $sep;
 
-        // Información del cliente
-        $ticket .= $this->centerText("DATOS DEL CLIENTE", $lineWidth) . "\n";
-        $ticket .= str_repeat("-", $lineWidth) . "\n";
-        
+        // Datos del cliente
+        $t .= $this->centerText("DATOS DEL CLIENTE", $lw) . "\n";
+        $t .= $sep;
         if ($payment->client) {
-            $ticket .= "Razon Social:\n";
-            $ticket .= $this->wrapText($payment->client->business_name ?? 'N/A', $lineWidth) . "\n";
-            
+            $t .= "Razon Social: " . ($payment->client->business_name ?? 'N/A') . "\n";
             if ($payment->client->trade_name) {
-                $ticket .= "Nombre Comercial:\n";
-                $ticket .= $this->wrapText($payment->client->trade_name, $lineWidth) . "\n";
+                $t .= "Nombre Comercial: " . $payment->client->trade_name . "\n";
             }
-            
             if ($payment->client->tax_id) {
-                $ticket .= "NIT: " . $payment->client->tax_id . "\n";
+                $t .= "NIT: " . $payment->client->tax_id . "\n";
             }
-            
             if ($payment->client->address) {
-                $ticket .= "Direccion:\n";
-                $ticket .= $this->wrapText($payment->client->address, $lineWidth) . "\n";
+                $t .= "Direccion: " . $payment->client->address . "\n";
             }
-            
             if ($payment->client->phone) {
-                $ticket .= "Telefono: " . $payment->client->phone . "\n";
+                $t .= "Telefono: " . $payment->client->phone . "\n";
             }
         }
-        
-        $ticket .= str_repeat("-", $lineWidth) . "\n";
-        $ticket .= "\n";
+        $t .= $sep;
 
-        // Información del pago
-        $ticket .= $this->centerText("DATOS DEL PAGO", $lineWidth) . "\n";
-        $ticket .= str_repeat("-", $lineWidth) . "\n";
-        $ticket .= "Estado: " . strtoupper($payment->status_label) . "\n";
-        $ticket .= "Metodo: " . $payment->payment_method_label . "\n";
-        
+        // Datos del pago
+        $t .= $this->centerText("DATOS DEL PAGO", $lw) . "\n";
+        $t .= $sep;
+        $t .= "Estado: " . strtoupper($payment->status_label) . "\n";
+        $t .= "Metodo: " . $payment->payment_method_label . "\n";
         if ($payment->payment_reference) {
-            $ticket .= "Referencia: " . $payment->payment_reference . "\n";
+            $t .= "Referencia: " . $payment->payment_reference . "\n";
         }
-        
         if ($payment->bank_name) {
-            $ticket .= "Banco: " . $payment->bank_name . "\n";
+            $t .= "Banco: " . $payment->bank_name . "\n";
         }
-        
         if ($payment->account_number) {
-            $ticket .= "Nº Cuenta: " . $payment->account_number . "\n";
+            $t .= "Nº Cuenta: " . $payment->account_number . "\n";
         }
-        
         if ($payment->check_number) {
-            $ticket .= "Nº Cheque: " . $payment->check_number . "\n";
+            $t .= "Nº Cheque: " . $payment->check_number . "\n";
         }
-        
         if ($payment->invoice) {
-            // Usar el número de factura de la venta si existe, sino el de la factura
             $invoiceNumber = $payment->invoice->sale->invoice_number ?? $payment->invoice->invoice_number;
-            $ticket .= "Factura: " . $invoiceNumber . "\n";
+            $t .= "Factura: " . $invoiceNumber . "\n";
         }
-        
-        $ticket .= str_repeat("-", $lineWidth) . "\n";
-        $ticket .= "\n";
+        $t .= $sep;
 
-        // Monto del pago - Sección destacada
-        $ticket .= $this->centerText("RECIBI DE", $lineWidth) . "\n";
-        $ticket .= str_repeat("-", $lineWidth) . "\n";
-        $clientName = $payment->client 
+        // Monto
+        $clientName = $payment->client
             ? ($payment->client->business_name ?? $payment->client->trade_name ?? 'N/A')
             : 'N/A';
-        $ticket .= $this->centerText($this->truncateText($clientName, $lineWidth - 4), $lineWidth) . "\n";
-        $ticket .= "\n";
-        
-        $ticket .= $this->centerText("LA CANTIDAD DE", $lineWidth) . "\n";
-        $amountWords = $this->amountInWords($payment->amount);
-        $ticket .= $this->wrapText($amountWords, $lineWidth) . "\n";
-        $ticket .= "\n";
-        
-        $ticket .= $this->centerText("EL MONTO DE", $lineWidth) . "\n";
-        $ticket .= $this->centerText(number_format($payment->amount, 2, ',', '.') . " Bs.", $lineWidth) . "\n";
-        $ticket .= "\n";
-        
-        if ($payment->invoice) {
-            // Usar el número de factura de la venta si existe, sino el de la factura
-            $invoiceNumber = $payment->invoice->sale->invoice_number ?? $payment->invoice->invoice_number;
-            $ticket .= "En concepto de pago de la\n";
-            $ticket .= "factura: " . $invoiceNumber . "\n";
-            $ticket .= "\n";
-        }
-        
-        $ticket .= str_repeat("=", $lineWidth) . "\n";
-        $ticket .= "\n";
+        $t .= $this->centerText("RECIBI DE", $lw) . "\n";
+        $t .= $this->centerText($this->truncateText($clientName, $lw), $lw) . "\n";
+        $t .= $this->centerText("LA CANTIDAD DE", $lw) . "\n";
+        $t .= $this->wrapText($this->amountInWords($payment->amount), $lw) . "\n";
+        $t .= $this->centerText("EL MONTO DE", $lw) . "\n";
+        $t .= $this->centerText(number_format($payment->amount, 2, ',', '.') . " Bs.", $lw) . "\n";
+        $t .= $sep;
 
         // Footer
-        $ticket .= str_repeat("=", $lineWidth) . "\n";
-        $ticket .= $this->centerText("NOTA DE PAGO Nº " . $payment->payment_number, $lineWidth) . "\n";
-        $ticket .= $this->centerText("Gracias por su pago", $lineWidth) . "\n";
-        $ticket .= "\n";
-        $ticket .= "\n";
-        $ticket .= "\n";
+        $t .= $this->centerText("NOTA DE PAGO Nº " . $payment->payment_number, $lw) . "\n";
+        $t .= $this->centerText("Gracias por su pago", $lw) . "\n";
+        $t .= "\n\n";
 
-        return $ticket;
+        return $t;
     }
 
     private function centerText($text, $width): string
