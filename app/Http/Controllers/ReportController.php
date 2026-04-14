@@ -398,29 +398,34 @@ class ReportController extends Controller
 
         // Top clientes por ventas
         $topClientsBySales = Client::selectRaw('
-                clients.*,
+                clients.id,
+                clients.business_name,
+                clients.trade_name,
                 COUNT(invoices.id) as invoice_count,
-                SUM(invoices.total) as total_sales,
-                SUM(invoices.paid_amount) as total_paid,
-                SUM(invoices.balance) as total_balance
+                COALESCE(SUM(invoices.total), 0) as total_sales,
+                COALESCE(SUM(invoices.paid_amount), 0) as total_paid,
+                COALESCE(SUM(invoices.balance), 0) as total_balance
             ')
-            ->leftJoin('invoices', 'clients.id', '=', 'invoices.client_id')
-            ->where('invoices.status', '!=', 'cancelled')
-            ->where('invoices.invoice_date', '>=', now()->subMonths(12))
-            ->groupBy('clients.id')
+            ->leftJoin('invoices', function ($join) {
+                $join->on('clients.id', '=', 'invoices.client_id')
+                     ->where('invoices.status', '!=', 'cancelled')
+                     ->where('invoices.invoice_date', '>=', now()->subMonths(12));
+            })
+            ->groupBy('clients.id', 'clients.business_name', 'clients.trade_name')
             ->orderBy('total_sales', 'desc')
             ->limit(10)
             ->get();
 
         // Clientes con mayor saldo pendiente
         $clientsWithHighestBalance = Client::selectRaw('
-                clients.*,
-                SUM(invoices.balance) as total_balance
+                clients.id,
+                clients.business_name,
+                clients.trade_name,
+                COALESCE(SUM(CASE WHEN invoices.status != \'cancelled\' AND invoices.balance > 0 THEN invoices.balance ELSE 0 END), 0) as total_balance
             ')
             ->leftJoin('invoices', 'clients.id', '=', 'invoices.client_id')
-            ->where('invoices.status', '!=', 'cancelled')
-            ->where('invoices.balance', '>', 0)
-            ->groupBy('clients.id')
+            ->groupBy('clients.id', 'clients.business_name', 'clients.trade_name')
+            ->having('total_balance', '>', 0)
             ->orderBy('total_balance', 'desc')
             ->limit(10)
             ->get();

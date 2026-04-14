@@ -384,18 +384,23 @@
 
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Factura (Opcional)
+                    Factura <span class="text-red-500">*</span>
                   </label>
                   <select
                     v-model="createPaymentForm.invoice_id"
+                    required
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :class="{ 'border-red-500': createPaymentForm.errors.invoice_id }"
                     :disabled="!createPaymentForm.client_id"
                   >
-                    <option value="">Sin factura específica</option>
+                    <option value="">Seleccionar factura</option>
                     <option v-for="invoice in availableInvoices" :key="invoice.id" :value="invoice.id">
                       {{ invoice.sale?.invoice_number || invoice.invoice_number }} - Saldo: {{ formatPrice(invoice.balance) }}
                     </option>
                   </select>
+                  <p v-if="createPaymentForm.errors.invoice_id" class="text-xs text-red-600 mt-1">
+                    {{ createPaymentForm.errors.invoice_id }}
+                  </p>
                   <div v-if="selectedInvoice" class="text-xs text-gray-500 mt-1">
                     Saldo disponible: {{ formatPrice(selectedInvoice.balance) }}
                   </div>
@@ -695,11 +700,16 @@ const closeCreatePaymentModal = () => {
 
 const submitCreatePayment = () => {
   console.log('submitCreatePayment llamado')
-  
+
+  if (!createPaymentForm.invoice_id) {
+    alert('Debe seleccionar una factura para registrar el pago.')
+    return
+  }
+
   // Preparar datos para enviar, convirtiendo strings vacíos a null
   const dataToSend = {
     client_id: createPaymentForm.client_id,
-    invoice_id: createPaymentForm.invoice_id || null,
+    invoice_id: createPaymentForm.invoice_id,
     amount: parseFloat(createPaymentForm.amount) || 0,
     payment_date: createPaymentForm.payment_date,
     payment_method: createPaymentForm.payment_method,

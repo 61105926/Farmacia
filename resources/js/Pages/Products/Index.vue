@@ -204,7 +204,7 @@
               <tr class="border-b">
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Producto</th>
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Fecha de Vencimiento</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-500">Proveedor</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-500">Nombre Genérico</th>
                 <th class="text-right py-3 px-4 font-medium text-gray-500">Stock</th>
                 <th class="text-right py-3 px-4 font-medium text-gray-500">Precio</th>
                 <th class="text-center py-3 px-4 font-medium text-gray-500">Estado</th>
@@ -216,7 +216,7 @@
                 <td class="py-3 px-4">
                   <div>
                     <div class="font-medium text-gray-900">{{ product.description || product.name || 'Sin descripción' }}</div>
-                    <div class="text-sm text-gray-500">{{ product.brand || 'Sin marca' }}</div>
+                    <div class="text-sm text-gray-500">{{ product.active_ingredient || 'Sin nombre genérico' }}</div>
                   </div>
                 </td>
                 <td class="py-3 px-4">
@@ -232,7 +232,7 @@
                   </div>
                 </td>
                 <td class="py-3 px-4">
-                  <span class="text-sm text-gray-600">{{ product.brand || 'Sin proveedor' }}</span>
+                  <span class="text-sm text-gray-600">{{ product.active_ingredient || 'Sin nombre genérico' }}</span>
                 </td>
                 <td class="py-3 px-4 text-right">
                   <div class="flex items-center justify-end">

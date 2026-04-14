@@ -327,7 +327,7 @@ class AccountReceivableController extends Controller
     {
         $validated = $request->validate([
             'client_id' => 'required|exists:clients,id',
-            'invoice_id' => 'nullable|exists:invoices,id',
+            'invoice_id' => 'required|exists:invoices,id',
             'amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date',
             'payment_method' => 'required|string|max:50',
