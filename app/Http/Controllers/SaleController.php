@@ -781,16 +781,19 @@ class SaleController extends Controller
         // Crear items de la factura
         foreach ($sale->items as $item) {
             \App\Models\InvoiceItem::create([
-                'invoice_id' => $invoice->id,
-                'product_id' => $item->product_id,
-                'description' => $item->product->name,
-                'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'discount' => $item->discount,
-                'discount_amount' => $item->discount_amount,
-                'subtotal' => $item->subtotal,
-                'tax_amount' => 0,
-                'total' => $item->total,
+                'invoice_id'         => $invoice->id,
+                'product_id'         => $item->product_id,
+                'product_code'       => $item->product->code ?? $item->product_id,
+                'product_name'       => $item->product->name ?? $item->product->description ?? 'N/A',
+                'product_description'=> $item->product->description ?? null,
+                'quantity'           => $item->quantity,
+                'unit_price'         => $item->unit_price,
+                'discount_percentage'=> $item->discount ?? 0,
+                'discount_amount'    => $item->discount_amount ?? 0,
+                'tax_rate'           => 0,
+                'tax_amount'         => 0,
+                'subtotal'           => $item->subtotal,
+                'total'              => $item->total,
             ]);
         }
 
