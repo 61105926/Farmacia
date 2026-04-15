@@ -326,7 +326,7 @@ let lastFlashError = null
 watch(
   () => page.props.flash,
   (flash) => {
-    if (flash?.success && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
+    if (flash?.success && typeof flash.success === 'string' && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
       lastFlashSuccess = flash.success
       window.$notify?.success('Éxito', flash.success)
     }

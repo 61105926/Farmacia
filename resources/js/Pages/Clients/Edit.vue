@@ -525,8 +525,8 @@ const submit = () => {
   }
   
   // Convertir zone, notes: string vacío a null
-  data.zone  = data.zone  && data.zone.trim()  !== '' ? data.zone.trim()  : null
-  data.notes = data.notes && data.notes.trim() !== '' ? data.notes.trim() : null
+  data.zone  = typeof data.zone  === 'string' && data.zone.trim()  !== '' ? data.zone.trim()  : null
+  data.notes = typeof data.notes === 'string' && data.notes.trim() !== '' ? data.notes.trim() : null
 
   // Convertir visit_day: string vacío a null (debe ser un día válido o null)
   data.visit_day = data.visit_day && data.visit_day !== '' ? data.visit_day : null
