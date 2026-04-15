@@ -524,6 +524,13 @@ const submit = () => {
     data.collector_id = isNaN(numValue) ? null : numValue
   }
   
+  // Convertir zone, notes: string vacío a null
+  data.zone  = data.zone  && data.zone.trim()  !== '' ? data.zone.trim()  : null
+  data.notes = data.notes && data.notes.trim() !== '' ? data.notes.trim() : null
+
+  // Convertir visit_day: string vacío a null (debe ser un día válido o null)
+  data.visit_day = data.visit_day && data.visit_day !== '' ? data.visit_day : null
+
   // Asegurar que website siempre esté presente en los datos
   if (!('website' in data)) {
     data.website = null
@@ -549,7 +556,7 @@ let lastFlashError = null
 watch(
   () => page.props.flash,
   (flash) => {
-    if (flash?.success && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
+    if (flash?.success && typeof flash.success === 'string' && flash.success !== lastFlashSuccess && flash.success.trim() !== '') {
       lastFlashSuccess = flash.success
       window.$notify?.success('Éxito', flash.success)
     }
