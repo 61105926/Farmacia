@@ -358,6 +358,12 @@ const getExpiryClass = (index) => {
   return 'text-gray-700'
 }
 
+const getGenericName = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product) return 'N/A'
+  return product.active_ingredient || 'N/A'
+}
+
 const getUnitType = (index) => {
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return 'unidades'

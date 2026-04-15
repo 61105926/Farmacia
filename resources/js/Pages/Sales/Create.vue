@@ -176,6 +176,18 @@
                       {{ product.description || product.name || 'N/A' }}
                     </option>
                   </select>
+                  <div v-if="item.product_id" class="mt-1 space-y-0.5">
+                    <p class="text-xs text-gray-600">
+                      Stock: <span class="font-semibold" :class="getStockClass(index)">{{ getStockText(index) }}</span>
+                      <span v-if="getMaxQuantity(index) === 0" class="ml-1 text-red-600 font-medium">⚠️ Sin stock</span>
+                    </p>
+                    <p class="text-xs text-gray-600">
+                      Vence: <span class="font-semibold" :class="getExpiryClass(index)">{{ getExpiryText(index) }}</span>
+                    </p>
+                    <p class="text-xs text-gray-600">
+                      Genérico: <span class="font-semibold text-gray-700">{{ getGenericName(index) }}</span>
+                    </p>
+                  </div>
                 </div>
 
                 <!-- Quantity -->
@@ -208,13 +220,6 @@
                     readonly
                     class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
                   />
-                  <p v-if="form.items[index].product_id" class="text-xs text-gray-600 mt-1">
-                    Stock disponible: <span class="font-semibold" :class="getStockClass(index)">{{ getStockText(index) }}</span>
-                    <span v-if="getMaxQuantity(index) === 0" class="ml-2 text-red-600 font-medium">⚠️ Sin stock</span>
-                  </p>
-                  <p v-else class="text-xs text-gray-400 mt-1 italic">
-                    Seleccione un producto para ver el stock
-                  </p>
                 </div>
 
                 <!-- Discount -->
@@ -380,9 +385,32 @@ const updateProductInfo = (index) => {
 const getStockText = (index) => {
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return 'N/A'
-  const stock = product.stock_quantity || 0
-  const unit = product.unit_type ? ` ${product.unit_type}` : ' unidades'
-  return `${stock}${unit}`
+  return product.stock_quantity || 0
+}
+
+const getExpiryText = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product || !product.expiry_date) return 'Sin fecha'
+  const date = new Date(product.expiry_date + 'T00:00:00')
+  return date.toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+const getExpiryClass = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product || !product.expiry_date) return 'text-gray-400'
+  const expiry = new Date(product.expiry_date + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24))
+  if (diffDays < 0) return 'text-red-600'
+  if (diffDays <= 30) return 'text-orange-500'
+  return 'text-gray-700'
+}
+
+const getGenericName = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product) return 'N/A'
+  return product.active_ingredient || 'N/A'
 }
 
 const getStockClass = (index) => {

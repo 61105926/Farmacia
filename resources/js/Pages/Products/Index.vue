@@ -203,8 +203,9 @@
             <thead>
               <tr class="border-b">
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Producto</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-500">Lote</th>
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Fecha de Vencimiento</th>
-                <th class="text-left py-3 px-4 font-medium text-gray-500">Nombre Genérico</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-500">Proveedor</th>
                 <th class="text-right py-3 px-4 font-medium text-gray-500">Stock</th>
                 <th class="text-right py-3 px-4 font-medium text-gray-500">Precio</th>
                 <th class="text-center py-3 px-4 font-medium text-gray-500">Estado</th>
@@ -215,9 +216,12 @@
               <tr v-for="product in products.data" :key="product.id" class="border-b hover:bg-gray-50">
                 <td class="py-3 px-4">
                   <div>
-                    <div class="font-medium text-gray-900">{{ product.description || product.name || 'Sin descripción' }}</div>
-                    <div class="text-sm text-gray-500">{{ product.active_ingredient || 'Sin nombre genérico' }}</div>
+                    <div class="font-medium text-gray-900">{{ product.description || 'Sin descripción' }}</div>
+                    <div v-if="product.name" class="text-xs text-gray-500 mt-0.5">{{ product.name }}</div>
                   </div>
+                </td>
+                <td class="py-3 px-4">
+                  <span class="text-sm text-gray-700">{{ product.sku || '-' }}</span>
                 </td>
                 <td class="py-3 px-4">
                   <div v-if="product.expiry_date" :class="getExpiryDateClass(product.expiry_date)">
@@ -232,7 +236,7 @@
                   </div>
                 </td>
                 <td class="py-3 px-4">
-                  <span class="text-sm text-gray-600">{{ product.active_ingredient || 'Sin nombre genérico' }}</span>
+                  <span class="text-sm text-gray-600">{{ cleanText(product.brand) || 'N/A' }}</span>
                 </td>
                 <td class="py-3 px-4 text-right">
                   <div class="flex items-center justify-end">
@@ -586,6 +590,13 @@ const canSubmitStockAdjustment = computed(() => {
 })
 
 // Methods
+const cleanText = (value) => {
+  if (!value) return null
+  const str = String(value).trim()
+  if (str === '[]' || str === '{}' || str === 'null' || str === '') return null
+  return str
+}
+
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('es-BO', {
     style: 'currency',
