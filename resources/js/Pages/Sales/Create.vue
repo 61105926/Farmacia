@@ -185,7 +185,7 @@
                       Vence: <span class="font-semibold" :class="getExpiryClass(index)">{{ getExpiryText(index) }}</span>
                     </p>
                     <p class="text-xs text-gray-600">
-                      Genérico: <span class="font-semibold text-gray-700">{{ getGenericName(index) }}</span>
+                      Lote: <span class="font-semibold text-gray-700">{{ getGenericName(index) }}</span>
                     </p>
                   </div>
                 </div>
@@ -410,7 +410,9 @@ const getExpiryClass = (index) => {
 const getGenericName = (index) => {
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return 'N/A'
-  return product.active_ingredient || 'N/A'
+  const lote = product.sku
+  if (!lote || String(lote).trim() === '[]' || String(lote).trim() === '') return 'N/A'
+  return lote
 }
 
 const getStockClass = (index) => {
