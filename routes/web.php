@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/api/notifications/{notification}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
     Route::post('/api/notifications/read-all', [App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.read-all');
+    Route::delete('/api/notifications/delete-read', [App\Http\Controllers\NotificationController::class, 'deleteAllRead'])->name('notifications.delete-read');
     Route::delete('/api/notifications/{notification}', [App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
 
     // Rutas de Farmacias (Clientes)

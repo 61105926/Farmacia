@@ -316,13 +316,30 @@ const unreadNotifications = computed(() =>
 const toggleNotifications = async () => {
   showNotifications.value = !showNotifications.value
   if (showNotifications.value) {
-    // Recargar notificaciones al abrir el dropdown
     await fetchNotifications()
+    // Marcar todas como leídas al abrir el panel
+    if (notifications.value.some(n => !n.read)) {
+      await markAllAsRead()
+    }
+  } else {
+    await deleteReadNotifications()
   }
 }
 
-const closeNotifications = () => {
+const closeNotifications = async () => {
   showNotifications.value = false
+  await deleteReadNotifications()
+}
+
+const deleteReadNotifications = async () => {
+  const hasRead = notifications.value.some(n => n.read)
+  if (!hasRead) return
+  try {
+    await axios.delete('/api/notifications/delete-read')
+    notifications.value = notifications.value.filter(n => !n.read)
+  } catch (error) {
+    console.error('Error al eliminar notificaciones leídas:', error)
+  }
 }
 
 const markAsRead = async (notification) => {

@@ -134,6 +134,23 @@ class NotificationController extends Controller
     }
 
     /**
+     * Eliminar todas las notificaciones leídas del usuario
+     */
+    public function deleteAllRead()
+    {
+        $user = Auth::user();
+        $isAdmin = $this->isAdmin($user);
+
+        if ($isAdmin) {
+            Notification::where('read', true)->delete();
+        } else {
+            $user->notifications()->where('read', true)->delete();
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Eliminar una notificación
      * Los administradores pueden eliminar cualquier notificación
      */
