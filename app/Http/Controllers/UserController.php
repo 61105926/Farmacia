@@ -48,7 +48,7 @@ class UserController extends Controller
         return Inertia::render('Users/Index', [
             'users' => InertiaHelper::sanitizeData($users),
             'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'status', 'role'])),
-            'roles' => InertiaHelper::sanitizeRoles(Role::all(['id', 'name'])),
+            'roles' => InertiaHelper::sanitizeRoles(Role::where('name', '!=', 'admin')->get(['id', 'name'])),
         ]);
     }
 
@@ -60,7 +60,7 @@ class UserController extends Controller
         $this->ensureBasicRoles();
         
         return Inertia::render('Users/Create', [
-            'roles' => Role::all(['id', 'name'])->map(function($role) {
+            'roles' => Role::where('name', '!=', 'admin')->get(['id', 'name'])->map(function($role) {
                 return [
                     'id' => $role->id,
                     'name' => $role->name ?? 'Sin nombre'
@@ -142,7 +142,7 @@ class UserController extends Controller
 
         return Inertia::render('Users/Edit', [
             'user' => $user,
-            'roles' => Role::all(['id', 'name'])->map(function($role) {
+            'roles' => Role::where('name', '!=', 'admin')->get(['id', 'name'])->map(function($role) {
                 return [
                     'id' => $role->id,
                     'name' => $role->name ?? 'Sin nombre'

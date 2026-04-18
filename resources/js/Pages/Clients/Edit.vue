@@ -45,6 +45,7 @@
                   <input
                     v-model="form.trade_name"
                     type="text"
+                    @input="form.trade_name = toTitleCase(form.trade_name)"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
@@ -447,6 +448,11 @@ const onlyNumbersAndHyphen = (event) => {
 }
 
 
+
+const toTitleCase = (str) => {
+  if (!str) return ''
+  return str.replace(/\b\w/g, (c) => c.toUpperCase())
+}
 
 const onlyIntegers = (event) => {
   const char = String.fromCharCode(event.which)

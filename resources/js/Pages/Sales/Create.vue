@@ -355,7 +355,7 @@ const form = reactive({
   payment_method: '',
   payment_status: '',
   delivery_date: '',
-  invoice_number: props.nextInvoiceNumber || '',
+  invoice_number: '',
   notes: '',
   items: [],
   subtotal: 0,
