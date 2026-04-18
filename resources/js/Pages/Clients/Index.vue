@@ -181,7 +181,7 @@
                     </div>
                     <div class="ml-4">
                       <div class="text-sm font-medium text-gray-900">{{ client.business_name || client.trade_name }}</div>
-                      <div class="text-sm text-gray-500">{{ client.email || 'Sin email' }}</div>
+                      <div class="text-sm text-gray-500">{{ client.trade_name || 'Sin razón social' }}</div>
                     </div>
                   </div>
                 </td>

@@ -161,6 +161,7 @@ class SaleController extends Controller
                 'products' => $products,
                 'salespeople' => $salespeople,
                 'presales' => $presales,
+                'nextInvoiceNumber' => \App\Models\Sale::generateNextInvoiceNumber(),
             ]);
 
         } catch (\Exception $e) {
@@ -199,7 +200,7 @@ class SaleController extends Controller
                 'items.*.discount' => 'nullable|numeric|min:0|max:100',
                 'payment_method' => 'required|in:cash,credit,transfer',
                 'payment_status' => 'nullable|in:paid,pending,partial',
-                'invoice_number' => 'required|string|max:50',
+                'invoice_number' => 'required|string|max:50|unique:sales,invoice_number',
                 'notes' => 'nullable|string|max:1000',
                 'delivery_date' => 'nullable|date',
             ], [
@@ -209,6 +210,7 @@ class SaleController extends Controller
                 'payment_method.required' => 'Debe seleccionar un método de pago.',
                 'payment_method.in' => 'El método de pago seleccionado no es válido.',
                 'invoice_number.required' => 'El número de factura es obligatorio.',
+                'invoice_number.unique' => 'Este número de factura ya está en uso.',
                 'delivery_date.after_or_equal' => 'La fecha de entrega no puede ser anterior a hoy.',
             ]);
         } catch (ValidationException $e) {
@@ -522,7 +524,7 @@ class SaleController extends Controller
             'items.*.discount_percentage' => 'nullable|numeric|min:0|max:100', // Para compatibilidad
             'payment_method' => 'required|in:cash,credit,transfer',
             'payment_status' => 'required|in:paid,pending,partial',
-            'invoice_number' => 'required|string|max:50',
+            'invoice_number' => 'required|string|max:50|unique:sales,invoice_number',
             'notes' => 'nullable|string|max:1000',
             'delivery_date' => 'nullable|date',
         ], [
@@ -532,6 +534,7 @@ class SaleController extends Controller
             'items.min' => 'Debe agregar al menos un producto.',
             'items.*.product_id.required' => 'Debe seleccionar un producto.',
             'items.*.product_id.exists' => 'El producto seleccionado no existe.',
+            'invoice_number.unique' => 'Este número de factura ya está en uso.',
             'items.*.quantity.required' => 'La cantidad es obligatoria.',
             'items.*.quantity.min' => 'La cantidad debe ser mayor a 0.',
             'items.*.unit_price.required' => 'El precio unitario es obligatorio.',

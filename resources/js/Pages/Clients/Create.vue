@@ -28,6 +28,7 @@
                     v-model="form.business_name"
                     type="text"
                     required
+                    @input="form.business_name = form.business_name.toUpperCase()"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     :class="{ 'border-red-500': form.errors.business_name }"
                   />
@@ -230,7 +231,7 @@
                   >
                     <option :value="null">Seleccionar...</option>
                     <option v-for="term in paymentTerms" :key="term.id" :value="term.id">
-                      {{ term.name }} ({{ term.days }} días)
+                      {{ term.name }}
                     </option>
                   </select>
                 </div>
@@ -243,10 +244,10 @@
                   <input
                     v-model.number="form.default_discount"
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
                     max="100"
-                    @keypress="onlyNumbersAndDecimal"
+                    @keypress="onlyIntegers"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     :class="{ 'border-red-500': form.errors.default_discount }"
                   />
@@ -263,9 +264,9 @@
                   <input
                     v-model.number="form.credit_limit"
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
-                    @keypress="onlyNumbersAndDecimal"
+                    @keypress="onlyIntegers"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     :class="{ 'border-red-500': form.errors.credit_limit }"
                   />
@@ -279,23 +280,21 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">
                     Días de Plaza / Crédito
                   </label>
-                  <input
+                  <select
                     v-model.number="form.credit_days"
-                    type="number"
-                    step="1"
-                    min="0"
-                    max="365"
-                    @keypress="onlyNumbers"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     :class="{ 'border-red-500': form.errors.credit_days }"
-                    placeholder="Ej: 30"
-                  />
+                  >
+                    <option :value="0">Sin plazo</option>
+                    <option :value="15">15 días</option>
+                    <option :value="30">30 días</option>
+                    <option :value="45">45 días</option>
+                    <option :value="60">60 días</option>
+                    <option :value="90">90 días</option>
+                  </select>
                   <span v-if="form.errors.credit_days" class="text-sm text-red-600">
                     {{ form.errors.credit_days }}
                   </span>
-                  <p class="text-xs text-gray-500 mt-1">
-                    Días de plazo para el pago. Si se selecciona una condición de pago, se puede sobrescribir aquí.
-                  </p>
                 </div>
 
                 <!-- Salesperson -->
@@ -417,23 +416,10 @@ const onlyNumbersAndHyphen = (event) => {
   }
 }
 
-const onlyNumbers = (event) => {
-  const char = String.fromCharCode(event.which)
-  // Solo permitir números
-  if (!/[0-9]/.test(char)) {
-    event.preventDefault()
-  }
-}
 
-const onlyNumbersAndDecimal = (event) => {
+const onlyIntegers = (event) => {
   const char = String.fromCharCode(event.which)
-  // Permitir números y punto decimal
-  if (!/[0-9.]/.test(char)) {
-    event.preventDefault()
-  }
-  // Evitar múltiples puntos decimales
-  const input = event.target
-  if (char === '.' && input.value.includes('.')) {
+  if (!/[0-9]/.test(char)) {
     event.preventDefault()
   }
 }

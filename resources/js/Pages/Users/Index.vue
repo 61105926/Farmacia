@@ -333,12 +333,13 @@ const getRoleDescription = (roleName) => {
   
   const descriptions = {
     'super-admin': 'Super Administrador',
-    'admin': 'Administrador',
+    'administrador': 'Administrador',
     'vendedor-ventas': 'Vendedor de Ventas',
     'vendedor-preventas': 'Vendedor de Preventas',
     'cobrador': 'Cobrador',
-    'almacen': 'Almacén',
-    'contador': 'Contador',
+    'bodeguero': 'Bodeguero',
+    'contabilidad': 'Contabilidad',
+    'auditor': 'Auditor',
   }
   return descriptions[roleName] || roleName || 'Sin rol'
 }
@@ -348,12 +349,13 @@ const getRoleVariant = (roleName) => {
   
   const variants = {
     'super-admin': 'danger',
-    'admin': 'warning',
+    'administrador': 'warning',
     'vendedor-ventas': 'success',
     'vendedor-preventas': 'info',
     'cobrador': 'primary',
-    'almacen': 'secondary',
-    'contador': 'purple',
+    'bodeguero': 'secondary',
+    'contabilidad': 'purple',
+    'auditor': 'secondary',
   }
   return variants[roleName] || 'secondary'
 }
@@ -377,7 +379,7 @@ const adminUsersCount = computed(() => {
   return props.users.data.filter(user => {
     if (!user || !user.roles || !Array.isArray(user.roles)) return false
     return user.roles.some(role => {
-      return role && role.name && ['super-admin', 'admin'].includes(role.name)
+      return role && role.name && ['super-admin', 'administrador'].includes(role.name)
     })
   }).length
 })

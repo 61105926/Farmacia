@@ -130,10 +130,10 @@
                   <input
                     v-model.number="item.quantity"
                     @input="validateQuantity(index)"
-                    @keypress="onlyNumbersAndDecimal"
+                    @keypress="onlyIntegers"
                     type="number"
-                    step="0.001"
-                    min="0"
+                    step="1"
+                    min="1"
                     :max="getMaxQuantity(index)"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     :class="{ 'border-red-500': hasQuantityError(index) }"
@@ -163,9 +163,9 @@
                   <input
                     v-model.number="item.discount"
                     @input="calculateItemTotal(index)"
-                    @keypress="onlyNumbersAndDecimal"
+                    @keypress="onlyIntegers"
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
                     max="100"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
@@ -475,15 +475,9 @@ const submitForm = () => {
   })
 }
 
-const onlyNumbersAndDecimal = (event) => {
+const onlyIntegers = (event) => {
   const char = String.fromCharCode(event.which)
-  // Permitir números y punto decimal
-  if (!/[0-9.]/.test(char)) {
-    event.preventDefault()
-  }
-  // Evitar múltiples puntos decimales
-  const input = event.target
-  if (char === '.' && input.value.includes('.')) {
+  if (!/[0-9]/.test(char)) {
     event.preventDefault()
   }
 }

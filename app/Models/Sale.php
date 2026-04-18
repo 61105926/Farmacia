@@ -211,4 +211,31 @@ class Sale extends Model
             default => 'Desconocido',
         };
     }
+
+    /**
+     * Generar siguiente número de factura único para ventas
+     */
+    public static function generateNextInvoiceNumber(): string
+    {
+        $prefix = 'FAC-';
+        $lastSale = static::whereNotNull('invoice_number')
+            ->where('invoice_number', 'like', $prefix . '%')
+            ->orderByRaw('CAST(SUBSTRING(invoice_number, ' . (strlen($prefix) + 1) . ') AS UNSIGNED) DESC')
+            ->first();
+
+        $nextNumber = 1;
+        if ($lastSale) {
+            $num = intval(substr($lastSale->invoice_number, strlen($prefix)));
+            $nextNumber = $num + 1;
+        }
+
+        // Asegurarse de que el número generado sea único
+        do {
+            $candidate = $prefix . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+            $exists = static::where('invoice_number', $candidate)->exists();
+            if ($exists) $nextNumber++;
+        } while ($exists);
+
+        return $candidate;
+    }
 }

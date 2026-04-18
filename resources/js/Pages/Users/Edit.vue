@@ -353,9 +353,13 @@ const resetPassword = () => {
 const getRoleDescription = (roleName) => {
   const descriptions = {
     'super-admin': 'Acceso total al sistema',
-    'administrador': 'Administrador con permisos limitados',
-    'vendedor': 'Vendedor con permisos de ventas',
-    'usuario': 'Usuario básico del sistema',
+    'administrador': 'Administrador del sistema',
+    'vendedor-preventas': 'Preventista que registra pedidos en campo',
+    'vendedor-ventas': 'Vendedor que procesa pedidos y genera facturas',
+    'cobrador': 'Responsable de cobranza',
+    'bodeguero': 'Encargado de inventario y almacén',
+    'contabilidad': 'Personal de contabilidad y finanzas',
+    'auditor': 'Auditor del sistema (solo lectura)',
   }
   return descriptions[roleName] || 'Sin descripción'
 }
