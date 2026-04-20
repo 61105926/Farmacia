@@ -28,6 +28,7 @@
                     v-model="form.name"
                     type="text"
                     required
+                    @input="form.name = toTitleCase(form.name)"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     :class="{ 'border-red-500': form.errors.name }"
                   />
@@ -281,6 +282,11 @@ const validateEmail = () => {
 const submit = () => {
   emailError.value = ''
   form.post("/usuarios")
+}
+
+const toTitleCase = (str) => {
+  if (!str) return ''
+  return str.replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 const getRoleDescription = (roleName) => {

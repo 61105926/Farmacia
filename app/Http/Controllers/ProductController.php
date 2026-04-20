@@ -1051,6 +1051,7 @@ class ProductController extends Controller
             $created = 0;
             $errors = [];
             $skipped = 0;
+            $importedCodes = []; // Códigos presentes en el Excel
 
             foreach ($rows as $index => $row) {
                 $rowNumber = $index + 2; // +2 porque empezamos desde la fila 2 (después del header)
@@ -1104,6 +1105,9 @@ class ProductController extends Controller
                             $categoryId = $category->id;
                         }
                     }
+
+                    // Registrar código importado
+                    $importedCodes[] = trim($data['code']);
 
                     // Verificar si el código ya existe
                     $existingProduct = DB::table('products')->where('code', $data['code'])->first();
@@ -1196,12 +1200,24 @@ class ProductController extends Controller
                 }
             }
 
+            // Desactivar productos que NO están en el Excel importado
+            $deactivated = 0;
+            if (!empty($importedCodes)) {
+                $deactivated = DB::table('products')
+                    ->whereNotIn('code', $importedCodes)
+                    ->where('is_active', true)
+                    ->update(['is_active' => false, 'updated_at' => now()]);
+            }
+
             $message = "Importación completada. ";
             if ($created > 0) {
                 $message .= "{$created} productos creados. ";
             }
             if ($updated > 0) {
                 $message .= "{$updated} productos actualizados. ";
+            }
+            if ($deactivated > 0) {
+                $message .= "{$deactivated} productos desactivados (no estaban en el archivo). ";
             }
             if ($skipped > 0) {
                 $message .= "{$skipped} productos omitidos. ";
