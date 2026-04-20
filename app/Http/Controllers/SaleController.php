@@ -327,7 +327,7 @@ class SaleController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            // 8. Crear items de la venta
+            // 8. Crear items de la venta y descontar stock
             foreach ($validated['items'] as $item) {
                 $itemTotal = $item['quantity'] * $item['unit_price'];
                 $itemDiscount = $itemTotal * ($item['discount'] ?? 0) / 100;
@@ -342,7 +342,19 @@ class SaleController extends Controller
                     'discount_amount' => $itemDiscount,
                     'total' => $itemTotal - $itemDiscount,
                 ]);
+
+                // Descontar stock inmediatamente
+                $product = \App\Models\Product::find($item['product_id']);
+                if ($product) {
+                    $product->updateStock($item['quantity'], 'subtract', "Venta #{$sale->code}");
+                }
             }
+
+            // Marcar venta como completada
+            $sale->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+            ]);
 
             // 9. Si viene de una preventa, marcarla como convertida
             if ($validated['presale_id']) {
@@ -524,7 +536,7 @@ class SaleController extends Controller
             'items.*.discount_percentage' => 'nullable|numeric|min:0|max:100', // Para compatibilidad
             'payment_method' => 'required|in:cash,credit,transfer',
             'payment_status' => 'required|in:paid,pending,partial',
-            'invoice_number' => 'required|string|max:50|unique:sales,invoice_number',
+            'invoice_number' => 'required|string|max:50|unique:sales,invoice_number,' . $sale->id,
             'notes' => 'nullable|string|max:1000',
             'delivery_date' => 'nullable|date',
         ], [

@@ -388,7 +388,20 @@ const removeProduct = (index) => {
 }
 
 const updateProductInfo = (index) => {
-  const product = props.products.find(p => p.id == form.items[index].product_id)
+  const selectedId = form.items[index].product_id
+  if (!selectedId) return
+
+  // Si el mismo producto ya existe en otra fila, sumar cantidad y eliminar esta fila
+  const existingIndex = form.items.findIndex((item, i) => i !== index && item.product_id == selectedId)
+  if (existingIndex !== -1) {
+    const addedQty = form.items[index].quantity || 1
+    form.items[existingIndex].quantity += addedQty
+    form.items.splice(index, 1)
+    calculateItemTotal(existingIndex)
+    return
+  }
+
+  const product = props.products.find(p => p.id == selectedId)
   if (product) {
     form.items[index].unit_price = product.sale_price
     calculateItemTotal(index)
