@@ -1200,12 +1200,27 @@ class ProductController extends Controller
                 }
             }
 
-            // Eliminar productos que NO están en el Excel importado
+            // Eliminar/desactivar productos que NO están en el Excel importado
             $deleted = 0;
+            $deactivated = 0;
             if (!empty($importedCodes)) {
-                $deleted = DB::table('products')
+                $toRemoveIds = DB::table('products')
                     ->whereNotIn('code', $importedCodes)
-                    ->delete();
+                    ->pluck('id');
+
+                foreach ($toRemoveIds as $pid) {
+                    $hasRefs = DB::table('invoice_items')->where('product_id', $pid)->exists()
+                        || DB::table('sale_items')->where('product_id', $pid)->exists()
+                        || DB::table('pre_sale_items')->where('product_id', $pid)->exists();
+
+                    if ($hasRefs) {
+                        DB::table('products')->where('id', $pid)->update(['is_active' => false]);
+                        $deactivated++;
+                    } else {
+                        DB::table('products')->where('id', $pid)->delete();
+                        $deleted++;
+                    }
+                }
             }
 
             $message = "Importación completada. ";
@@ -1217,6 +1232,9 @@ class ProductController extends Controller
             }
             if ($deleted > 0) {
                 $message .= "{$deleted} productos eliminados (no estaban en el archivo). ";
+            }
+            if ($deactivated > 0) {
+                $message .= "{$deactivated} productos desactivados (tienen historial de ventas). ";
             }
             if ($skipped > 0) {
                 $message .= "{$skipped} productos omitidos. ";

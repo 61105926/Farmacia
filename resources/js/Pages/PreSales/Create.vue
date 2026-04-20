@@ -119,7 +119,7 @@
                       Vence: <span class="font-semibold" :class="getExpiryClass(index)">{{ getExpiryText(index) }}</span>
                     </p>
                     <p class="text-xs text-gray-600">
-                      Lote: <span class="font-semibold text-gray-700">{{ getGenericName(index) }}</span>
+                      Proveedor: <span class="font-semibold text-gray-700">{{ getSupplier(index) }}</span>
                     </p>
                   </div>
                 </div>

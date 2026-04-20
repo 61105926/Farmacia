@@ -117,17 +117,17 @@
           </Card>
 
           <!-- Información de Lote -->
-          <Card v-if="movement.batch_number || movement.expiry_date">
+          <Card v-if="cleanValue(movement.batch_number) || cleanValue(movement.expiry_date)">
             <CardHeader>
               <CardTitle>Información de Lote</CardTitle>
             </CardHeader>
             <CardContent>
               <div class="grid grid-cols-2 gap-4">
-                <div v-if="movement.batch_number">
+                <div v-if="cleanValue(movement.batch_number)">
                   <label class="block text-sm font-medium text-gray-500">Número de Lote</label>
-                  <div class="text-sm text-gray-900">{{ movement.batch_number }}</div>
+                  <div class="text-sm text-gray-900">{{ cleanValue(movement.batch_number) }}</div>
                 </div>
-                <div v-if="movement.expiry_date">
+                <div v-if="cleanValue(movement.expiry_date)">
                   <label class="block text-sm font-medium text-gray-500">Fecha de Vencimiento</label>
                   <div class="text-sm text-gray-900">{{ formatDate(movement.expiry_date) }}</div>
                 </div>
@@ -136,19 +136,19 @@
           </Card>
 
           <!-- Información de Referencia -->
-          <Card v-if="movement.reference_type || movement.reference_number">
+          <Card v-if="cleanValue(movement.reference_type) || cleanValue(movement.reference_number)">
             <CardHeader>
               <CardTitle>Referencia del Documento</CardTitle>
             </CardHeader>
             <CardContent>
               <div class="grid grid-cols-2 gap-4">
-                <div v-if="movement.reference_type">
+                <div v-if="cleanValue(movement.reference_type)">
                   <label class="block text-sm font-medium text-gray-500">Tipo de Referencia</label>
-                  <div class="text-sm text-gray-900">{{ movement.reference_type }}</div>
+                  <div class="text-sm text-gray-900">{{ cleanValue(movement.reference_type) }}</div>
                 </div>
-                <div v-if="movement.reference_number">
+                <div v-if="cleanValue(movement.reference_number)">
                   <label class="block text-sm font-medium text-gray-500">Número de Referencia</label>
-                  <div class="text-sm text-gray-900">{{ movement.reference_number }}</div>
+                  <div class="text-sm text-gray-900">{{ cleanValue(movement.reference_number) }}</div>
                 </div>
               </div>
             </CardContent>
@@ -256,8 +256,21 @@ const currentStockColorClass = computed(() => {
   return 'text-gray-900'
 })
 
+const cleanValue = (value) => {
+  if (value === null || value === undefined) return null
+  if (Array.isArray(value)) return value.length > 0 ? value.join(', ') : null
+  const str = String(value).trim()
+  if (str === '' || str === '[]' || str === '{}' || str === 'null') return null
+  return str
+}
+
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('es-ES', {
+  if (!date) return 'N/A'
+  const cleaned = cleanValue(date)
+  if (!cleaned) return 'N/A'
+  const d = new Date(cleaned)
+  if (isNaN(d.getTime())) return 'N/A'
+  return d.toLocaleDateString('es-ES', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

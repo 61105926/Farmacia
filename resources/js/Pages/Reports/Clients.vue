@@ -361,13 +361,13 @@ const resetFilters = () => {
 
 const getClientTotalSales = (client) => {
   return client.invoices?.reduce((sum, invoice) => {
-    return invoice.status !== 'cancelled' ? sum + invoice.total : sum
+    return invoice.status !== 'cancelled' ? sum + (parseFloat(invoice.total) || 0) : sum
   }, 0) || 0
 }
 
 const getClientBalance = (client) => {
   return client.invoices?.reduce((sum, invoice) => {
-    return invoice.status !== 'cancelled' ? sum + invoice.balance : sum
+    return invoice.status !== 'cancelled' ? sum + (parseFloat(invoice.balance) || 0) : sum
   }, 0) || 0
 }
 

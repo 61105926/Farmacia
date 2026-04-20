@@ -817,6 +817,29 @@ class SaleController extends Controller
             ]);
         }
 
+        // Registrar pago automático para ventas pagadas al contado (Efectivo/Transferencia)
+        if ($invoicePaymentStatus === 'paid' && $sale->total > 0) {
+            $paymentMethodMap = [
+                'cash'     => 'cash',
+                'transfer' => 'transfer',
+            ];
+            $paymentMethod = $paymentMethodMap[$sale->payment_method] ?? 'cash';
+
+            \App\Models\Payment::create([
+                'payment_number' => \App\Models\Payment::generatePaymentNumber(),
+                'payment_date'   => now(),
+                'client_id'      => $sale->client_id,
+                'invoice_id'     => $invoice->id,
+                'amount'         => $sale->total,
+                'currency'       => 'BOB',
+                'payment_method' => $paymentMethod,
+                'payment_reference' => $sale->code,
+                'status'         => 'completed',
+                'created_by'     => auth()->id() ?? $sale->created_by,
+                'notes'          => "Pago automático - Venta #{$sale->code}",
+            ]);
+        }
+
         return $invoice;
     }
 
