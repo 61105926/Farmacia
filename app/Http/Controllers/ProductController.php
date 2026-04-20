@@ -1119,19 +1119,18 @@ class ProductController extends Controller
                     $existingProduct = DB::table('products')->where('code', $data['code'])->first();
                     
                     // Preparar datos para insertar/actualizar
-                    // IMPORTANTE: NO actualizar stock_quantity durante la importación para no afectar el recálculo
                     $productData = [
                         'name' => trim($data['name']),
-                        'description' => trim($data['description']), // Descripción es requerida
+                        'description' => trim($data['description']),
                         'category_id' => $categoryId,
                         'brand' => !empty($data['brand']) ? trim($data['brand']) : null,
                         'presentation' => !empty($data['presentation']) ? trim($data['presentation']) : null,
                         'barcode' => !empty($data['barcode']) ? trim($data['barcode']) : null,
-                        'sku' => !empty($data['lot']) ? trim($data['lot']) : null, // Guardar lote en SKU
+                        'sku' => !empty($data['lot']) ? trim($data['lot']) : null,
                         'cost_price' => $data['cost_price'] ?? 0,
                         'base_price' => $data['cost_price'] ?? 0,
                         'sale_price' => $data['sale_price'] ?? 0,
-                        // NO incluir stock_quantity aquí - solo se actualiza mediante movimientos de inventario
+                        'stock_quantity' => (int)($data['stock_quantity'] ?? 0),
                         'min_stock' => (int)($data['min_stock'] ?? 0),
                         'max_stock' => 0,
                         'unit_type' => $data['unit_type'] ?? 'unit',
@@ -1139,11 +1138,6 @@ class ProductController extends Controller
                         'expiry_date' => $data['expiry_date'] ?? null,
                         'updated_at' => now(),
                     ];
-                    
-                    // Solo establecer stock_quantity para productos NUEVOS (no actualizar en productos existentes)
-                    if (!$existingProduct) {
-                        $productData['stock_quantity'] = (int)($data['stock_quantity'] ?? 0);
-                    }
 
                     if ($existingProduct) {
                         // ACTUALIZAR producto existente
