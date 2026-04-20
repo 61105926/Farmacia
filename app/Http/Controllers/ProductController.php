@@ -1044,50 +1044,77 @@ class ProductController extends Controller
             $worksheet = $spreadsheet->getActiveSheet();
             $rows = $worksheet->toArray();
 
-            // Skip header row (first row)
+            // Leer encabezados de la primera fila y construir mapa de columnas
             $headerRow = array_shift($rows);
-            
-            // Mapeo de columnas esperadas
-            // El Excel debe tener estas columnas en orden:
-            // A=Nombre (requerido), B=Código (requerido), C=Descripción (requerido), D=Categoría (opcional), E=Marca (opcional), 
-            // F=Precio Costo, G=Precio Venta, H=Stock, I=Stock Mínimo, J=Tipo Unidad, K=Activo, 
-            // L=Código de Barras (opcional), M=Lote (opcional), N=Presentación (opcional), O=Fecha de Vencimiento (opcional)
+            $colMap = [];
+            // Sinónimos aceptados por campo (en minúsculas, sin tildes)
+            $fieldAliases = [
+                'name'          => ['nombre', 'name', 'producto', 'product'],
+                'code'          => ['codigo', 'code', 'cod', 'id'],
+                'description'   => ['descripcion', 'description', 'desc', 'principio activo', 'principio_activo', 'active_ingredient'],
+                'category_name' => ['categoria', 'category', 'cat'],
+                'brand'         => ['marca', 'brand', 'proveedor', 'supplier', 'laboratorio', 'lab'],
+                'cost_price'    => ['precio costo', 'costo', 'cost_price', 'cost', 'precio_costo'],
+                'sale_price'    => ['precio venta', 'precio', 'sale_price', 'price', 'precio_venta', 'pvp'],
+                'stock_quantity'=> ['stock', 'stock_quantity', 'cantidad', 'quantity', 'existencia', 'existencias'],
+                'min_stock'     => ['stock minimo', 'min_stock', 'minimo', 'stock_min'],
+                'unit_type'     => ['unidad', 'unit_type', 'tipo unidad', 'unit'],
+                'is_active'     => ['activo', 'is_active', 'active', 'estado'],
+                'barcode'       => ['barcode', 'codigo barras', 'ean', 'upc'],
+                'lot'           => ['lote', 'lot', 'batch', 'sku'],
+                'presentation'  => ['presentacion', 'presentation', 'forma'],
+                'expiry_date'   => ['vencimiento', 'expiry_date', 'fecha vencimiento', 'expiry', 'fecha_vencimiento', 'vence'],
+            ];
+            foreach ($headerRow as $colIndex => $header) {
+                if ($header === null) continue;
+                $normalized = mb_strtolower(trim(iconv('UTF-8', 'ASCII//TRANSLIT', (string)$header)));
+                foreach ($fieldAliases as $field => $aliases) {
+                    if (in_array($normalized, $aliases) && !isset($colMap[$field])) {
+                        $colMap[$field] = $colIndex;
+                        break;
+                    }
+                }
+            }
+
+            $getCol = function (array $row, string $field, $default = null) use ($colMap) {
+                if (!isset($colMap[$field])) return $default;
+                $val = $row[$colMap[$field]] ?? null;
+                return ($val === null || $val === '') ? $default : $val;
+            };
+
             $imported = 0;
             $updated = 0;
             $created = 0;
             $errors = [];
             $skipped = 0;
-            $importedCodes = []; // Códigos presentes en el Excel
+            $importedCodes = [];
 
             foreach ($rows as $index => $row) {
-                $rowNumber = $index + 2; // +2 porque empezamos desde la fila 2 (después del header)
-                
+                $rowNumber = $index + 2;
+
                 // Saltar filas vacías
                 if (empty(array_filter($row))) {
                     continue;
                 }
 
                 try {
-                    // Mapear columnas del Excel
-                    // Orden esperado: A=Nombre (requerido), B=Código (requerido), C=Descripción (requerido), D=Categoría (opcional), E=Marca (opcional), F=Precio Costo, 
-                    // G=Precio Venta, H=Stock, I=Stock Mínimo, J=Tipo Unidad, K=Activo, 
-                    // L=Código de Barras (opcional), M=Lote (opcional), N=Presentación (opcional), O=Fecha de Vencimiento (opcional)
+                    $rawStock = $getCol($row, 'stock_quantity');
                     $data = [
-                        'name' => isset($row[0]) ? trim((string)$row[0]) : null,
-                        'code' => isset($row[1]) ? trim((string)$row[1]) : null,
-                        'description' => isset($row[2]) ? trim((string)$row[2]) : null,
-                        'category_name' => isset($row[3]) ? trim((string)$row[3]) : null,
-                        'brand' => isset($row[4]) ? trim((string)$row[4]) : null,
-                        'cost_price' => isset($row[5]) && is_numeric($row[5]) ? (float)$row[5] : 0,
-                        'sale_price' => isset($row[6]) && is_numeric($row[6]) ? (float)$row[6] : 0,
-                        'stock_quantity' => isset($row[7]) && is_numeric($row[7]) ? (int)$row[7] : 0,
-                        'min_stock' => isset($row[8]) && is_numeric($row[8]) ? (int)$row[8] : 0,
-                        'unit_type' => isset($row[9]) ? trim((string)$row[9]) : 'unit',
-                        'is_active' => isset($row[10]) ? (bool)(is_numeric($row[10]) ? (int)$row[10] : $row[10]) : true,
-                        'barcode' => isset($row[11]) ? trim((string)$row[11]) : null, // Columna L
-                        'lot' => isset($row[12]) ? trim((string)$row[12]) : null, // Columna M - Lote (se guardará en SKU)
-                        'presentation' => isset($row[13]) ? trim((string)$row[13]) : null, // Columna N
-                        'expiry_date' => isset($row[14]) ? $this->parseDate($row[14]) : null, // Columna O - Fecha de Vencimiento
+                        'name'          => $getCol($row, 'name')          !== null ? trim((string)$getCol($row, 'name'))        : null,
+                        'code'          => $getCol($row, 'code')          !== null ? trim((string)$getCol($row, 'code'))        : null,
+                        'description'   => $getCol($row, 'description')   !== null ? trim((string)$getCol($row, 'description')) : null,
+                        'category_name' => $getCol($row, 'category_name') !== null ? trim((string)$getCol($row, 'category_name')) : null,
+                        'brand'         => $getCol($row, 'brand')         !== null ? trim((string)$getCol($row, 'brand'))       : null,
+                        'cost_price'    => is_numeric($getCol($row, 'cost_price'))     ? (float)$getCol($row, 'cost_price')     : 0,
+                        'sale_price'    => is_numeric($getCol($row, 'sale_price'))     ? (float)$getCol($row, 'sale_price')     : 0,
+                        'stock_quantity'=> is_numeric($rawStock)                       ? (int)$rawStock                         : 0,
+                        'min_stock'     => is_numeric($getCol($row, 'min_stock'))      ? (int)$getCol($row, 'min_stock')        : 0,
+                        'unit_type'     => $getCol($row, 'unit_type', 'unit'),
+                        'is_active'     => $getCol($row, 'is_active')     !== null ? (bool)(is_numeric($getCol($row, 'is_active')) ? (int)$getCol($row, 'is_active') : $getCol($row, 'is_active')) : true,
+                        'barcode'       => $getCol($row, 'barcode'),
+                        'lot'           => $getCol($row, 'lot'),
+                        'presentation'  => $getCol($row, 'presentation'),
+                        'expiry_date'   => $getCol($row, 'expiry_date') !== null ? $this->parseDate($getCol($row, 'expiry_date')) : null,
                     ];
 
                     // Validar campos requeridos
