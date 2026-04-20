@@ -944,20 +944,6 @@ class ProductController extends Controller
                 ->orderBy('stock_movements.created_at', 'desc')
                 ->paginate(20);
 
-            // Si no hay movimientos, crear algunos de prueba para demostración
-            if ($movements->isEmpty() && Schema::hasTable('stock_movements')) {
-                $this->createDemoMovements($product);
-                // Recargar los movimientos después de crear los de prueba
-                $movements = DB::table('stock_movements')
-                    ->leftJoin('users', 'stock_movements.created_by', '=', 'users.id')
-                    ->where('stock_movements.product_id', $product->id)
-                    ->select([
-                        'stock_movements.*',
-                        'users.name as user_name'
-                    ])
-                    ->orderBy('stock_movements.created_at', 'desc')
-                    ->paginate(20);
-            }
 
             return Inertia::render('Products/StockHistory', [
                 'product' => $product,
@@ -974,60 +960,6 @@ class ProductController extends Controller
         }
     }
 
-    /**
-     * Crear movimientos de stock de demostración
-     */
-    private function createDemoMovements(Product $product)
-    {
-        $demoMovements = [
-            [
-                'product_id' => $product->id,
-                'type' => 'add',
-                'quantity' => 50,
-                'previous_stock' => 0,
-                'new_stock' => 50,
-                'notes' => 'Compra inicial de producto',
-                'created_by' => auth()->id() ?: 1,
-                'created_at' => now()->subDays(7),
-                'updated_at' => now()->subDays(7),
-            ],
-            [
-                'product_id' => $product->id,
-                'type' => 'subtract',
-                'quantity' => 10,
-                'previous_stock' => 50,
-                'new_stock' => 40,
-                'notes' => 'Venta a cliente',
-                'created_by' => auth()->id() ?: 1,
-                'created_at' => now()->subDays(5),
-                'updated_at' => now()->subDays(5),
-            ],
-            [
-                'product_id' => $product->id,
-                'type' => 'add',
-                'quantity' => 20,
-                'previous_stock' => 40,
-                'new_stock' => 60,
-                'notes' => 'Reposición de stock',
-                'created_by' => auth()->id() ?: 1,
-                'created_at' => now()->subDays(3),
-                'updated_at' => now()->subDays(3),
-            ],
-            [
-                'product_id' => $product->id,
-                'type' => 'adjustment',
-                'quantity' => 5,
-                'previous_stock' => 60,
-                'new_stock' => 55,
-                'notes' => 'Ajuste por inventario físico',
-                'created_by' => auth()->id() ?: 1,
-                'created_at' => now()->subDays(1),
-                'updated_at' => now()->subDays(1),
-            ],
-        ];
-
-        DB::table('stock_movements')->insert($demoMovements);
-    }
 
     /**
      * Import products from Excel file
@@ -1047,33 +979,69 @@ class ProductController extends Controller
             // Leer encabezados de la primera fila y construir mapa de columnas
             $headerRow = array_shift($rows);
             $colMap = [];
-            // Sinónimos aceptados por campo (en minúsculas, sin tildes)
+            // Normalizar texto: minúsculas, sin tildes, sin espacios extra
+            $normalizeHeader = function (string $str): string {
+                $str = mb_strtolower(trim($str));
+                $from = ['á','à','ä','â','ã','é','è','ë','ê','í','ì','ï','î','ó','ò','ö','ô','õ','ú','ù','ü','û','ñ','Á','À','Ä','Â','Ã','É','È','Ë','Ê','Í','Ì','Ï','Î','Ó','Ò','Ö','Ô','Õ','Ú','Ù','Ü','Û','Ñ'];
+                $to   = ['a','a','a','a','a','e','e','e','e','i','i','i','i','o','o','o','o','o','u','u','u','u','n','a','a','a','a','a','e','e','e','e','i','i','i','i','o','o','o','o','o','u','u','u','u','n'];
+                $str = str_replace($from, $to, $str);
+                return preg_replace('/\s+/', ' ', $str);
+            };
+
             $fieldAliases = [
-                'name'          => ['nombre', 'name', 'producto', 'product'],
+                'name'          => ['nombre', 'nombregenerico', 'nombre generico', 'name', 'producto', 'product'],
                 'code'          => ['codigo', 'code', 'cod', 'id'],
-                'description'   => ['descripcion', 'description', 'desc', 'principio activo', 'principio_activo', 'active_ingredient'],
-                'category_name' => ['categoria', 'category', 'cat'],
+                'description'   => ['descripcion', 'description', 'desc', 'principio activo', 'principio_activo', 'concentracion', 'active_ingredient'],
+                'category_name' => ['categoria', 'category', 'cat', 'accion'],
                 'brand'         => ['marca', 'brand', 'proveedor', 'supplier', 'laboratorio', 'lab'],
-                'cost_price'    => ['precio costo', 'costo', 'cost_price', 'cost', 'precio_costo'],
-                'sale_price'    => ['precio venta', 'precio', 'sale_price', 'price', 'precio_venta', 'pvp'],
+                'cost_price'    => ['precio costo', 'costo', 'cost_price', 'cost', 'precio_costo', 'precio de compra pieza', 'precio de compra', 'precio compra'],
+                'sale_price'    => ['precio venta', 'precio', 'sale_price', 'price', 'precio_venta', 'pvp', 'precio1', 'precio 1'],
                 'stock_quantity'=> ['stock', 'stock_quantity', 'cantidad', 'quantity', 'existencia', 'existencias'],
-                'min_stock'     => ['stock minimo', 'min_stock', 'minimo', 'stock_min'],
-                'unit_type'     => ['unidad', 'unit_type', 'tipo unidad', 'unit'],
+                'min_stock'     => ['stock minimo', 'min_stock', 'minimo', 'stock_min', 'cantidad minima', 'cantidad_minima'],
+                'unit_type'     => ['unidad', 'unit_type', 'tipo unidad', 'unit', 'concentracion'],
                 'is_active'     => ['activo', 'is_active', 'active', 'estado'],
-                'barcode'       => ['barcode', 'codigo barras', 'ean', 'upc'],
+                'barcode'       => ['barcode', 'codigo barras', 'ean', 'upc', 'codigobarras', 'codigo de barras'],
                 'lot'           => ['lote', 'lot', 'batch', 'sku'],
                 'presentation'  => ['presentacion', 'presentation', 'forma'],
-                'expiry_date'   => ['vencimiento', 'expiry_date', 'fecha vencimiento', 'expiry', 'fecha_vencimiento', 'vence'],
+                'expiry_date'   => ['vencimiento', 'expiry_date', 'fecha vencimiento', 'expiry', 'fecha_vencimiento', 'vence', 'fecha de vencimiento'],
             ];
+
             foreach ($headerRow as $colIndex => $header) {
                 if ($header === null) continue;
-                $normalized = mb_strtolower(trim(iconv('UTF-8', 'ASCII//TRANSLIT', (string)$header)));
+                $normalized = $normalizeHeader((string)$header);
                 foreach ($fieldAliases as $field => $aliases) {
                     if (in_array($normalized, $aliases) && !isset($colMap[$field])) {
                         $colMap[$field] = $colIndex;
                         break;
                     }
                 }
+            }
+
+            // Si no se detectaron columnas por encabezado, usar mapeo posicional como respaldo
+            \Log::info('ProductController import - colMap detectado:', $colMap);
+            \Log::info('ProductController import - headerRow:', $headerRow ?? []);
+
+            if (!isset($colMap['name']) && !isset($colMap['code'])) {
+                // Fallback a posiciones fijas
+                $colMap = [
+                    'name'          => 0,
+                    'code'          => 1,
+                    'description'   => 2,
+                    'category_name' => 3,
+                    'brand'         => 4,
+                    'cost_price'    => 5,
+                    'sale_price'    => 6,
+                    'stock_quantity'=> 7,
+                    'min_stock'     => 8,
+                    'unit_type'     => 9,
+                    'is_active'     => 10,
+                    'barcode'       => 11,
+                    'lot'           => 12,
+                    'presentation'  => 13,
+                    'expiry_date'   => 14,
+                ];
+                // La fila que se removió como header en realidad era datos — re-insertarla
+                array_unshift($rows, $headerRow);
             }
 
             $getCol = function (array $row, string $field, $default = null) use ($colMap) {
@@ -1098,6 +1066,23 @@ class ProductController extends Controller
                 }
 
                 try {
+                    // Parsear número desde Excel (maneja comas, puntos de miles, notación científica)
+                    $parseNumber = function ($val, bool $asInt = false) {
+                        if ($val === null || $val === '') return 0;
+                        if (is_int($val) || is_float($val)) return $asInt ? (int)$val : (float)$val;
+                        $str = trim((string)$val);
+                        // Notación científica (ej: 1E+3)
+                        if (preg_match('/^-?\d+(\.\d+)?[eE][+-]?\d+$/', $str)) {
+                            return $asInt ? (int)(float)$str : (float)$str;
+                        }
+                        // Quitar separadores de miles (coma o punto cuando hay 3 dígitos tras él)
+                        $str = preg_replace('/[,.](?=\d{3}(\D|$))/', '', $str);
+                        // Reemplazar coma decimal por punto
+                        $str = str_replace(',', '.', $str);
+                        if (!is_numeric($str)) return 0;
+                        return $asInt ? (int)(float)$str : (float)$str;
+                    };
+
                     $rawStock = $getCol($row, 'stock_quantity');
                     $data = [
                         'name'          => $getCol($row, 'name')          !== null ? trim((string)$getCol($row, 'name'))        : null,
@@ -1105,10 +1090,10 @@ class ProductController extends Controller
                         'description'   => $getCol($row, 'description')   !== null ? trim((string)$getCol($row, 'description')) : null,
                         'category_name' => $getCol($row, 'category_name') !== null ? trim((string)$getCol($row, 'category_name')) : null,
                         'brand'         => $getCol($row, 'brand')         !== null ? trim((string)$getCol($row, 'brand'))       : null,
-                        'cost_price'    => is_numeric($getCol($row, 'cost_price'))     ? (float)$getCol($row, 'cost_price')     : 0,
-                        'sale_price'    => is_numeric($getCol($row, 'sale_price'))     ? (float)$getCol($row, 'sale_price')     : 0,
-                        'stock_quantity'=> is_numeric($rawStock)                       ? (int)$rawStock                         : 0,
-                        'min_stock'     => is_numeric($getCol($row, 'min_stock'))      ? (int)$getCol($row, 'min_stock')        : 0,
+                        'cost_price'    => $parseNumber($getCol($row, 'cost_price')),
+                        'sale_price'    => $parseNumber($getCol($row, 'sale_price')),
+                        'stock_quantity'=> $parseNumber($rawStock, true),
+                        'min_stock'     => $parseNumber($getCol($row, 'min_stock'), true),
                         'unit_type'     => $getCol($row, 'unit_type', 'unit'),
                         'is_active'     => $getCol($row, 'is_active')     !== null ? (bool)(is_numeric($getCol($row, 'is_active')) ? (int)$getCol($row, 'is_active') : $getCol($row, 'is_active')) : true,
                         'barcode'       => $getCol($row, 'barcode'),
@@ -1117,12 +1102,20 @@ class ProductController extends Controller
                         'expiry_date'   => $getCol($row, 'expiry_date') !== null ? $this->parseDate($getCol($row, 'expiry_date')) : null,
                     ];
 
+                    // Si NombreGenerico está vacío, usar Descripción como nombre
+                    if (empty($data['name']) && !empty($data['description'])) {
+                        $data['name'] = $data['description'];
+                    }
+                    // Si Descripción está vacía, usar Nombre como descripción
+                    if (empty($data['description']) && !empty($data['name'])) {
+                        $data['description'] = $data['name'];
+                    }
+
                     // Validar campos requeridos
-                    if (empty($data['name']) || empty($data['code']) || empty($data['description'])) {
+                    if (empty($data['name']) || empty($data['code'])) {
                         $missingFields = [];
                         if (empty($data['name'])) $missingFields[] = 'Nombre';
                         if (empty($data['code'])) $missingFields[] = 'Código';
-                        if (empty($data['description'])) $missingFields[] = 'Descripción';
                         $errors[] = "Fila {$rowNumber}: Los siguientes campos son requeridos: " . implode(', ', $missingFields);
                         $skipped++;
                         continue;
