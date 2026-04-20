@@ -202,7 +202,13 @@
           <table class="w-full">
             <thead>
               <tr class="border-b">
-                <th class="text-left py-3 px-4 font-medium text-gray-500">Producto</th>
+                <th class="text-left py-3 px-4 font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700" @click="toggleSort('description')">
+                  Producto
+                  <span class="ml-1 text-xs">
+                    <template v-if="filters.sort_by === 'description'">{{ filters.sort_order === 'asc' ? '▲' : '▼' }}</template>
+                    <template v-else>⇅</template>
+                  </span>
+                </th>
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Lote</th>
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Fecha de Vencimiento</th>
                 <th class="text-left py-3 px-4 font-medium text-gray-500">Proveedor</th>
@@ -560,7 +566,9 @@ const filters = reactive({
   search: props.filters?.search || '',
   presentation: props.filters?.presentation || '',
   status: props.filters?.status || '',
-  stock_status: props.filters?.stock_status || ''
+  stock_status: props.filters?.stock_status || '',
+  sort_by: props.filters?.sort_by || 'created_at',
+  sort_order: props.filters?.sort_order || 'desc',
 })
 
 // Log initial filters for debugging
@@ -716,6 +724,16 @@ const debouncedSearch = debounce(() => {
 }, 300)
 
 // Apply filters immediately (manual filtering)
+const toggleSort = (column) => {
+  if (filters.sort_by === column) {
+    filters.sort_order = filters.sort_order === 'asc' ? 'desc' : 'asc'
+  } else {
+    filters.sort_by = column
+    filters.sort_order = 'asc'
+  }
+  applyFilters()
+}
+
 const applyFilters = () => {
   console.log('Aplicando filtros manualmente:', filters)
   
@@ -737,6 +755,12 @@ const applyFilters = () => {
   }
   if (filters.stock_status && filters.stock_status !== '') {
     currentFilters.stock_status = String(filters.stock_status)
+  }
+  if (filters.sort_by) {
+    currentFilters.sort_by = filters.sort_by
+  }
+  if (filters.sort_order) {
+    currentFilters.sort_order = filters.sort_order
   }
 
   console.log('Filtros a enviar manualmente:', currentFilters)

@@ -152,6 +152,24 @@ class Product extends Model
             ]);
         }
 
+        // Registrar movimiento en inventarios (visible en el módulo de inventario)
+        if (\Schema::hasTable('inventories')) {
+            $movementType    = $type === 'subtract' ? 'sale' : ($type === 'add' ? 'purchase' : 'adjustment');
+            $transactionType = $type === 'subtract' ? 'out' : 'in';
+
+            \App\Models\Inventory::create([
+                'product_id'       => $this->id,
+                'movement_type'    => $movementType,
+                'transaction_type' => $transactionType,
+                'quantity'         => abs($quantity),
+                'previous_stock'   => $currentStock,
+                'new_stock'        => $newStock,
+                'notes'            => $notes,
+                'created_by'       => auth()->id(),
+                'movement_date'    => now(),
+            ]);
+        }
+
         return $newStock;
     }
 

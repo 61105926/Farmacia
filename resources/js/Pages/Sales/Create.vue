@@ -441,6 +441,12 @@ const getGenericName = (index) => {
   return lote
 }
 
+const getSupplier = (index) => {
+  const product = props.products.find(p => p.id == form.items[index].product_id)
+  if (!product || !product.brand) return 'Sin proveedor'
+  return product.brand
+}
+
 const getStockClass = (index) => {
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return 'text-gray-500'

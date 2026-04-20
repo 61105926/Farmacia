@@ -311,7 +311,7 @@ class PresaleController extends Controller
                 if (\Schema::hasTable('products')) {
                     $products = \DB::table('products')
                         ->where('is_active', true)
-                        ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient', 'sku')
+                        ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient', 'sku', 'brand')
                         ->get()
                         ->toArray();
                 }
@@ -678,7 +678,7 @@ class PresaleController extends Controller
                 ->select('id', 'business_name', 'trade_name')
                 ->get(),
             'products' => Product::where('is_active', true)
-                ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient', 'sku')
+                ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient', 'sku', 'brand')
                 ->get(),
             'salespeople' => User::whereHas('roles', function($q) {
                 $q->where('name', 'vendedor-preventas');

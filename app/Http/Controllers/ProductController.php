@@ -36,7 +36,7 @@ class ProductController extends Controller
             ]);
             }
 
-            $receivedFilters = $request->only(['search', 'presentation', 'status', 'stock_status']);
+            $receivedFilters = $request->only(['search', 'presentation', 'status', 'stock_status', 'sort_by', 'sort_order']);
             
 
             $query = Product::with('category');
@@ -82,7 +82,13 @@ class ProductController extends Controller
                 }
             }
 
-            $products = $query->latest()->paginate(15)->withQueryString();
+            // Ordenamiento
+            $sortBy    = in_array($request->input('sort_by'), ['name', 'description', 'stock_quantity', 'sale_price', 'created_at'])
+                ? $request->input('sort_by') : 'created_at';
+            $sortOrder = $request->input('sort_order') === 'asc' ? 'asc' : 'desc';
+            $query->orderBy($sortBy, $sortOrder);
+
+            $products = $query->paginate(15)->withQueryString();
 
             // Agregar acciones disponibles y fecha de vencimiento a cada producto
             $products->getCollection()->transform(function ($product) {
@@ -123,7 +129,7 @@ class ProductController extends Controller
             ];
 
             // Ensure filters are always passed, even if empty
-            $currentFilters = $request->only(['search', 'presentation', 'status', 'stock_status']);
+            $currentFilters = $request->only(['search', 'presentation', 'status', 'stock_status', 'sort_by', 'sort_order']);
             $sanitizedFilters = InertiaHelper::sanitizeFilters($currentFilters);
 
             return Inertia::render('Products/Index', [
@@ -1200,27 +1206,14 @@ class ProductController extends Controller
                 }
             }
 
-            // Eliminar/desactivar productos que NO están en el Excel importado
+            // Eliminar TODOS los productos que NO están en el Excel importado
             $deleted = 0;
-            $deactivated = 0;
             if (!empty($importedCodes)) {
-                $toRemoveIds = DB::table('products')
+                DB::statement('SET FOREIGN_KEY_CHECKS=0');
+                $deleted = DB::table('products')
                     ->whereNotIn('code', $importedCodes)
-                    ->pluck('id');
-
-                foreach ($toRemoveIds as $pid) {
-                    $hasRefs = DB::table('invoice_items')->where('product_id', $pid)->exists()
-                        || DB::table('sale_items')->where('product_id', $pid)->exists()
-                        || DB::table('pre_sale_items')->where('product_id', $pid)->exists();
-
-                    if ($hasRefs) {
-                        DB::table('products')->where('id', $pid)->update(['is_active' => false]);
-                        $deactivated++;
-                    } else {
-                        DB::table('products')->where('id', $pid)->delete();
-                        $deleted++;
-                    }
-                }
+                    ->delete();
+                DB::statement('SET FOREIGN_KEY_CHECKS=1');
             }
 
             $message = "Importación completada. ";
@@ -1231,10 +1224,7 @@ class ProductController extends Controller
                 $message .= "{$updated} productos actualizados. ";
             }
             if ($deleted > 0) {
-                $message .= "{$deleted} productos eliminados (no estaban en el archivo). ";
-            }
-            if ($deactivated > 0) {
-                $message .= "{$deactivated} productos desactivados (tienen historial de ventas). ";
+                $message .= "{$deleted} productos eliminados. ";
             }
             if ($skipped > 0) {
                 $message .= "{$skipped} productos omitidos. ";
