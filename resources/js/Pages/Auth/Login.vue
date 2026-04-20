@@ -83,9 +83,6 @@
         </CardContent>
       </Card>
 
-      <div class="text-center text-xs text-gray-500">
-        Usuario de prueba: admin@farmacia.com | Contraseña: admin123
-      </div>
     </div>
   </div>
 </template>

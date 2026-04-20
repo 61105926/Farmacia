@@ -101,23 +101,32 @@ class ClientController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Generar código automático único
-        do {
-            $lastClient = Client::orderBy('code', 'desc')->first();
-            $nextNumber = $lastClient ? intval(substr($lastClient->code, 3)) + 1 : 1;
-            $code = 'CLI' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-            $exists = Client::where('code', $code)->exists();
-        } while ($exists);
+        try {
+            // Generar código automático único
+            do {
+                $lastClient = Client::orderBy('id', 'desc')->first();
+                $nextNumber = $lastClient ? ($lastClient->id + 1) : 1;
+                $code = 'CLI' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+                $exists = Client::where('code', $code)->exists();
+                if ($exists) $nextNumber++;
+            } while ($exists);
 
-        $validated['code'] = $code;
+            $validated['code'] = $code;
+            $validated['created_by'] = auth()->id();
+            $validated['status'] = 'active';
 
-        $validated['created_by'] = auth()->id();
-        $validated['status'] = 'active';
+            $client = Client::create($validated);
 
-        $client = Client::create($validated);
+            return redirect()->route('clients.index')
+                ->with('success', 'Cliente creado exitosamente.');
 
-        return redirect()->route('clients.index')
-            ->with('success', 'Cliente creado exitosamente.');
+        } catch (\Exception $e) {
+            \Log::error('ClientController store error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'data' => $validated ?? [],
+            ]);
+            return back()->with('error', 'Error al crear el cliente: ' . $e->getMessage())->withInput();
+        }
     }
 
     /**

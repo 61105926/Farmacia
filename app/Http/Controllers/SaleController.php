@@ -365,17 +365,8 @@ class SaleController extends Controller
                 ]);
             }
 
-            // 10. Generar factura automáticamente si:
-            // - El método de pago es crédito
-            // - O el estado de pago es parcial o pendiente
-            $shouldGenerateInvoice = false;
-            if ($validated['payment_method'] === 'credit') {
-                $shouldGenerateInvoice = true;
-            } elseif (in_array($paymentStatus, ['partial', 'pending', 'unpaid'])) {
-                $shouldGenerateInvoice = true;
-            }
-
-            if ($shouldGenerateInvoice) {
+            // 10. Generar factura para todas las ventas (necesario para reportes)
+            if (true) {
                 try {
                     $this->generateInvoiceForSale($sale);
                     Log::info('SaleController store - Factura generada automáticamente', [
