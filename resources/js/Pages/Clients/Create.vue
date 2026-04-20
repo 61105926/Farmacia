@@ -262,15 +262,18 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">
                     Límite de Crédito
                   </label>
-                  <input
+                  <select
                     v-model.number="form.credit_limit"
-                    type="number"
-                    step="1"
-                    min="0"
-                    @keypress="onlyIntegers"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     :class="{ 'border-red-500': form.errors.credit_limit }"
-                  />
+                  >
+                    <option :value="0">Sin límite</option>
+                    <option :value="5000">5,000</option>
+                    <option :value="10000">10,000</option>
+                    <option :value="15000">15,000</option>
+                    <option :value="20000">20,000</option>
+                    <option :value="30000">30,000</option>
+                  </select>
                   <span v-if="form.errors.credit_limit" class="text-sm text-red-600">
                     {{ form.errors.credit_limit }}
                   </span>
