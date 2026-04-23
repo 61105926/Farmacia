@@ -182,8 +182,6 @@ class InventoryController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            dd($e);
-            
             return Inertia::render('Inventory/Create', [
                 'products' => [],
                 'movementTypes' => Inventory::getMovementTypes(),
@@ -292,7 +290,7 @@ class InventoryController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
-            dd($e);
+            return back()->withErrors(['general' => 'Error al registrar movimiento: ' . $e->getMessage()]);
         }
     }
 

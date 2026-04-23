@@ -18,6 +18,24 @@
           </Button>
           <Button
             v-if="isAdmin"
+            @click="$inertia.visit('/inventario')"
+            variant="outline"
+            class="border-blue-500 text-blue-600 hover:bg-blue-50"
+          >
+            <Warehouse class="h-4 w-4 mr-2" />
+            Inventario
+          </Button>
+          <Button
+            v-if="isAdmin"
+            @click="$inertia.visit('/lotes')"
+            variant="outline"
+            class="border-purple-500 text-purple-600 hover:bg-purple-50"
+          >
+            <Layers class="h-4 w-4 mr-2" />
+            Lotes
+          </Button>
+          <Button
+            v-if="isAdmin"
             @click="showImportModal = true"
             variant="outline"
             class="border-green-500 text-green-600 hover:bg-green-50"
@@ -266,15 +284,6 @@
                 <td class="py-3 px-4 text-center">
                   <div class="flex items-center justify-center gap-2">
                     <Button
-                      @click="adjustStock(product)"
-                      variant="outline"
-                      size="sm"
-                      class="h-8 w-8 p-0"
-                      title="Ajustar Stock"
-                    >
-                      <Package class="h-4 w-4" />
-                    </Button>
-                    <Button
                       @click="$inertia.visit(`/productos/${product.id}/historial-stock`)"
                       variant="outline"
                       size="sm"
@@ -381,6 +390,46 @@
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
             />
           </div>
+          <!-- Campos de lote (solo para entradas) -->
+          <template v-if="stockAdjustment.type === 'in'">
+            <div class="p-3 bg-blue-50 rounded-md border border-blue-200">
+              <p class="text-xs text-blue-700 font-medium mb-3">Datos del lote (Entrada de stock)</p>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Número de Lote <span class="text-red-500">*</span></label>
+                  <input
+                    v-model="stockAdjustment.batch_number"
+                    type="text"
+                    placeholder="Ej: LOT-2024-001"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Vencimiento</label>
+                  <input
+                    v-model="stockAdjustment.expiry_date"
+                    type="date"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+                  <input
+                    v-model="stockAdjustment.supplier"
+                    type="text"
+                    placeholder="Nombre del proveedor"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else-if="stockAdjustment.type === 'out'">
+            <div class="p-3 bg-orange-50 rounded-md border border-orange-200">
+              <p class="text-xs text-orange-700">La salida descontará automáticamente del lote más antiguo (FIFO).</p>
+            </div>
+          </template>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
             <textarea
@@ -530,7 +579,9 @@ import {
   Search,
   X,
   Upload,
-  Download
+  Download,
+  Warehouse,
+  Layers
 } from 'lucide-vue-next'
 import { usePermissions } from '@/composables/usePermissions'
 import { useAlert } from '@/composables/useAlert'
@@ -560,6 +611,9 @@ const stockAdjustment = reactive({
   type: '',
   quantity: 1,
   reason: '',
+  batch_number: '',
+  expiry_date: '',
+  supplier: '',
   productLocked: false
 })
 
@@ -593,10 +647,13 @@ watch(() => props.filters, (newFilters) => {
 
 // Computed
 const canSubmitStockAdjustment = computed(() => {
-  return stockAdjustment.product_id && 
-         stockAdjustment.type && 
-         stockAdjustment.quantity > 0 && 
-         stockAdjustment.reason.trim()
+  if (!stockAdjustment.product_id || !stockAdjustment.type || stockAdjustment.quantity <= 0 || !stockAdjustment.reason.trim()) {
+    return false
+  }
+  if (stockAdjustment.type === 'in' && !stockAdjustment.batch_number.trim()) {
+    return false
+  }
+  return true
 })
 
 // Methods
@@ -646,23 +703,22 @@ const getExpiryDateClass = (expiryDate) => {
   return 'text-sm text-gray-900' // Normal
 }
 
-const openStockAdjustmentModal = () => {
-  stockAdjustment.product_id = ''
+const resetStockAdjustment = () => {
   stockAdjustment.type = ''
   stockAdjustment.quantity = 1
   stockAdjustment.reason = ''
-  stockAdjustment.productLocked = false // NO bloquear producto, permitir selección
+  stockAdjustment.batch_number = ''
+  stockAdjustment.expiry_date = ''
+  stockAdjustment.supplier = ''
+}
+
+const openStockAdjustmentModal = () => {
+  stockAdjustment.product_id = ''
+  stockAdjustment.productLocked = false
+  resetStockAdjustment()
   showStockAdjustment.value = true
 }
 
-const adjustStock = (product) => {
-  stockAdjustment.product_id = product.id
-  stockAdjustment.type = ''
-  stockAdjustment.quantity = 1
-  stockAdjustment.reason = ''
-  stockAdjustment.productLocked = true // Bloquear producto cuando se selecciona desde la lista
-  showStockAdjustment.value = true
-}
 
 const getProductName = (productId) => {
   const product = props.products.data.find(p => p.id === productId)

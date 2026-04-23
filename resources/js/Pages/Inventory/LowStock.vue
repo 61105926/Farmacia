@@ -213,8 +213,18 @@ const formatDate = (date) => {
 }
 
 const exportLowStock = () => {
-  // Implementar exportación de productos con stock bajo
-  window.open('/inventario/stock-bajo/export', '_blank')
+  const rows = [['Código', 'Producto', 'Stock Actual', 'Stock Mínimo', 'Estado']]
+  const data = props.products?.data || []
+  data.forEach(p => {
+    rows.push([p.code, p.name, p.stock_quantity, p.min_stock, getStockStatus(p)])
+  })
+  const csv = rows.map(r => r.join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'stock-bajo.csv'
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 // Watch for flash messages

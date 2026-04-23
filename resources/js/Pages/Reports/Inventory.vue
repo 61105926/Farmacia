@@ -167,9 +167,7 @@
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Producto
                       </th>
-                      <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Categoría
-                      </th>
+                    
                       <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Stock
                       </th>
@@ -188,8 +186,15 @@
                     <tr v-for="product in products.data" :key="product.id" class="hover:bg-gray-50">
                       <td class="px-6 py-4">
                         <div>
-                          <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
-                          <div class="text-sm text-gray-500">{{ product.code }}</div>
+                          <div class="text-sm font-semibold text-gray-900">{{ product.description }}</div>
+                           <div v-if="product.name" class="text-sm text-gray-700 mt-0.5">
+                            {{ product.name }}
+                          </div>
+                        
+                          <div class="text-xs text-gray-400 mt-0.5">{{ product.code }}</div>
+                          <div v-if="product.brand" class="text-xs text-gray-400">
+                            {{ product.brand }}
+                          </div>
                         </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">

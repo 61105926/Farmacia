@@ -61,7 +61,7 @@
             />
             <SidebarItem
               href="/productos"
-              :active="$page.url.startsWith('/productos')"
+              :active="$page.url.startsWith('/productos') || $page.url.startsWith('/inventario') || $page.url.startsWith('/lotes')"
               :collapsed="isCollapsed"
               icon="Package"
               label="Productos"
@@ -76,23 +76,6 @@
             Operaciones
           </h3>
           <ul class="space-y-1">
-            <SidebarItem
-              v-if="isAdmin"
-              href="/inventario"
-              :active="$page.url.startsWith('/inventario')"
-              :collapsed="isCollapsed"
-              icon="Warehouse"
-              label="Inventario"
-              :permissions="['inventory.index']"
-            />
-            <SidebarItem
-              v-if="isAdmin"
-              href="/lotes"
-              :active="$page.url.startsWith('/lotes')"
-              :collapsed="isCollapsed"
-              icon="Layers"
-              label="Lotes"
-            />
             <SidebarItem
               href="/preventas"
               :active="$page.url.startsWith('/preventas')"

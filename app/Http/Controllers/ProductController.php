@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Batch;
+use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\Category;
-use App\Models\Inventory;
 use App\Helpers\InertiaHelper;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -277,40 +277,45 @@ class ProductController extends Controller
 
             // Estadísticas del producto
             $stats = [
-                'total_sales' => 0,
+                'total_sales'    => 0,
                 'total_presales' => 0,
-                'total_revenue' => 0,
+                'total_revenue'  => 0,
             ];
 
-            // Calcular estadísticas si las tablas existen
             if (Schema::hasTable('sale_items')) {
-                $stats['total_sales'] = DB::table('sale_items')
-                    ->where('product_id', $product->id)
-                    ->sum('quantity');
-
-                $stats['total_revenue'] = DB::table('sale_items')
-                    ->where('product_id', $product->id)
-                    ->sum('total');
+                $stats['total_sales']   = DB::table('sale_items')->where('product_id', $product->id)->sum('quantity');
+                $stats['total_revenue'] = DB::table('sale_items')->where('product_id', $product->id)->sum('total');
             }
 
             if (Schema::hasTable('presale_items')) {
-                $stats['total_presales'] = DB::table('presale_items')
-                    ->where('product_id', $product->id)
-                    ->sum('quantity');
+                $stats['total_presales'] = DB::table('presale_items')->where('product_id', $product->id)->sum('quantity');
             }
 
-            // Obtener acciones disponibles para el producto
+            // Lotes activos ordenados FIFO
+            $batches = Batch::where('product_id', $product->id)
+                ->orderBy('entry_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            // Últimos 30 movimientos de inventario
+            $movements = \App\Models\Inventory::where('product_id', $product->id)
+                ->with('creator:id,name')
+                ->orderByDesc('movement_date')
+                ->orderByDesc('id')
+                ->limit(30)
+                ->get();
+
             $availableActions = $this->getAvailableActions($product);
 
             return Inertia::render('Products/Show', [
-                'product' => $product,
-                'stats' => $stats,
+                'product'          => $product,
+                'stats'            => $stats,
+                'batches'          => $batches,
+                'movements'        => $movements,
                 'availableActions' => $availableActions,
             ]);
 
         } catch (\Exception $e) {
-            dd($e);
-
             return redirect()->route('products.index')
                 ->with('error', 'Error al cargar el producto: ' . $e->getMessage());
         }
@@ -788,60 +793,120 @@ class ProductController extends Controller
     public function adjustStock(Request $request, Product $product): RedirectResponse
     {
         $request->validate([
-            'type' => 'required|in:in,out,adjustment',
-            'quantity' => 'required|integer|min:1|max:999999',
-            'reason' => 'required|string|max:500',
+            'type'         => 'required|in:in,out,adjustment',
+            'quantity'     => 'required|integer|min:1|max:999999',
+            'reason'       => 'required|string|max:500',
+            'batch_number' => 'required_if:type,in|nullable|string|max:100',
+            'expiry_date'  => 'nullable|date',
+            'supplier'     => 'nullable|string|max:200',
         ]);
 
         try {
-            $oldStock = $product->stock_quantity;
-            $adjustment = $request->quantity;
+            DB::beginTransaction();
 
-            // Validar que no se pueda sacar más stock del disponible
-            if ($request->type === 'out' && $adjustment > $oldStock) {
-                return back()->with('error', 'No se puede sacar más stock del disponible. Stock actual: ' . $oldStock);
+            $oldStock  = $product->stock_quantity;
+            $quantity  = $request->quantity;
+            $batchId   = null;
+
+            if ($request->type === 'out' && $quantity > $oldStock) {
+                return back()->with('error', 'No hay suficiente stock. Disponible: ' . $oldStock);
             }
-
-            // Mapear tipos de movimiento para que coincidan con la migración
-            $movementTypes = [
-                'in' => 'add',
-                'out' => 'subtract',
-                'adjustment' => 'adjustment'
-            ];
-
-            $movementType = $movementTypes[$request->type] ?? 'adjustment';
 
             switch ($request->type) {
                 case 'in':
-                    $product->stock_quantity += $adjustment;
+                    // Crear nuevo lote
+                    $batch = Batch::create([
+                        'product_id'         => $product->id,
+                        'batch_number'       => $request->batch_number,
+                        'initial_quantity'   => $quantity,
+                        'remaining_quantity' => $quantity,
+                        'expiry_date'        => $request->expiry_date ?: null,
+                        'entry_date'         => now()->toDateString(),
+                        'cost_price'         => $product->cost_price,
+                        'supplier'           => $request->supplier ?: null,
+                        'notes'              => $request->reason,
+                        'status'             => 'active',
+                        'created_by'         => auth()->id(),
+                    ]);
+                    $batchId = $batch->id;
+                    $product->stock_quantity = $oldStock + $quantity;
                     break;
+
                 case 'out':
-                    $product->stock_quantity -= $adjustment;
+                    // Descontar lotes FIFO
+                    $batchService = new \App\Services\BatchService();
+                    $fifo = $batchService->deductFifo($product->id, $quantity, $request->reason);
+                    $batchId = $fifo['batch_id'];
+                    $product->stock_quantity = max(0, $oldStock - $quantity);
                     break;
+
                 case 'adjustment':
-                    $product->stock_quantity = $adjustment;
+                    // Ajuste directo: calcular diferencia
+                    $diff = $quantity - $oldStock;
+                    if ($diff > 0) {
+                        // Hay más stock del que había — crear lote si viene con número de lote
+                        if ($request->batch_number) {
+                            $batch = Batch::create([
+                                'product_id'         => $product->id,
+                                'batch_number'       => $request->batch_number,
+                                'initial_quantity'   => $diff,
+                                'remaining_quantity' => $diff,
+                                'expiry_date'        => $request->expiry_date ?: null,
+                                'entry_date'         => now()->toDateString(),
+                                'cost_price'         => $product->cost_price,
+                                'supplier'           => $request->supplier ?: null,
+                                'notes'              => $request->reason,
+                                'status'             => 'active',
+                                'created_by'         => auth()->id(),
+                            ]);
+                            $batchId = $batch->id;
+                        }
+                    } elseif ($diff < 0) {
+                        // Hay menos stock — descontar de lotes FIFO
+                        $batchService = new \App\Services\BatchService();
+                        $fifo = $batchService->deductFifo($product->id, abs($diff), $request->reason);
+                        $batchId = $fifo['batch_id'];
+                    }
+                    $product->stock_quantity = $quantity;
                     break;
             }
 
+            $newStock = $product->stock_quantity;
             $product->save();
 
-            // Registrar movimiento de stock
+            // Registrar en stock_movements (historial legado)
             DB::table('stock_movements')->insert([
-                'product_id' => $product->id,
-                'type' => $movementType,
-                'quantity' => $adjustment,
+                'product_id'     => $product->id,
+                'type'           => ['in' => 'add', 'out' => 'subtract', 'adjustment' => 'adjustment'][$request->type],
+                'quantity'       => $quantity,
                 'previous_stock' => $oldStock,
-                'new_stock' => $product->stock_quantity,
-                'notes' => $request->reason,
-                'created_by' => auth()->id(),
-                'created_at' => now(),
-                'updated_at' => now(),
+                'new_stock'      => $newStock,
+                'notes'          => $request->reason,
+                'created_by'     => auth()->id(),
+                'created_at'     => now(),
+                'updated_at'     => now(),
             ]);
 
-            return back()->with('success', "Stock ajustado exitosamente. Stock anterior: {$oldStock}, Stock nuevo: {$product->stock_quantity}");
+            // Registrar en inventories (nuevo sistema)
+            \App\Models\Inventory::create([
+                'product_id'       => $product->id,
+                'batch_id'         => $batchId,
+                'movement_type'    => $request->type === 'in' ? 'purchase' : ($request->type === 'out' ? 'adjustment' : 'adjustment'),
+                'transaction_type' => $request->type === 'out' ? 'out' : 'in',
+                'quantity'         => $quantity,
+                'previous_stock'   => $oldStock,
+                'new_stock'        => $newStock,
+                'notes'            => $request->reason,
+                'movement_date'    => now(),
+                'created_by'       => auth()->id(),
+            ]);
+
+            DB::commit();
+
+            return back()->with('success', "Stock ajustado. Anterior: {$oldStock} → Nuevo: {$newStock}");
 
         } catch (\Exception $e) {
-            dd($e);
+            DB::rollBack();
             return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
         }
     }
@@ -926,37 +991,33 @@ class ProductController extends Controller
     public function stockHistory(Product $product): Response
     {
         try {
-            // Verificar si la tabla existe
-            if (!Schema::hasTable('stock_movements')) {
-                return Inertia::render('Products/StockHistory', [
-                    'product' => $product,
-                    'movements' => ['data' => []],
-                    'error' => 'La tabla de movimientos de stock no existe. Por favor, ejecute las migraciones pendientes.'
+            // Leer desde inventories (fuente única: cubre ajustes, entradas y movimientos de inventario)
+            $movements = \App\Models\Inventory::with(['creator'])
+                ->where('product_id', $product->id)
+                ->orderBy('created_at', 'desc')
+                ->paginate(30)
+                ->through(fn($m) => [
+                    'id'             => $m->id,
+                    'transaction_type' => $m->transaction_type,
+                    'movement_type'  => $m->movement_type,
+                    'quantity'       => $m->quantity,
+                    'previous_stock' => $m->previous_stock,
+                    'new_stock'      => $m->new_stock,
+                    'reason'         => $m->reason ?? $m->notes,
+                    'user_name'      => $m->creator?->name ?? '—',
+                    'created_at'     => $m->created_at,
                 ]);
-            }
-
-            $movements = DB::table('stock_movements')
-                ->leftJoin('users', 'stock_movements.created_by', '=', 'users.id')
-                ->where('stock_movements.product_id', $product->id)
-                ->select([
-                    'stock_movements.*',
-                    'users.name as user_name'
-                ])
-                ->orderBy('stock_movements.created_at', 'desc')
-                ->paginate(20);
-
 
             return Inertia::render('Products/StockHistory', [
-                'product' => $product,
-                'movements' => $movements
+                'product'   => $product,
+                'movements' => $movements,
             ]);
 
         } catch (\Exception $e) {
-            dd($e);
             return Inertia::render('Products/StockHistory', [
-                'product' => $product,
+                'product'   => $product,
                 'movements' => ['data' => []],
-                'error' => 'Error al cargar historial de stock: ' . $e->getMessage()
+                'error'     => 'Error al cargar historial: ' . $e->getMessage()
             ]);
         }
     }
@@ -1194,7 +1255,7 @@ class ProductController extends Controller
 
                             DB::table('batches')->insert([
                                 'product_id'         => $productId,
-                                'batch_number'       => trim($data['code']) . '-IMP-' . date('Ymd'),
+                                'batch_number'       => trim($data['code']),
                                 'initial_quantity'   => $stockQty,
                                 'remaining_quantity' => $stockQty,
                                 'expiry_date'        => $expiryDate,
@@ -1240,7 +1301,7 @@ class ProductController extends Controller
                         if ($stockQty > 0) {
                             DB::table('batches')->insert([
                                 'product_id'         => $productId,
-                                'batch_number'       => trim($data['code']) . '-IMP-' . date('Ymd'),
+                                'batch_number'       => trim($data['code']),
                                 'initial_quantity'   => $stockQty,
                                 'remaining_quantity' => $stockQty,
                                 'expiry_date'        => $expiryDate,

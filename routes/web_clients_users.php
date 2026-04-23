@@ -96,18 +96,19 @@ Route::middleware(['auth'])->group(function () {
 
     // API lotes (acceso para todos los roles autenticados — usada en ventas/preventas)
     Route::get('/api/lotes/producto/{productId}', [App\Http\Controllers\BatchController::class, 'forProduct'])->name('api.batches.product');
+    Route::get('/api/lotes/producto/{productId}/ultimo', [App\Http\Controllers\BatchController::class, 'lastBatch'])->name('api.batches.last');
 
     // Inventario (solo administradores)
     Route::middleware('role:administrador|Administrador|ADMINISTRADOR')->prefix('inventario')->name('inventory.')->group(function () {
         Route::get('/', [App\Http\Controllers\InventoryController::class, 'index'])->name('index');
         Route::get('/movimientos', [App\Http\Controllers\InventoryController::class, 'movements'])->name('movements');
         Route::get('/stock', [App\Http\Controllers\InventoryController::class, 'stock'])->name('stock');
-        Route::get('/crear', [App\Http\Controllers\InventoryController::class, 'create'])->name('create');
-        Route::post('/', [App\Http\Controllers\InventoryController::class, 'store'])->name('store');
-        Route::get('/{inventory}', [App\Http\Controllers\InventoryController::class, 'show'])->name('show');
-        Route::post('/ajustar', [App\Http\Controllers\InventoryController::class, 'adjust'])->name('adjust');
         Route::get('/stock-bajo', [App\Http\Controllers\InventoryController::class, 'lowStock'])->name('low-stock');
         Route::get('/por-vencer', [App\Http\Controllers\InventoryController::class, 'expired'])->name('expired');
+        Route::get('/crear', [App\Http\Controllers\InventoryController::class, 'create'])->name('create');
+        Route::post('/ajustar', [App\Http\Controllers\InventoryController::class, 'adjust'])->name('adjust');
+        Route::post('/', [App\Http\Controllers\InventoryController::class, 'store'])->name('store');
+        Route::get('/{inventory}', [App\Http\Controllers\InventoryController::class, 'show'])->name('show');
     });
 
     // Preventas

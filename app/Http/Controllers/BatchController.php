@@ -75,11 +75,22 @@ class BatchController extends Controller
         ]);
     }
 
-    // API: devuelve lotes activos de un producto (para usar en frontend de ventas)
+    // API: devuelve lotes activos de un producto en orden FIFO
     public function forProduct(int $productId)
     {
         $batches = Batch::activeFifo($productId)->get(['id', 'batch_number', 'remaining_quantity', 'expiry_date', 'entry_date', 'supplier']);
 
         return response()->json($batches);
+    }
+
+    // API: devuelve el último lote registrado para un producto (para auto-rellenar formularios)
+    public function lastBatch(int $productId)
+    {
+        $batch = Batch::where('product_id', $productId)
+            ->orderByDesc('entry_date')
+            ->orderByDesc('id')
+            ->first(['id', 'batch_number', 'expiry_date', 'entry_date', 'supplier', 'cost_price']);
+
+        return response()->json($batch);
     }
 }

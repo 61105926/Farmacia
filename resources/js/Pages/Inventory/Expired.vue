@@ -213,8 +213,18 @@ const formatDate = (date) => {
 }
 
 const exportExpired = () => {
-  // Implementar exportación de productos próximos a vencer
-  window.open('/inventario/por-vencer/export', '_blank')
+  const rows = [['Código', 'Producto', 'Stock', 'Fecha Vencimiento', 'Días Restantes', 'Estado']]
+  const data = props.products?.data || []
+  data.forEach(p => {
+    rows.push([p.code, p.name, p.stock_quantity, p.expiry_date || '', getDaysUntilExpiry(p.expiry_date), getExpiryStatus(p.expiry_date)])
+  })
+  const csv = rows.map(r => r.join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'por-vencer.csv'
+  a.click()
+  URL.revokeObjectURL(a.href)
 }
 
 // Watch for flash messages

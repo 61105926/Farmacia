@@ -166,16 +166,12 @@
                 <!-- Product -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
-                  <select
+                  <ProductSelect
                     v-model="item.product_id"
-                    @change="updateProductInfo(index)"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="">Seleccionar</option>
-                    <option v-for="product in products" :key="product.id" :value="product.id">
-                      {{ product.description || product.name || 'N/A' }}
-                    </option>
-                  </select>
+                    :products="products || []"
+                    placeholder="Buscar producto..."
+                    @change="() => updateProductInfo(index)"
+                  />
                   <div v-if="item.product_id" class="mt-1 space-y-0.5">
                     <p class="text-xs text-gray-600">
                       Stock: <span class="font-semibold" :class="getStockClass(index)">{{ getStockText(index) }}</span>
@@ -335,6 +331,7 @@ import Card from '@/Components/ui/Card.vue'
 import CardHeader from '@/Components/ui/CardHeader.vue'
 import CardTitle from '@/Components/ui/CardTitle.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
+import ProductSelect from '@/Components/ui/ProductSelect.vue'
 
 const props = defineProps({
   clients: Array,

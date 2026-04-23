@@ -54,14 +54,14 @@
               placeholder="Buscar lote o producto..."
               class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
-            <select
-              v-model="filters.product_id"
-              @change="applyFilters"
-              class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">Todos los productos</option>
-              <option v-for="p in products" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
+            <div class="w-64">
+              <ProductSelect
+                v-model="filters.product_id"
+                :products="products"
+                placeholder="Todos los productos"
+                @change="applyFilters"
+              />
+            </div>
             <select
               v-model="filters.status"
               @change="applyFilters"
@@ -187,7 +187,9 @@
 import { reactive, computed } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
-import { Card, CardContent } from '@/Components/ui'
+import Card from '@/Components/ui/Card.vue'
+import CardContent from '@/Components/ui/CardContent.vue'
+import ProductSelect from '@/Components/ui/ProductSelect.vue'
 
 const props = defineProps({
   batches:  { type: Object, default: () => ({ data: [], total: 0 }) },
@@ -256,6 +258,7 @@ function statusLabel(status) {
 }
 
 function stripTags(str) {
-  return str ? str.replace(/<[^>]*>/g, '') : ''
+  if (!str) return ''
+  return str.replace(/<[^>]*>/g, '')
 }
 </script>

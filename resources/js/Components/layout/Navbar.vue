@@ -45,7 +45,7 @@
       <!-- Right Section -->
       <div class="flex items-center space-x-4">
         <!-- Notifications -->
-        <div class="relative">
+        <div class="relative" id="nav-notifications">
           <button
             class="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors relative"
             @click="toggleNotifications"
@@ -122,7 +122,7 @@
         </button>
 
         <!-- User Menu -->
-        <div class="relative">
+        <div class="relative" id="nav-user-menu">
           <button
             @click="toggleUserMenu"
             class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
@@ -365,18 +365,35 @@ const markAllAsRead = async () => {
   }
 }
 
+// Cerrar dropdowns al navegar (Inertia preserva el layout entre páginas)
+const removeNavListener = router.on('start', () => {
+  showNotifications.value = false
+  showUserMenu.value = false
+})
+onUnmounted(() => removeNavListener())
+
+// Click-outside para cerrar dropdowns
+const handleDocumentClick = (e) => {
+  const notifEl = document.getElementById('nav-notifications')
+  const userEl = document.getElementById('nav-user-menu')
+  if (notifEl && !notifEl.contains(e.target)) showNotifications.value = false
+  if (userEl && !userEl.contains(e.target)) showUserMenu.value = false
+}
+
 // Actualizar notificaciones periódicamente cada 30 segundos
 onMounted(() => {
   if (user.value) {
     fetchNotifications()
     notificationInterval = setInterval(fetchNotifications, 30000) // 30 segundos
   }
+  document.addEventListener('click', handleDocumentClick, true)
 })
 
 onUnmounted(() => {
   if (notificationInterval) {
     clearInterval(notificationInterval)
   }
+  document.removeEventListener('click', handleDocumentClick, true)
 })
 
 // User Menu

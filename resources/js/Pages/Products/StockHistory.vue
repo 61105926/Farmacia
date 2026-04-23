@@ -85,13 +85,13 @@
                   <div class="text-xs text-gray-500">{{ formatTime(movement.created_at) }}</div>
                 </td>
                 <td class="py-3 px-4">
-                  <Badge :variant="getMovementTypeVariant(movement.type)">
-                    {{ getMovementTypeLabel(movement.type) }}
+                  <Badge :variant="getMovementTypeVariant(movement.transaction_type)">
+                    {{ getMovementTypeLabel(movement.transaction_type, movement.movement_type) }}
                   </Badge>
                 </td>
                 <td class="py-3 px-4 text-right">
-                  <span :class="getMovementQuantityClass(movement.type)">
-                    {{ getMovementQuantitySign(movement.type) }}{{ movement.quantity }}
+                  <span :class="getMovementQuantityClass(movement.transaction_type)">
+                    {{ getMovementQuantitySign(movement.transaction_type) }}{{ movement.quantity }}
                   </span>
                 </td>
                 <td class="py-3 px-4 text-right">
@@ -103,7 +103,7 @@
                   </span>
                 </td>
                 <td class="py-3 px-4">
-                  <span class="text-sm text-gray-600">{{ movement.notes || 'Sin motivo' }}</span>
+                  <span class="text-sm text-gray-600">{{ movement.reason || 'Sin motivo' }}</span>
                 </td>
                 <td class="py-3 px-4">
                   <span class="text-sm text-gray-600">{{ movement.user_name || 'Sistema' }}</span>
@@ -168,43 +168,32 @@ const getStockClass = (stock, minStock) => {
   return 'text-green-600'
 }
 
-const getMovementTypeVariant = (type) => {
-  switch (type) {
-    case 'add': return 'default'
-    case 'subtract': return 'destructive'
-    case 'set': return 'outline'
-    case 'adjustment': return 'secondary'
-    default: return 'outline'
-  }
+const getMovementTypeVariant = (transactionType) => {
+  if (transactionType === 'in')  return 'default'
+  if (transactionType === 'out') return 'destructive'
+  return 'secondary'
 }
 
-const getMovementTypeLabel = (type) => {
-  switch (type) {
-    case 'add': return 'Entrada'
-    case 'subtract': return 'Salida'
-    case 'set': return 'Establecer'
-    case 'adjustment': return 'Ajuste'
-    default: return type
+const getMovementTypeLabel = (transactionType, movementType) => {
+  const movLabels = {
+    purchase: 'Compra', sale: 'Venta', return: 'Devolución',
+    adjustment: 'Ajuste', transfer: 'Transferencia', damage: 'Daño', expiry: 'Vencimiento',
   }
+  if (movementType && movLabels[movementType]) return movLabels[movementType]
+  if (transactionType === 'in')  return 'Entrada'
+  if (transactionType === 'out') return 'Salida'
+  return transactionType || '—'
 }
 
-const getMovementQuantityClass = (type) => {
-  switch (type) {
-    case 'add': return 'text-green-600 font-medium'
-    case 'subtract': return 'text-red-600 font-medium'
-    case 'set': return 'text-purple-600 font-medium'
-    case 'adjustment': return 'text-blue-600 font-medium'
-    default: return 'text-gray-600'
-  }
+const getMovementQuantityClass = (transactionType) => {
+  if (transactionType === 'in')  return 'text-green-600 font-medium'
+  if (transactionType === 'out') return 'text-red-600 font-medium'
+  return 'text-blue-600 font-medium'
 }
 
-const getMovementQuantitySign = (type) => {
-  switch (type) {
-    case 'add': return '+'
-    case 'subtract': return '-'
-    case 'set': return '='
-    case 'adjustment': return '±'
-    default: return ''
-  }
+const getMovementQuantitySign = (transactionType) => {
+  if (transactionType === 'in')  return '+'
+  if (transactionType === 'out') return '-'
+  return '±'
 }
 </script>

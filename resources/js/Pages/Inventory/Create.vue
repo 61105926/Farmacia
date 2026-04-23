@@ -25,21 +25,14 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                       Producto <span class="text-red-500">*</span>
                     </label>
-                    <select
+                    <ProductSelect
                       v-model="form.product_id"
-                      required
+                      :products="products || []"
                       :disabled="!products || products.length === 0"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      :class="{ 'border-red-500': form.errors.product_id }"
+                      :error="!!form.errors.product_id"
+                      placeholder="Buscar producto..."
                       @change="onProductChange"
-                    >
-                      <option value="">
-                        {{ !products || products.length === 0 ? 'No hay productos disponibles' : 'Seleccionar producto' }}
-                      </option>
-                      <option v-for="product in products" :key="product.id" :value="product.id">
-                        {{ product.description || 'N/A' }} ({{ product.code }}) - Stock: {{ product.stock_quantity || 0 }}
-                      </option>
-                    </select>
+                    />
                     <span v-if="form.errors.product_id" class="text-sm text-red-600">
                       {{ form.errors.product_id }}
                     </span>
@@ -356,6 +349,7 @@ import { computed, ref, watch } from 'vue'
 import { useForm, Link, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
+import ProductSelect from '@/Components/ui/ProductSelect.vue'
 
 const props = defineProps({
   products: {
@@ -418,19 +412,42 @@ const newStockColorClass = computed(() => {
   return 'text-gray-900'
 })
 
-const onProductChange = () => {
-  // Resetear campos relacionados cuando cambia el producto
+const onProductChange = async (product) => {
+  // Resetear campos de lote
   form.batch_number = ''
-  form.expiry_date = ''
-  
-  // Establecer el costo unitario con el costo del producto seleccionado
-  if (selectedProduct.value && selectedProduct.value.cost_price) {
-    form.unit_cost = parseFloat(selectedProduct.value.cost_price) || 0
-    // Recalcular el total automáticamente
+  form.expiry_date  = ''
+  form.supplier     = ''
+
+  // Costo desde el producto
+  const costPrice = product?.cost_price ?? selectedProduct.value?.cost_price
+  if (costPrice) {
+    form.unit_cost = parseFloat(costPrice) || 0
     calculateTotalCost()
   } else {
-    form.unit_cost = 0
+    form.unit_cost  = 0
     form.total_cost = 0
+  }
+
+  // Auto-rellenar con datos del último lote registrado para este producto
+  const pid = product?.id || form.product_id
+  if (pid) {
+    try {
+      const res = await fetch(`/api/lotes/producto/${pid}/ultimo`)
+      if (res.ok) {
+        const batch = await res.json()
+        if (batch) {
+          form.batch_number = batch.batch_number || ''
+          form.expiry_date  = batch.expiry_date  || ''
+          form.supplier     = batch.supplier     || ''
+          if (batch.cost_price && !costPrice) {
+            form.unit_cost = parseFloat(batch.cost_price) || 0
+            calculateTotalCost()
+          }
+        }
+      }
+    } catch {
+      // sin lote previo, campos vacíos
+    }
   }
 }
 
