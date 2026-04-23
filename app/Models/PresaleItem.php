@@ -13,6 +13,7 @@ class PresaleItem extends Model
     protected $fillable = [
         'presale_id',
         'product_id',
+        'batch_id',
         'quantity',
         'unit_price',
         'discount',
@@ -20,6 +21,11 @@ class PresaleItem extends Model
         'discount_amount',
         'total',
     ];
+
+    public function batch()
+    {
+        return $this->belongsTo(\App\Models\Batch::class);
+    }
 
     protected $casts = [
         'quantity' => 'decimal:3',

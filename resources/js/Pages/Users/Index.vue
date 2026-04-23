@@ -43,7 +43,7 @@
             <UserCheck class="h-8 w-8 text-green-500" />
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Activos</p>
-              <p class="text-2xl font-bold">{{ activeUsersCount }}</p>
+              <p class="text-2xl font-bold">{{ userStats?.active ?? 0 }}</p>
             </div>
           </div>
         </CardContent>
@@ -55,7 +55,7 @@
             <UserX class="h-8 w-8 text-red-500" />
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Bloqueados</p>
-              <p class="text-2xl font-bold">{{ blockedUsersCount }}</p>
+              <p class="text-2xl font-bold">{{ userStats?.blocked ?? 0 }}</p>
             </div>
           </div>
         </CardContent>
@@ -305,6 +305,10 @@ const props = defineProps({
   filters: {
     type: Object,
     default: () => ({})
+  },
+  userStats: {
+    type: Object,
+    default: () => ({ total: 0, active: 0, blocked: 0 })
   }
 })
 

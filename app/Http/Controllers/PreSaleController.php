@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Batch;
 use App\Models\Presale;
 use App\Models\PresaleItem;
 use App\Models\Client;
@@ -505,20 +506,24 @@ class PresaleController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            // 7. Crear items de la preventa
+            // 7. Crear items de la preventa (asigna lote FIFO informativo, sin descontar stock)
             foreach ($validated['items'] as $item) {
                 $itemTotal = $item['quantity'] * $item['unit_price'];
                 $itemDiscount = $itemTotal * ($item['discount'] ?? 0) / 100;
 
+                // Buscar primer lote disponible FIFO (solo para referencia, no descuenta)
+                $batch = Batch::activeFifo($item['product_id'])->first();
+
                 PresaleItem::create([
-                    'presale_id' => $presale->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'discount' => $item['discount'] ?? 0,
-                    'subtotal' => $itemTotal,
+                    'presale_id'      => $presale->id,
+                    'product_id'      => $item['product_id'],
+                    'batch_id'        => $batch?->id,
+                    'quantity'        => $item['quantity'],
+                    'unit_price'      => $item['unit_price'],
+                    'discount'        => $item['discount'] ?? 0,
+                    'subtotal'        => $itemTotal,
                     'discount_amount' => $itemDiscount,
-                    'total' => $itemTotal - $itemDiscount,
+                    'total'           => $itemTotal - $itemDiscount,
                 ]);
             }
 

@@ -13,6 +13,7 @@ class SaleItem extends Model
     protected $fillable = [
         'sale_id',
         'product_id',
+        'batch_id',
         'quantity',
         'unit_price',
         'discount',
@@ -20,6 +21,11 @@ class SaleItem extends Model
         'discount_amount',
         'total',
     ];
+
+    public function batch()
+    {
+        return $this->belongsTo(\App\Models\Batch::class);
+    }
 
     protected $casts = [
         'quantity' => 'decimal:3',

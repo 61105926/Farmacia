@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\InertiaHelper;
+use App\Models\Batch;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\User;
+use App\Services\BatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -53,13 +55,6 @@ class InventoryController extends Controller
             ->orderBy('id', 'desc')
             ->paginate(20)
             ->withQueryString();
-
-        // Si no hay movimientos, crear algunos de prueba para demostración
-        if ($movements->isEmpty() && Schema::hasTable('inventories')) {
-            $this->createDemoMovements();
-            // Recargar movimientos después de crear los de prueba
-            $movements = $query->latest('movement_date')->paginate(20)->withQueryString();
-        }
 
         // Estadísticas
         $stats = [
@@ -220,18 +215,19 @@ class InventoryController extends Controller
             
             // Validación
             $validated = validator($data, [
-                'product_id' => 'required|exists:products,id',
-                'movement_type' => 'required|in:purchase,sale,return,adjustment,transfer,damage,expiry',
+                'product_id'       => 'required|exists:products,id',
+                'movement_type'    => 'required|in:purchase,sale,return,adjustment,transfer,damage,expiry',
                 'transaction_type' => 'required|in:in,out',
-                'quantity' => 'required|integer|min:1',
-                'movement_date' => 'required|date',
-                'unit_cost' => 'nullable|numeric|min:0',
-                'total_cost' => 'nullable|numeric|min:0',
-                'notes' => 'nullable|string|max:1000',
-                'batch_number' => 'nullable|string|max:100',
-                'expiry_date' => 'nullable|date',
-                'reference_type' => 'nullable|string|max:100',
-                'reference_id' => 'nullable|integer',
+                'quantity'         => 'required|integer|min:1',
+                'movement_date'    => 'required|date',
+                'unit_cost'        => 'nullable|numeric|min:0',
+                'total_cost'       => 'nullable|numeric|min:0',
+                'notes'            => 'nullable|string|max:1000',
+                'batch_number'     => 'required_if:transaction_type,in|nullable|string|max:100',
+                'expiry_date'      => 'nullable|date',
+                'supplier'         => 'nullable|string|max:200',
+                'reference_type'   => 'nullable|string|max:100',
+                'reference_id'     => 'nullable|integer',
                 'reference_number' => 'nullable|string|max:100',
             ])->validate();
 
@@ -240,8 +236,8 @@ class InventoryController extends Controller
             $previousStock = $product->stock_quantity ?? 0;
 
             // Calcular nuevo stock
-            $quantityChange = $validated['transaction_type'] === 'in' 
-                ? $validated['quantity'] 
+            $quantityChange = $validated['transaction_type'] === 'in'
+                ? $validated['quantity']
                 : -$validated['quantity'];
 
             $newStock = max(0, $previousStock + $quantityChange);
@@ -255,11 +251,37 @@ class InventoryController extends Controller
                 }
             }
 
+            $batchId = null;
+
+            // Si es entrada de stock (compra/devolución), crear lote
+            if ($validated['transaction_type'] === 'in' && !empty($validated['batch_number'])) {
+                $batchService = new BatchService();
+                $batch = $batchService->createBatch(
+                    productId:   $validated['product_id'],
+                    quantity:    $validated['quantity'],
+                    batchNumber: $validated['batch_number'],
+                    expiryDate:  $validated['expiry_date'] ?? null,
+                    entryDate:   $validated['movement_date'],
+                    costPrice:   $validated['unit_cost'] ?? null,
+                    supplier:    $validated['supplier'] ?? null,
+                    notes:       $validated['notes'] ?? null,
+                );
+                $batchId = $batch->id;
+            }
+
+            // Si es salida manual, descontar de lotes FIFO
+            if ($validated['transaction_type'] === 'out') {
+                $batchService = new BatchService();
+                $result = $batchService->deductFifo($validated['product_id'], $validated['quantity'], $validated['notes'] ?? '');
+                $batchId = $result['batch_id'];
+            }
+
             // Crear movimiento de inventario
             $movement = Inventory::create(array_merge($validated, [
                 'previous_stock' => $previousStock,
-                'new_stock' => $newStock,
-                'created_by' => Auth::id(),
+                'new_stock'      => $newStock,
+                'created_by'     => Auth::id(),
+                'batch_id'       => $batchId,
             ]));
 
             // Actualizar stock del producto
@@ -346,170 +368,4 @@ class InventoryController extends Controller
         ]);
     }
 
-    /**
-     * Crear movimientos de inventario de demostración
-     */
-    private function createDemoMovements()
-    {
-        // Obtener productos activos existentes
-        $products = Product::active()->take(5)->get();
-
-        if ($products->isEmpty()) {
-            // Si no hay productos activos, intentar crear algunos productos de prueba básicos
-            $this->createDemoProducts();
-            $products = Product::active()->take(5)->get();
-        }
-
-        if ($products->isEmpty()) {
-            return; // No hay productos para crear movimientos de prueba
-        }
-
-        $demoMovements = [];
-
-        foreach ($products as $index => $product) {
-            $demoMovements[] = [
-                'product_id' => $product->id,
-                'movement_type' => ['purchase', 'sale', 'adjustment', 'transfer', 'damage'][$index % 5],
-                'transaction_type' => $index % 2 === 0 ? 'in' : 'out',
-                'quantity' => rand(5, 50),
-                'previous_stock' => rand(0, 100),
-                'new_stock' => rand(0, 150),
-                'movement_date' => now()->subDays(rand(1, 30))->format('Y-m-d'),
-                'unit_cost' => rand(10, 100),
-                'total_cost' => rand(50, 500),
-                'notes' => 'Movimiento de demostración #' . ($index + 1),
-                'created_by' => $this->getValidUserId(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-        }
-
-        // Crear múltiples movimientos
-        foreach (array_chunk($demoMovements, 10) as $chunk) {
-            Inventory::insert($chunk);
-        }
-    }
-
-    private function getValidUserId()
-    {
-        $userId = auth()->id();
-
-        if (!$userId) {
-            // Buscar un usuario administrador existente
-            $adminUser = User::where('status', 'active')->first();
-
-            if (!$adminUser) {
-                $adminUser = User::first(); // Cualquier usuario existente
-            }
-
-            if ($adminUser) {
-                return $adminUser->id;
-            }
-
-            // Si no hay usuarios, crear un usuario administrador básico
-            $adminUser = User::create([
-                'name' => 'Administrador',
-                'email' => 'admin@farmacia.com',
-                'password' => bcrypt('password'),
-                'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            return $adminUser->id;
-        }
-
-        return $userId;
-    }
-
-    private function createDemoProducts()
-    {
-        // Crear categorías básicas primero si no existen
-        $this->createDemoCategories();
-
-        // Crear algunos productos básicos de demostración
-        $demoProducts = [
-            [
-                'name' => 'Paracetamol 500mg',
-                'code' => 'PARA001',
-                'description' => 'Analgésico y antipirético',
-                'category_id' => 1,
-                'cost_price' => 5.50,
-                'sale_price' => 8.90,
-                'stock_quantity' => 100,
-                'min_stock' => 20,
-                'max_stock' => 200,
-                'unit_type' => 'tabletas',
-                'is_active' => true,
-                'created_by' => $this->getValidUserId(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Ibuprofeno 400mg',
-                'code' => 'IBUP002',
-                'description' => 'Antiinflamatorio no esteroideo',
-                'category_id' => 1,
-                'cost_price' => 7.25,
-                'sale_price' => 12.50,
-                'stock_quantity' => 75,
-                'min_stock' => 15,
-                'max_stock' => 150,
-                'unit_type' => 'tabletas',
-                'is_active' => true,
-                'created_by' => $this->getValidUserId(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Amoxicilina 500mg',
-                'code' => 'AMOX003',
-                'description' => 'Antibiótico de amplio espectro',
-                'category_id' => 2,
-                'cost_price' => 12.00,
-                'sale_price' => 18.00,
-                'stock_quantity' => 50,
-                'min_stock' => 10,
-                'max_stock' => 100,
-                'unit_type' => 'cápsulas',
-                'is_active' => true,
-                'created_by' => $this->getValidUserId(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        ];
-
-        foreach ($demoProducts as $product) {
-            Product::create($product);
-        }
-    }
-
-    private function createDemoCategories()
-    {
-        $categories = [
-            [
-                'name' => 'Medicamentos',
-                'slug' => 'medicamentos',
-                'description' => 'Productos farmacéuticos y medicamentos',
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Antibióticos',
-                'slug' => 'antibiotico',
-                'description' => 'Medicamentos antibióticos',
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        ];
-
-        foreach ($categories as $category) {
-            ProductCategory::firstOrCreate(
-                ['name' => $category['name']],
-                $category
-            );
-        }
-    }
 }

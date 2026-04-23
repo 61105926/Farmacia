@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Presale;
 use App\Models\Invoice;
+use App\Services\BatchService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -327,23 +328,32 @@ class SaleController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            // 8. Crear items de la venta y descontar stock
+            // 8. Crear items de la venta y descontar stock con FIFO
+            $batchService = new BatchService();
             foreach ($validated['items'] as $item) {
                 $itemTotal = $item['quantity'] * $item['unit_price'];
                 $itemDiscount = $itemTotal * ($item['discount'] ?? 0) / 100;
 
+                // Descontar de lotes en orden FIFO
+                $fifo = $batchService->deductFifo(
+                    $item['product_id'],
+                    (int) $item['quantity'],
+                    "Venta #{$sale->code}"
+                );
+
                 SaleItem::create([
-                    'sale_id' => $sale->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'discount' => $item['discount'] ?? 0,
-                    'subtotal' => $itemTotal,
+                    'sale_id'         => $sale->id,
+                    'product_id'      => $item['product_id'],
+                    'batch_id'        => $fifo['batch_id'],
+                    'quantity'        => $item['quantity'],
+                    'unit_price'      => $item['unit_price'],
+                    'discount'        => $item['discount'] ?? 0,
+                    'subtotal'        => $itemTotal,
                     'discount_amount' => $itemDiscount,
-                    'total' => $itemTotal - $itemDiscount,
+                    'total'           => $itemTotal - $itemDiscount,
                 ]);
 
-                // Descontar stock inmediatamente
+                // Actualizar stock general del producto
                 $product = \App\Models\Product::find($item['product_id']);
                 if ($product) {
                     $product->updateStock($item['quantity'], 'subtract', "Venta #{$sale->code}");

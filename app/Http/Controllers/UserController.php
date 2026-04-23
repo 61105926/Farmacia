@@ -48,7 +48,12 @@ class UserController extends Controller
         return Inertia::render('Users/Index', [
             'users' => InertiaHelper::sanitizeData($users),
             'filters' => InertiaHelper::sanitizeFilters($request->only(['search', 'status', 'role'])),
-            'roles' => InertiaHelper::sanitizeRoles(Role::where('name', '!=', 'admin')->get(['id', 'name'])),
+            'roles' => InertiaHelper::sanitizeRoles(Role::whereNotIn('name', ['admin', 'super-admin'])->get(['id', 'name'])),
+            'userStats' => [
+                'total' => User::count(),
+                'active' => User::whereNull('blocked_at')->count(),
+                'blocked' => User::whereNotNull('blocked_at')->count(),
+            ],
         ]);
     }
 
@@ -60,7 +65,7 @@ class UserController extends Controller
         $this->ensureBasicRoles();
         
         return Inertia::render('Users/Create', [
-            'roles' => Role::where('name', '!=', 'admin')->get(['id', 'name'])->map(function($role) {
+            'roles' => Role::whereNotIn('name', ['admin', 'super-admin'])->get(['id', 'name'])->map(function($role) {
                 return [
                     'id' => $role->id,
                     'name' => $role->name ?? 'Sin nombre'
@@ -142,7 +147,7 @@ class UserController extends Controller
 
         return Inertia::render('Users/Edit', [
             'user' => $user,
-            'roles' => Role::where('name', '!=', 'admin')->get(['id', 'name'])->map(function($role) {
+            'roles' => Role::whereNotIn('name', ['admin', 'super-admin'])->get(['id', 'name'])->map(function($role) {
                 return [
                     'id' => $role->id,
                     'name' => $role->name ?? 'Sin nombre'

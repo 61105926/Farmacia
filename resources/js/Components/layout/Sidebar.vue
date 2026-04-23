@@ -77,12 +77,21 @@
           </h3>
           <ul class="space-y-1">
             <SidebarItem
+              v-if="isAdmin"
               href="/inventario"
               :active="$page.url.startsWith('/inventario')"
               :collapsed="isCollapsed"
               icon="Warehouse"
               label="Inventario"
               :permissions="['inventory.index']"
+            />
+            <SidebarItem
+              v-if="isAdmin"
+              href="/lotes"
+              :active="$page.url.startsWith('/lotes')"
+              :collapsed="isCollapsed"
+              icon="Layers"
+              label="Lotes"
             />
             <SidebarItem
               href="/preventas"
@@ -157,6 +166,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import SidebarItem from './SidebarItem.vue'
 import logoNombreImg from '@/../assets/images/logo-nombre.jpeg'
 import logoIconImg from '@/../assets/images/logo.jpeg'
@@ -172,6 +183,16 @@ defineEmits(['toggle'])
 
 const logoNombre = logoNombreImg
 const logoIcon = logoIconImg
+
+const page = usePage()
+const isAdmin = computed(() => {
+  try {
+    const roles = Array.isArray(page.props.auth?.roles) ? page.props.auth.roles : []
+    return roles.some(r => String(r).toLowerCase() === 'administrador')
+  } catch {
+    return false
+  }
+})
 
 const route = (name) => {
   if (name === 'dashboard') return '/dashboard'

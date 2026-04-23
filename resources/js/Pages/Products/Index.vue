@@ -17,6 +17,7 @@
             Nuevo Producto
           </Button>
           <Button
+            v-if="isAdmin"
             @click="showImportModal = true"
             variant="outline"
             class="border-green-500 text-green-600 hover:bg-green-50"
@@ -25,6 +26,7 @@
             Importar Excel
           </Button>
           <Button
+            v-if="isAdmin"
             @click="openStockAdjustmentModal"
             variant="outline"
             class="border-orange-500 text-orange-600 hover:bg-orange-50"
@@ -901,6 +903,16 @@ const submitImport = () => {
 
 // Watch for flash messages
 const page = usePage()
+
+const isAdmin = computed(() => {
+  try {
+    const roles = Array.isArray(page.props.auth?.roles) ? page.props.auth.roles : []
+    return roles.some(r => String(r).toLowerCase() === 'administrador')
+  } catch {
+    return false
+  }
+})
+
 let lastFlashSuccess = null
 let lastFlashError = null
 

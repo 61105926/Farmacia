@@ -71,8 +71,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/sin-stock', [ProductController::class, 'outOfStock'])->name('out-of-stock');
         Route::get('/categorias', [ProductController::class, 'categories'])->name('categories');
         
-        // Importación desde Excel - ANTES de las rutas con parámetros
-        Route::post('/importar-excel', [ProductController::class, 'importExcel'])->name('import-excel');
+        // Importación desde Excel - solo administradores
+        Route::post('/importar-excel', [ProductController::class, 'importExcel'])->middleware('role:administrador|Administrador|ADMINISTRADOR')->name('import-excel');
         Route::get('/descargar-plantilla', [ProductController::class, 'downloadTemplate'])->name('download-template');
         
         // Rutas con parámetros DESPUÉS de las rutas específicas
@@ -84,12 +84,21 @@ Route::middleware(['auth'])->group(function () {
         // Acciones especiales
         Route::post('/{product}/toggle-status', [ProductController::class, 'toggleStatus'])->name('toggle-status');
         Route::post('/{product}/update-stock', [ProductController::class, 'updateStock'])->name('update-stock');
-        Route::post('/{product}/ajustar-stock', [ProductController::class, 'adjustStock'])->name('adjust-stock');
+        Route::post('/{product}/ajustar-stock', [ProductController::class, 'adjustStock'])->middleware('role:administrador|Administrador|ADMINISTRADOR')->name('adjust-stock');
         Route::get('/{product}/historial-stock', [ProductController::class, 'stockHistory'])->name('stock-history');
     });
 
-    // Inventario
-    Route::prefix('inventario')->name('inventory.')->group(function () {
+    // Lotes (solo administradores)
+    Route::middleware('role:administrador|Administrador|ADMINISTRADOR')->prefix('lotes')->name('batches.')->group(function () {
+        Route::get('/', [App\Http\Controllers\BatchController::class, 'index'])->name('index');
+        Route::get('/producto/{productId}', [App\Http\Controllers\BatchController::class, 'show'])->name('show');
+    });
+
+    // API lotes (acceso para todos los roles autenticados — usada en ventas/preventas)
+    Route::get('/api/lotes/producto/{productId}', [App\Http\Controllers\BatchController::class, 'forProduct'])->name('api.batches.product');
+
+    // Inventario (solo administradores)
+    Route::middleware('role:administrador|Administrador|ADMINISTRADOR')->prefix('inventario')->name('inventory.')->group(function () {
         Route::get('/', [App\Http\Controllers\InventoryController::class, 'index'])->name('index');
         Route::get('/movimientos', [App\Http\Controllers\InventoryController::class, 'movements'])->name('movements');
         Route::get('/stock', [App\Http\Controllers\InventoryController::class, 'stock'])->name('stock');

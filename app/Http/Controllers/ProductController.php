@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Batch;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Inventory;
@@ -1159,32 +1160,59 @@ class ProductController extends Controller
                         'updated_at' => now(),
                     ];
 
+                    $stockQty     = (int)($data['stock_quantity'] ?? 0);
+                    $expiryDate   = $data['expiry_date'] ?? null;
+                    $supplierName = !empty($data['brand']) ? trim($data['brand']) : null;
+                    $costPrice    = $data['cost_price'] ?? null;
+                    $today        = now()->toDateString();
+
                     if ($existingProduct) {
                         // ACTUALIZAR producto existente
-                        // Generar slug si cambió el nombre
                         $newSlug = \Str::slug($data['name']);
                         if ($newSlug !== $existingProduct->slug) {
-                            // Verificar si el nuevo slug ya existe en otro producto
                             $slugExists = DB::table('products')
                                 ->where('slug', $newSlug)
                                 ->where('id', '!=', $existingProduct->id)
                                 ->exists();
-                            
                             if (!$slugExists) {
                                 $productData['slug'] = $newSlug;
                             }
                         }
 
-                        // Actualizar producto
                         DB::table('products')
                             ->where('id', $existingProduct->id)
                             ->update($productData);
+
+                        $productId = $existingProduct->id;
+
+                        // Reemplazar lotes: borrar activos y crear uno nuevo con el stock actual
+                        if ($stockQty > 0) {
+                            DB::table('batches')
+                                ->where('product_id', $productId)
+                                ->where('status', 'active')
+                                ->delete();
+
+                            DB::table('batches')->insert([
+                                'product_id'         => $productId,
+                                'batch_number'       => trim($data['code']) . '-IMP-' . date('Ymd'),
+                                'initial_quantity'   => $stockQty,
+                                'remaining_quantity' => $stockQty,
+                                'expiry_date'        => $expiryDate,
+                                'entry_date'         => $today,
+                                'cost_price'         => $costPrice,
+                                'supplier'           => $supplierName,
+                                'notes'              => 'Importado desde Excel',
+                                'status'             => 'active',
+                                'created_by'         => auth()->id(),
+                                'created_at'         => now(),
+                                'updated_at'         => now(),
+                            ]);
+                        }
 
                         $updated++;
                         $imported++;
                     } else {
                         // CREAR nuevo producto
-                        // Generar slug único
                         $slug = \Str::slug($data['name']);
                         $slugCount = DB::table('products')->where('slug', 'like', $slug . '%')->count();
                         if ($slugCount > 0) {
@@ -1195,7 +1223,6 @@ class ProductController extends Controller
                         $productData['created_by'] = auth()->id();
                         $productData['created_at'] = now();
 
-                        // Verificar si el código de barras ya existe (solo para nuevos productos)
                         if (!empty($data['barcode'])) {
                             $existingBarcode = DB::table('products')
                                 ->where('barcode', $data['barcode'])
@@ -1207,8 +1234,26 @@ class ProductController extends Controller
                             }
                         }
 
-                        // Crear producto
-                        DB::table('products')->insert($productData);
+                        $productId = DB::table('products')->insertGetId($productData);
+
+                        // Crear lote inicial si tiene stock
+                        if ($stockQty > 0) {
+                            DB::table('batches')->insert([
+                                'product_id'         => $productId,
+                                'batch_number'       => trim($data['code']) . '-IMP-' . date('Ymd'),
+                                'initial_quantity'   => $stockQty,
+                                'remaining_quantity' => $stockQty,
+                                'expiry_date'        => $expiryDate,
+                                'entry_date'         => $today,
+                                'cost_price'         => $costPrice,
+                                'supplier'           => $supplierName,
+                                'notes'              => 'Importado desde Excel',
+                                'status'             => 'active',
+                                'created_by'         => auth()->id(),
+                                'created_at'         => now(),
+                                'updated_at'         => now(),
+                            ]);
+                        }
 
                         $created++;
                         $imported++;
@@ -1220,14 +1265,21 @@ class ProductController extends Controller
                 }
             }
 
-            // Eliminar TODOS los productos que NO están en el Excel importado
+            // Eliminar TODOS los productos que NO están en el Excel importado (y sus lotes)
             $deleted = 0;
             if (!empty($importedCodes)) {
-                DB::statement('SET FOREIGN_KEY_CHECKS=0');
-                $deleted = DB::table('products')
+                $productIdsToDelete = DB::table('products')
                     ->whereNotIn('code', $importedCodes)
-                    ->delete();
-                DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                    ->pluck('id');
+
+                if ($productIdsToDelete->isNotEmpty()) {
+                    DB::table('batches')->whereIn('product_id', $productIdsToDelete)->delete();
+                    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+                    $deleted = DB::table('products')
+                        ->whereIn('id', $productIdsToDelete)
+                        ->delete();
+                    DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                }
             }
 
             $message = "Importación completada. ";

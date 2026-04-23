@@ -164,23 +164,36 @@
               </CardContent>
             </Card>
 
-            <!-- Información de Lote (Opcional) -->
+            <!-- Información de Lote -->
             <Card>
               <CardHeader>
-                <CardTitle>Información de Lote (Opcional)</CardTitle>
+                <CardTitle>
+                  Información de Lote
+                  <span v-if="form.transaction_type === 'in'" class="ml-2 text-xs text-red-500 font-normal">(Obligatorio para entradas)</span>
+                  <span v-else-if="form.transaction_type === 'out'" class="ml-2 text-xs text-gray-400 font-normal">(El sistema selecciona automáticamente por FIFO)</span>
+                </CardTitle>
               </CardHeader>
               <CardContent class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                <!-- Aviso FIFO en salidas -->
+                <div v-if="form.transaction_type === 'out'" class="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-700">
+                  <strong>FIFO automático:</strong> Al registrar una salida, el sistema descontará del lote más antiguo disponible primero.
+                </div>
+
+                <div v-if="form.transaction_type !== 'out'" class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                       Número de Lote
+                      <span v-if="form.transaction_type === 'in'" class="text-red-500">*</span>
                     </label>
                     <input
                       v-model="form.batch_number"
                       type="text"
+                      :required="form.transaction_type === 'in'"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                      :class="{ 'border-red-500': form.errors.batch_number }"
                       placeholder="Ej: L2024001"
                     />
+                    <span v-if="form.errors.batch_number" class="text-sm text-red-600">{{ form.errors.batch_number }}</span>
                   </div>
 
                   <div>
@@ -193,6 +206,16 @@
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
+                </div>
+
+                <div v-if="form.transaction_type !== 'out'">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+                  <input
+                    v-model="form.supplier"
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    placeholder="Nombre del proveedor"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -362,6 +385,7 @@ const form = useForm({
   notes: '',
   batch_number: '',
   expiry_date: '',
+  supplier: '',
   reference_type: '',
   reference_id: null,
   reference_number: '',

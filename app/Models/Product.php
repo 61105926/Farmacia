@@ -48,6 +48,19 @@ class Product extends Model
         return $this->hasMany(Inventory::class);
     }
 
+    public function batches()
+    {
+        return $this->hasMany(\App\Models\Batch::class);
+    }
+
+    public function activeBatches()
+    {
+        return $this->hasMany(\App\Models\Batch::class)
+                    ->where('status', 'active')
+                    ->where('remaining_quantity', '>', 0)
+                    ->orderBy('entry_date', 'asc');
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
