@@ -30,6 +30,7 @@
     <!-- Form -->
     <div class="max-w-6xl mx-auto">
       <form @submit.prevent="submitForm" class="space-y-6">
+
         <!-- Información Básica -->
         <Card>
           <CardHeader>
@@ -39,9 +40,7 @@
           <CardContent class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Nombre del Producto *
-                </label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto *</label>
                 <input
                   v-model="form.name"
                   type="text"
@@ -51,11 +50,9 @@
                 />
                 <p v-if="errors.name" class="mt-1 text-sm text-red-600">{{ errors.name }}</p>
               </div>
-              
+
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Código *
-                </label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
                 <input
                   v-model="form.code"
                   type="text"
@@ -66,66 +63,95 @@
                 <p v-if="errors.code" class="mt-1 text-sm text-red-600">{{ errors.code }}</p>
               </div>
             </div>
-            
+
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Descripción
-              </label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
               <textarea
                 v-model="form.description"
-                rows="3"
+                rows="2"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                :class="{ 'border-red-500': errors.description }"
               ></textarea>
-              <p v-if="errors.description" class="mt-1 text-sm text-red-600">{{ errors.description }}</p>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Categoría
-                </label>
-                <select
-                  v-model="form.category_id"
+                <label class="block text-sm font-medium text-gray-700 mb-1">Acción</label>
+                <input
+                  v-model="form.action"
+                  type="text"
+                  placeholder="Ej: Analgésico, Antibiótico..."
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  :class="{ 'border-red-500': errors.category_id }"
-                >
-                  <option value="">Seleccionar categoría</option>
-                  <option v-if="!categories || categories.length === 0" value="" disabled>
-                    No hay categorías disponibles
-                  </option>
-                  <option v-for="category in categories" :key="category.id" :value="category.id">
-                    {{ category.name }}
-                  </option>
-                </select>
-                <p v-if="errors.category_id" class="mt-1 text-sm text-red-600">{{ errors.category_id }}</p>
-                <p v-if="(!categories || categories.length === 0) && !error" class="mt-1 text-sm text-amber-600">
-                  ⚠️ No hay categorías disponibles. Ejecuta el seeder: 
-                  <code class="bg-gray-100 px-2 py-1 rounded text-xs">php artisan db:seed --class=CategorySeeder</code>
-                </p>
+                />
               </div>
-              
+
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Unidad *
-                </label>
-                <select
-                  v-model="form.unit_type"
-                  required
+                <label class="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+                <input
+                  v-model="form.supplier"
+                  type="text"
+                  placeholder="Nombre del proveedor"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  :class="{ 'border-red-500': errors.unit }"
+                />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Genérico</label>
+                <input
+                  v-model="form.active_ingredient"
+                  type="text"
+                  placeholder="Principio activo"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Concentración</label>
+                <input
+                  v-model="form.dosage"
+                  type="text"
+                  placeholder="Ej: 500mg, 10mg/5ml"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Forma</label>
+                <select
+                  v-model="form.presentation"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Seleccionar unidad</option>
-                  <option value="unidad">Unidad</option>
-                  <option value="caja">Caja</option>
-                  <option value="blister">Blister</option>
-                  <option value="frasco">Frasco</option>
-                  <option value="ampolla">Ampolla</option>
-                  <option value="vial">Vial</option>
-                  <option value="sobre">Sobre</option>
-                  <option value="tubo">Tubo</option>
+                  <option value="">Seleccionar forma</option>
+                  <option value="Tableta">Tableta</option>
+                  <option value="Cápsula">Cápsula</option>
+                  <option value="Jarabe">Jarabe</option>
+                  <option value="Suspensión">Suspensión</option>
+                  <option value="Inyectable">Inyectable</option>
+                  <option value="Crema">Crema</option>
+                  <option value="Pomada">Pomada</option>
+                  <option value="Gel">Gel</option>
+                  <option value="Gotas">Gotas</option>
+                  <option value="Supositorio">Supositorio</option>
+                  <option value="Parche">Parche</option>
+                  <option value="Polvo">Polvo</option>
+                  <option value="Solución">Solución</option>
+                  <option value="Spray">Spray</option>
+                  <option value="Óvulo">Óvulo</option>
+                  <option value="Otro">Otro</option>
                 </select>
-                <p v-if="errors.unit" class="mt-1 text-sm text-red-600">{{ errors.unit }}</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Marca / Laboratorio</label>
+                <input
+                  v-model="form.brand"
+                  type="text"
+                  placeholder="Nombre del laboratorio"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
               </div>
             </div>
           </CardContent>
@@ -139,9 +165,7 @@
           <CardContent class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Precio de Compra *
-                </label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Precio de Compra *</label>
                 <div class="relative">
                   <span class="absolute left-3 top-2 text-gray-500">Bs</span>
                   <input
@@ -156,11 +180,9 @@
                 </div>
                 <p v-if="errors.cost_price" class="mt-1 text-sm text-red-600">{{ errors.cost_price }}</p>
               </div>
-              
+
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Precio de Venta *
-                </label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Precio de Venta *</label>
                 <div class="relative">
                   <span class="absolute left-3 top-2 text-gray-500">Bs</span>
                   <input
@@ -176,7 +198,7 @@
                 <p v-if="errors.sale_price" class="mt-1 text-sm text-red-600">{{ errors.sale_price }}</p>
               </div>
             </div>
-            
+
             <div v-if="form.cost_price && form.sale_price" class="bg-blue-50 p-4 rounded-md">
               <div class="text-sm">
                 <div class="flex justify-between">
@@ -188,119 +210,6 @@
                   <span class="font-semibold">{{ formatCurrency(form.sale_price - form.cost_price) }}</span>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <!-- Inventario -->
-        <Card>
-          <CardHeader>
-            <CardTitle>Inventario</CardTitle>
-          </CardHeader>
-          <CardContent class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Stock Actual *
-                </label>
-                <input
-                  v-model="form.stock_quantity"
-                  type="number"
-                  min="0"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  :class="{ 'border-red-500': errors.stock_quantity }"
-                />
-                <p v-if="errors.stock_quantity" class="mt-1 text-sm text-red-600">{{ errors.stock_quantity }}</p>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Stock Mínimo *
-                </label>
-                <input
-                  v-model="form.min_stock"
-                  type="number"
-                  min="0"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  :class="{ 'border-red-500': errors.min_stock }"
-                />
-                <p v-if="errors.min_stock" class="mt-1 text-sm text-red-600">{{ errors.min_stock }}</p>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Stock Máximo
-                </label>
-                <input
-                  v-model="form.max_stock"
-                  type="number"
-                  min="0"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  :class="{ 'border-red-500': errors.max_stock }"
-                />
-                <p v-if="errors.max_stock" class="mt-1 text-sm text-red-600">{{ errors.max_stock }}</p>
-              </div>
-            </div>
-            
-            <div v-if="form.stock_quantity && form.min_stock" class="bg-yellow-50 p-4 rounded-md">
-              <div class="text-sm">
-                <div class="flex justify-between">
-                  <span>Estado del stock:</span>
-                  <span class="font-semibold" :class="getStockStatusColor()">
-                    {{ getStockStatusText() }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <!-- Configuración -->
-        <Card>
-          <CardHeader>
-            <CardTitle>Configuración</CardTitle>
-          </CardHeader>
-          <CardContent class="space-y-4">
-            <div class="flex items-center">
-              <input
-                v-model="form.is_active"
-                type="checkbox"
-                class="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label class="ml-2 block text-sm text-gray-900">
-                Producto activo
-              </label>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Fecha de Vencimiento
-                </label>
-                <input
-                  v-model="form.expiry_date"
-                  type="date"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  :class="{ 'border-red-500': errors.expiry_date }"
-                />
-                <p v-if="errors.expiry_date" class="mt-1 text-sm text-red-600">{{ errors.expiry_date }}</p>
-              </div>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Notas
-              </label>
-              <textarea
-                v-model="form.notes"
-                rows="3"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                :class="{ 'border-red-500': errors.notes }"
-                placeholder="Notas adicionales sobre el producto..."
-              ></textarea>
-              <p v-if="errors.notes" class="mt-1 text-sm text-red-600">{{ errors.notes }}</p>
             </div>
           </CardContent>
         </Card>
@@ -335,10 +244,8 @@ import CardHeader from '@/Components/ui/CardHeader.vue'
 import CardTitle from '@/Components/ui/CardTitle.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
 import { AlertCircle } from 'lucide-vue-next'
-import { showAlert } from '@/composables/useAlert'
 
 const props = defineProps({
-  categories: Array,
   errors: Object,
   error: String
 })
@@ -349,22 +256,15 @@ const form = reactive({
   name: '',
   code: '',
   description: '',
-  category_id: '',
+  action: '',
+  supplier: '',
+  active_ingredient: '',
+  dosage: '',
+  presentation: '',
   brand: '',
   cost_price: '',
   sale_price: '',
-  stock_quantity: '',
-  min_stock: '',
-  max_stock: '',
-  unit_type: 'unidad',
-  is_active: true,
-  notes: '',
-  expiry_date: '',
 })
-
-// Debug: Log categories
-console.log('Categories recibidas:', props.categories)
-console.log('Número de categorías:', props.categories?.length || 0)
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('es-BO', {
@@ -381,34 +281,15 @@ const calculateMargin = () => {
   return margin.toFixed(2)
 }
 
-const getStockStatusText = () => {
-  if (!form.stock_quantity || !form.min_stock) return ''
-  
-  if (form.stock_quantity <= 0) return 'Sin Stock'
-  if (form.stock_quantity <= form.min_stock) return 'Stock Bajo'
-  return 'En Stock'
-}
-
-const getStockStatusColor = () => {
-  if (!form.stock_quantity || !form.min_stock) return 'text-gray-600'
-  
-  if (form.stock_quantity <= 0) return 'text-red-600'
-  if (form.stock_quantity <= form.min_stock) return 'text-yellow-600'
-  return 'text-green-600'
-}
-
 const submitForm = () => {
   isSubmitting.value = true
-  
   router.post('/productos', form, {
     onSuccess: () => {
       isSubmitting.value = false
-      // Flash message will be handled by watcher
       router.visit('/productos')
     },
-    onError: (errors) => {
+    onError: () => {
       isSubmitting.value = false
-      // Flash message will be handled by watcher
     },
     onFinish: () => {
       isSubmitting.value = false
@@ -416,7 +297,6 @@ const submitForm = () => {
   })
 }
 
-// Watch for flash messages
 const page = usePage()
 let lastFlashSuccess = null
 let lastFlashError = null
@@ -429,7 +309,6 @@ watch(
       window.$notify?.success('Éxito', flash.success)
     }
 
-    // Filtrar errores vacíos, arrays vacíos, objetos vacíos, y strings vacíos
     const hasValidError = flash?.error
       && flash.error !== lastFlashError
       && flash.error !== '[]'

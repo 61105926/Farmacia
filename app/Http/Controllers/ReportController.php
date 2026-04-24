@@ -204,7 +204,11 @@ class ReportController extends Controller
 
     public function inventory(Request $request)
     {
-        $query = Product::with(['category', 'inventoryMovements']);
+        $query = Product::with([
+            'category',
+            'inventoryMovements',
+            'batches' => fn($q) => $q->where('status', 'active')->orderBy('entry_date', 'asc')->limit(1),
+        ]);
 
         // Filtros
         if ($request->filled('search')) {

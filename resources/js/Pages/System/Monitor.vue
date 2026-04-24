@@ -112,34 +112,6 @@
         </CardContent>
       </Card>
 
-      <!-- Errores Recientes -->
-      <Card>
-        <CardHeader>
-          <CardTitle>Errores Recientes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div v-if="errors.length === 0" class="text-center py-8">
-            <CheckCircle class="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <p class="text-gray-600">No hay errores recientes</p>
-          </div>
-          <div v-else class="space-y-3">
-            <div
-              v-for="error in errors"
-              :key="error.timestamp"
-              class="bg-red-50 border border-red-200 rounded-md p-3"
-            >
-              <div class="flex items-start">
-                <AlertCircle class="h-5 w-5 text-red-400 mt-0.5" />
-                <div class="ml-3 flex-1">
-                  <p class="text-sm text-red-800">{{ error.message }}</p>
-                  <p class="text-xs text-red-600 mt-1">{{ error.timestamp }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <!-- Actividad de Usuarios -->
       <Card>
         <CardHeader>

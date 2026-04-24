@@ -191,7 +191,9 @@
                             {{ product.name }}
                           </div>
                         
-                          <div class="text-xs text-gray-400 mt-0.5">{{ product.code }}</div>
+                          <div v-if="product.batches && product.batches[0]" class="text-xs text-gray-400 mt-0.5">
+                            Lote: {{ product.batches[0].batch_number }}
+                          </div>
                           <div v-if="product.brand" class="text-xs text-gray-400">
                             {{ product.brand }}
                           </div>

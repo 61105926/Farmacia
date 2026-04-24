@@ -41,13 +41,11 @@
                 'rounded-l-md': index === 0,
                 'rounded-r-md': index === links.length - 1,
               }"
-              v-html="link.label"
-            />
+            >{{ formatLabel(link.label) }}</Link>
             <span
               v-else
               class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-gray-50 text-sm font-medium text-gray-400"
-              v-html="link.label"
-            />
+            >{{ formatLabel(link.label) }}</span>
           </template>
         </nav>
       </div>
@@ -64,4 +62,11 @@ defineProps({
     required: true,
   },
 })
+
+function formatLabel(label) {
+  if (!label) return ''
+  if (/pagination\.previous/i.test(label) || /Previous/i.test(label)) return '«'
+  if (/pagination\.next/i.test(label) || /Next/i.test(label)) return '»'
+  return label
+}
 </script>

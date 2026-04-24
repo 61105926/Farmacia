@@ -8,7 +8,7 @@
             ← Volver a inventario
           </Link>
           <h1 class="text-2xl font-bold text-gray-900">Productos por Vencer</h1>
-          <p class="text-sm text-gray-600 mt-1">Productos próximos a vencer (próximos 30 días)</p>
+          <p class="text-sm text-gray-600 mt-1">Productos vencidos o próximos a vencer (30 días)</p>
         </div>
         <div class="flex items-center gap-2">
           <Link
@@ -17,12 +17,6 @@
           >
             Nuevo Movimiento
           </Link>
-          <button
-            @click="exportExpired"
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-          >
-            Exportar
-          </button>
         </div>
       </div>
 
@@ -54,7 +48,7 @@
                     Producto
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Categoría
+                    Marca
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stock Actual
@@ -80,18 +74,13 @@
                 <tr v-for="product in products.data" :key="product.id" class="hover:bg-gray-50">
                   <td class="px-6 py-4">
                     <div>
-                      <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
-                      <div class="text-sm text-gray-500">{{ product.code }}</div>
-                      <div v-if="product.active_ingredient" class="text-xs text-gray-400">
-                        {{ product.active_ingredient }}
-                      </div>
+                      <div class="text-sm font-semibold text-gray-900">{{ product.description || product.name }}</div>
+                      <div v-if="product.description" class="text-xs text-gray-600 mt-0.5">{{ product.name }}</div>
+                      <div class="text-xs text-gray-400 mt-0.5">{{ product.code }}</div>
                     </div>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span v-if="product.category" class="text-sm text-gray-900">
-                      {{ product.category.name }}
-                    </span>
-                    <span v-else class="text-sm text-gray-400">Sin categoría</span>
+                  <td class="px-6 py-4">
+                    <span class="text-sm text-gray-900">{{ product.brand || '—' }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
@@ -212,20 +201,6 @@ const formatDate = (date) => {
   })
 }
 
-const exportExpired = () => {
-  const rows = [['Código', 'Producto', 'Stock', 'Fecha Vencimiento', 'Días Restantes', 'Estado']]
-  const data = props.products?.data || []
-  data.forEach(p => {
-    rows.push([p.code, p.name, p.stock_quantity, p.expiry_date || '', getDaysUntilExpiry(p.expiry_date), getExpiryStatus(p.expiry_date)])
-  })
-  const csv = rows.map(r => r.join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = 'por-vencer.csv'
-  a.click()
-  URL.revokeObjectURL(a.href)
-}
 
 // Watch for flash messages
 const page = usePage()

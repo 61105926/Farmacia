@@ -42,18 +42,7 @@
             </div>
 
             <!-- Category Filter -->
-            <div>
-              <select
-                v-model="filters.category_id"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                @change="applyFilters"
-              >
-                <option value="">Todas las categorías</option>
-                <option v-for="category in categories" :key="category.id" :value="category.id">
-                  {{ category.name }}
-                </option>
-              </select>
-            </div>
+          
 
             <!-- Stock Status Filter -->
             <div>
@@ -83,7 +72,7 @@
                     Producto
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Categoría
+                    Proveedor
                   </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stock Actual
@@ -106,18 +95,13 @@
                 <tr v-for="product in products.data" :key="product.id" class="hover:bg-gray-50">
                   <td class="px-6 py-4">
                     <div>
-                      <div class="text-sm font-medium text-gray-900">{{ product.name }}</div>
-                      <div class="text-sm text-gray-500">{{ product.code }}</div>
-                      <div v-if="product.active_ingredient" class="text-xs text-gray-400">
-                        {{ product.active_ingredient }}
-                      </div>
+                      <div class="text-sm font-semibold text-gray-900">{{ product.description || product.name }}</div>
+                      <div v-if="product.description" class="text-xs text-gray-600 mt-0.5">{{ product.name }}</div>
+                      <div class="text-xs text-gray-400 mt-0.5">{{ product.code }}</div>
                     </div>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span v-if="product.category" class="text-sm text-gray-900">
-                      {{ product.category.name }}
-                    </span>
-                    <span v-else class="text-sm text-gray-400">Sin categoría</span>
+                  <td class="px-6 py-4">
+                    <span class="text-sm text-gray-900">{{ product.brand || '—' }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">

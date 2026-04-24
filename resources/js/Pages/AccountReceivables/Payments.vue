@@ -147,7 +147,6 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">{{ payment.payment_method_label }}</div>
-                    <div v-if="payment.bank_name" class="text-xs text-gray-500">{{ payment.bank_name }}</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span

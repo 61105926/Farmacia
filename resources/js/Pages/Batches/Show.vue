@@ -5,7 +5,7 @@
         <div>
           <Link href="/lotes" class="text-sm text-primary-600 hover:underline mb-1 block">← Todos los lotes</Link>
           <h1 class="text-2xl font-bold text-gray-900">{{ product.name }}</h1>
-          <p class="text-sm text-gray-500">{{ product.code }} — Lotes en orden FIFO</p>
+          <p class="text-sm text-gray-500">{{ product.code }} — Lotes en orden PEPS</p>
         </div>
         <Link
           href="/inventario/crear"
@@ -31,7 +31,7 @@
         </Card>
         <Card>
           <CardContent class="p-4">
-            <p class="text-sm text-gray-500">Próximo en Usar (FIFO)</p>
+            <p class="text-sm text-gray-500">Próximo en Usar (PEPS)</p>
             <p class="text-lg font-bold text-primary-700">{{ nextBatch?.batch_number || '—' }}</p>
           </CardContent>
         </Card>
@@ -43,7 +43,7 @@
           <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th class="text-left px-4 py-3 font-semibold text-gray-600">Orden FIFO</th>
+                <th class="text-left px-4 py-3 font-semibold text-gray-600">Orden PEPS</th>
                 <th class="text-left px-4 py-3 font-semibold text-gray-600">N° Lote</th>
                 <th class="text-left px-4 py-3 font-semibold text-gray-600">Proveedor</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Fecha Ingreso</th>

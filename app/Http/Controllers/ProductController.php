@@ -206,63 +206,57 @@ class ProductController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:products,code',
-            'description' => 'nullable|string',
-            'category_id' => 'nullable|exists:product_categories,id',
-            'brand' => 'nullable|string|max:255',
-            'cost_price' => 'required|numeric|min:0',
-            'sale_price' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
-            'min_stock' => 'required|integer|min:0',
-            'max_stock' => 'nullable|integer|min:0',
-            'unit_type' => 'nullable|string|max:50',
-            'is_active' => 'boolean',
-            'expiry_date' => 'nullable|date',
+            'name'         => 'required|string|max:255',
+            'code'         => 'required|string|max:50|unique:products,code',
+            'description'  => 'nullable|string',
+            'action'       => 'nullable|string|max:255',
+            'supplier'     => 'nullable|string|max:255',
+            'dosage'       => 'nullable|string|max:255',
+            'presentation' => 'nullable|string|max:255',
+            'brand'        => 'nullable|string|max:255',
+            'active_ingredient' => 'nullable|string|max:255',
+            'cost_price'   => 'required|numeric|min:0',
+            'sale_price'   => 'required|numeric|min:0',
         ]);
 
-
         try {
-            // Verificar que la tabla existe
             if (!Schema::hasTable('products')) {
-                return back()->with('error', 'La tabla de productos no existe. Por favor, crea las tablas primero.');
+                return back()->with('error', 'La tabla de productos no existe.');
             }
 
-            // Generar slug único
             $slug = \Str::slug($validated['name']);
             $slugCount = DB::table('products')->where('slug', 'like', $slug . '%')->count();
             if ($slugCount > 0) {
                 $slug = $slug . '-' . ($slugCount + 1);
             }
 
-            // Crear producto usando consulta directa
-            $productId = DB::table('products')->insertGetId([
-                'name' => $validated['name'],
-                'code' => $validated['code'],
-                'slug' => $slug,
-                'description' => $validated['description'] ?? null,
-                'category_id' => $validated['category_id'] ?? null,
-                'brand' => $validated['brand'] ?? null,
-                'cost_price' => $validated['cost_price'],
-                'base_price' => $validated['cost_price'],
-                'sale_price' => $validated['sale_price'],
-                'stock_quantity' => $validated['stock_quantity'],
-                'min_stock' => $validated['min_stock'],
-                'max_stock' => $validated['max_stock'] ?? 0,
-                'unit_type' => $validated['unit_type'] ?? 'unit',
-                'is_active' => $validated['is_active'] ?? true,
-                'expiry_date' => $validated['expiry_date'] ?? null,
-                'created_by' => auth()->id(),
-                'created_at' => now(),
-                'updated_at' => now(),
+            DB::table('products')->insertGetId([
+                'name'              => $validated['name'],
+                'code'              => $validated['code'],
+                'slug'              => $slug,
+                'description'       => $validated['description'] ?? null,
+                'action'            => $validated['action'] ?? null,
+                'supplier'          => $validated['supplier'] ?? null,
+                'dosage'            => $validated['dosage'] ?? null,
+                'presentation'      => $validated['presentation'] ?? null,
+                'brand'             => $validated['brand'] ?? null,
+                'active_ingredient' => $validated['active_ingredient'] ?? null,
+                'cost_price'        => $validated['cost_price'],
+                'base_price'        => $validated['cost_price'],
+                'sale_price'        => $validated['sale_price'],
+                'stock_quantity'    => 0,
+                'min_stock'         => 0,
+                'max_stock'         => 0,
+                'is_active'         => true,
+                'created_by'        => auth()->id(),
+                'created_at'        => now(),
+                'updated_at'        => now(),
             ]);
 
             return redirect()->route('products.index')
                 ->with('success', 'Producto creado exitosamente.');
 
         } catch (\Exception $e) {
-            dd($e);
-            
             return back()->with('error', 'Error al crear el producto: ' . $e->getMessage());
         }
     }

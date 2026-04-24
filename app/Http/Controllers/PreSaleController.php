@@ -48,6 +48,10 @@ class PresaleController extends Controller
                       ->orWhereHas('client', function ($clientQuery) use ($search) {
                           $clientQuery->where('business_name', 'like', "%{$search}%")
                                     ->orWhere('trade_name', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('items.product', function ($pq) use ($search) {
+                          $pq->where('description', 'like', "%{$search}%")
+                             ->orWhere('name', 'like', "%{$search}%");
                       });
                 });
             }

@@ -54,11 +54,12 @@
         @mouseover="highlighted = idx"
       >
         <div class="flex-1 min-w-0">
-          <div class="font-medium text-gray-900 truncate">{{ product.name || product.description }}</div>
-          <div class="text-xs text-gray-500 flex gap-2">
+          <div class="font-medium text-gray-900 truncate">{{ product.description || product.name }}</div>
+          <div v-if="product.description" class="text-xs text-gray-600 truncate">{{ product.name }}</div>
+          <div class="text-xs text-gray-500 flex gap-2 mt-0.5">
             <span v-if="product.code">{{ product.code }}</span>
             <span v-if="product.stock_quantity !== undefined">
-              Stock:
+              · Stock:
               <span :class="product.stock_quantity <= 0 ? 'text-red-500 font-semibold' : product.stock_quantity <= 10 ? 'text-orange-500 font-semibold' : 'text-green-600'">
                 {{ product.stock_quantity }}
               </span>
@@ -94,7 +95,9 @@ const selectedProduct = computed(() => props.products.find(p => p.id == props.mo
 const selectedLabel = computed(() => {
   if (!selectedProduct.value) return ''
   const p = selectedProduct.value
-  return (p.description || p.name || '') + (p.code ? ` (${p.code})` : '')
+  const main = p.description || p.name || ''
+  const sub  = p.description && p.name && p.description !== p.name ? ` · ${p.name}` : ''
+  return main + sub + (p.code ? ` (${p.code})` : '')
 })
 
 const filtered = computed(() => {

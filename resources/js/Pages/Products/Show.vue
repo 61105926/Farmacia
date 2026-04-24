@@ -305,7 +305,7 @@
         <Card>
           <CardHeader>
             <div class="flex items-center justify-between">
-              <CardTitle>Lotes (FIFO)</CardTitle>
+              <CardTitle>Lotes (PEPS)</CardTitle>
               <Link
                 href="/inventario/nuevo"
                 class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
@@ -362,7 +362,7 @@
                     >
                       <td class="py-3">
                         <div class="font-medium text-gray-900">{{ batch.batch_number }}</div>
-                        <div v-if="index === 0 && batch.status === 'active'" class="text-xs text-blue-600 font-medium">Siguiente en FIFO</div>
+                        <div v-if="index === 0 && batch.status === 'active'" class="text-xs text-blue-600 font-medium">Siguiente en PEPS</div>
                       </td>
                       <td class="py-3 text-gray-600 whitespace-nowrap">{{ formatDateShort(batch.entry_date) }}</td>
                       <td class="py-3 whitespace-nowrap">

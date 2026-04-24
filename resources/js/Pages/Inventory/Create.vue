@@ -103,7 +103,7 @@
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-3 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
                       Cantidad <span class="text-red-500">*</span>
@@ -123,23 +123,35 @@
 
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Costo Unitario
-                      <span v-if="selectedProduct && selectedProduct.cost_price" class="text-xs text-gray-500 font-normal">
-                        (del producto: Bs. {{ formatPrice(selectedProduct.cost_price) }})
-                      </span>
+                      Precio de Compra
                     </label>
-                    <input
-                      v-model.number="form.unit_cost"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      @input="calculateTotalCost"
-                      placeholder="Se llena automáticamente con el costo del producto"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                    />
-                    <span v-if="selectedProduct && selectedProduct.cost_price && parseFloat(form.unit_cost) != parseFloat(selectedProduct.cost_price)" class="text-xs text-gray-500 mt-1 block">
-                      ⚠️ Costo modificado (costo original: Bs. {{ formatPrice(selectedProduct.cost_price) }})
-                    </span>
+                    <div class="relative">
+                      <span class="absolute left-3 top-2 text-gray-400 text-sm">Bs.</span>
+                      <input
+                        v-model.number="form.unit_cost"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        @input="calculateTotalCost"
+                        class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Precio de Venta
+                    </label>
+                    <div class="relative">
+                      <span class="absolute left-3 top-2 text-gray-400 text-sm">Bs.</span>
+                      <input
+                        v-model.number="form.sale_price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -163,13 +175,13 @@
                 <CardTitle>
                   Información de Lote
                   <span v-if="form.transaction_type === 'in'" class="ml-2 text-xs text-red-500 font-normal">(Obligatorio para entradas)</span>
-                  <span v-else-if="form.transaction_type === 'out'" class="ml-2 text-xs text-gray-400 font-normal">(El sistema selecciona automáticamente por FIFO)</span>
+                  <span v-else-if="form.transaction_type === 'out'" class="ml-2 text-xs text-gray-400 font-normal">(El sistema selecciona automáticamente por PEPS)</span>
                 </CardTitle>
               </CardHeader>
               <CardContent class="space-y-4">
                 <!-- Aviso FIFO en salidas -->
                 <div v-if="form.transaction_type === 'out'" class="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-700">
-                  <strong>FIFO automático:</strong> Al registrar una salida, el sistema descontará del lote más antiguo disponible primero.
+                  <strong>PEPS automático:</strong> Al registrar una salida, el sistema descontará del lote más antiguo disponible primero.
                 </div>
 
                 <div v-if="form.transaction_type !== 'out'" class="grid grid-cols-2 gap-4">
@@ -261,12 +273,10 @@
               </CardHeader>
               <CardContent class="space-y-3">
                 <div>
-                  <div class="text-xs text-gray-500">Descripción</div>
-                  <div class="text-sm font-medium text-gray-900">{{ selectedProduct?.description || 'N/A' }}</div>
-                </div>
-                <div>
-                  <div class="text-xs text-gray-500">Código</div>
-                  <div class="text-sm text-gray-900">{{ selectedProduct?.code || 'N/A' }}</div>
+                  <div class="text-sm font-semibold text-gray-900">{{ selectedProduct?.description || selectedProduct?.name }}</div>
+                  <div v-if="selectedProduct?.description" class="text-xs text-gray-600 mt-0.5">{{ selectedProduct?.name }}</div>
+                  <div class="text-xs text-gray-400 mt-0.5">{{ selectedProduct?.code }}</div>
+                  <div v-if="form.batch_number" class="text-xs text-gray-500 mt-0.5">Lote: {{ form.batch_number }}</div>
                 </div>
                 <div>
                   <div class="text-xs text-gray-500">Stock Actual</div>
@@ -345,7 +355,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { useForm, Link, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
@@ -365,9 +375,9 @@ const props = defineProps({
     default: () => ({})
   },
   error: String,
+  selectedProductId: { type: Number, default: null },
 })
 
-// Debug: mostrar productos recibidos
 const form = useForm({
   product_id: '',
   movement_type: '',
@@ -375,6 +385,7 @@ const form = useForm({
   quantity: 1,
   movement_date: new Date().toISOString().split('T')[0],
   unit_cost: 0,
+  sale_price: 0,
   total_cost: 0,
   notes: '',
   batch_number: '',
@@ -387,6 +398,16 @@ const form = useForm({
 
 const selectedProduct = computed(() => {
   return props.products.find(p => p.id == form.product_id)
+})
+
+onMounted(async () => {
+  if (props.selectedProductId) {
+    const product = props.products.find(p => p.id == props.selectedProductId)
+    if (product) {
+      form.product_id = product.id
+      await onProductChange(product)
+    }
+  }
 })
 
 const newStock = computed(() => {
@@ -418,15 +439,12 @@ const onProductChange = async (product) => {
   form.expiry_date  = ''
   form.supplier     = ''
 
-  // Costo desde el producto
+  // Precios desde el producto
   const costPrice = product?.cost_price ?? selectedProduct.value?.cost_price
-  if (costPrice) {
-    form.unit_cost = parseFloat(costPrice) || 0
-    calculateTotalCost()
-  } else {
-    form.unit_cost  = 0
-    form.total_cost = 0
-  }
+  const salePrice = product?.sale_price ?? selectedProduct.value?.sale_price
+  form.unit_cost  = parseFloat(costPrice) || 0
+  form.sale_price = parseFloat(salePrice) || 0
+  calculateTotalCost()
 
   // Auto-rellenar con datos del último lote registrado para este producto
   const pid = product?.id || form.product_id

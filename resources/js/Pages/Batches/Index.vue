@@ -5,7 +5,7 @@
       <div class="mb-6 flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Lotes</h1>
-          <p class="text-sm text-gray-600 mt-1">Control de lotes por producto (FIFO)</p>
+          <p class="text-sm text-gray-600 mt-1">Control de lotes por producto (PEPS)</p>
         </div>
         <Link
           href="/inventario/crear"
@@ -119,7 +119,8 @@
                 >
                   <td class="px-4 py-3 font-mono font-semibold text-gray-800">{{ batch.batch_number }}</td>
                   <td class="px-4 py-3">
-                    <div class="font-medium text-gray-900">{{ batch.product?.name }}</div>
+                    <div class="font-medium text-gray-900">{{ batch.product?.description || batch.product?.name }}</div>
+                    <div class="text-xs text-gray-500">{{ batch.product?.name }}</div>
                     <div class="text-xs text-gray-400">{{ batch.product?.code }}</div>
                   </td>
                   <td class="px-4 py-3 text-gray-600">{{ batch.supplier || '—' }}</td>

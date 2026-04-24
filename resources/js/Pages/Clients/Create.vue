@@ -10,7 +10,7 @@
         <p class="text-sm text-gray-600 mt-1">Complete los datos del nuevo cliente</p>
       </div>
 
-      <form @submit.prevent="submit">
+      <form @submit.prevent="submit" @keydown.enter="onEnterNavigate">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Main Info -->
           <div class="lg:col-span-2">
@@ -441,6 +441,18 @@ const validateEmail = () => {
       emailError.value = 'Por favor ingrese un email válido'
     }
   }
+}
+
+const onEnterNavigate = (e) => {
+  const tag = e.target.tagName
+  if (tag === 'TEXTAREA') return  // allow Enter in textareas
+  if (e.target.type === 'submit') return
+  e.preventDefault()
+  const focusable = Array.from(
+    e.currentTarget.querySelectorAll('input, select, textarea, button[type="submit"]')
+  ).filter(el => !el.disabled && el.offsetParent !== null)
+  const idx = focusable.indexOf(e.target)
+  if (idx >= 0 && idx < focusable.length - 1) focusable[idx + 1].focus()
 }
 
 const submit = () => {

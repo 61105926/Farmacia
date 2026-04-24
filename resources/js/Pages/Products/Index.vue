@@ -426,7 +426,7 @@
           </template>
           <template v-else-if="stockAdjustment.type === 'out'">
             <div class="p-3 bg-orange-50 rounded-md border border-orange-200">
-              <p class="text-xs text-orange-700">La salida descontará automáticamente del lote más antiguo (FIFO).</p>
+              <p class="text-xs text-orange-700">La salida descontará automáticamente del lote más antiguo (PEPS).</p>
             </div>
           </template>
 

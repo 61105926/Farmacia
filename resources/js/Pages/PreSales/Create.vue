@@ -437,18 +437,6 @@ const submitForm = () => {
     return
   }
 
-  // Validar fecha de entrega si está presente
-  if (form.delivery_date) {
-    const deliveryDate = new Date(form.delivery_date)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    deliveryDate.setHours(0, 0, 0, 0)
-    
-    if (deliveryDate < today) {
-      alert('La fecha de entrega no puede ser anterior a hoy')
-      return
-    }
-  }
 
   // Preparar datos para enviar - solo items con producto seleccionado
   const dataToSend = {

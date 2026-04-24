@@ -45,6 +45,10 @@ class SaleController extends Controller
                           ->orWhere('invoice_number', 'like', "%{$search}%")
                           ->orWhereHas('client', function ($clientQuery) use ($search) {
                               $clientQuery->where('business_name', 'like', "%{$search}%");
+                          })
+                          ->orWhereHas('items.product', function ($pq) use ($search) {
+                              $pq->where('description', 'like', "%{$search}%")
+                                 ->orWhere('name', 'like', "%{$search}%");
                           });
                     });
                 })

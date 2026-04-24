@@ -123,7 +123,8 @@ class InventoryController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -149,7 +150,7 @@ class InventoryController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         try {
             // Verificar si la tabla existe
@@ -164,21 +165,21 @@ class InventoryController extends Controller
 
             // Cargar productos activos, si no hay, cargar todos
             $products = Product::active()
-                ->select('id', 'name', 'code', 'description', 'stock_quantity', 'cost_price')
+                ->select('id', 'name', 'code', 'description', 'stock_quantity', 'cost_price', 'sale_price')
                 ->orderBy('name', 'asc')
                 ->get();
-            
-            // Si no hay productos activos, cargar todos los productos
+
             if ($products->isEmpty()) {
-                $products = Product::select('id', 'name', 'code', 'description', 'stock_quantity', 'cost_price')
+                $products = Product::select('id', 'name', 'code', 'description', 'stock_quantity', 'cost_price', 'sale_price')
                     ->orderBy('name', 'asc')
                     ->get();
             }
-            
+
             return Inertia::render('Inventory/Create', [
-                'products' => InertiaHelper::sanitizeData($products),
-                'movementTypes' => Inventory::getMovementTypes(),
-                'transactionTypes' => Inventory::getTransactionTypes(),
+                'products'          => InertiaHelper::sanitizeData($products),
+                'movementTypes'     => Inventory::getMovementTypes(),
+                'transactionTypes'  => Inventory::getTransactionTypes(),
+                'selectedProductId' => $request->integer('product') ?: null,
             ]);
             
         } catch (\Exception $e) {
@@ -353,10 +354,16 @@ class InventoryController extends Controller
 
     public function expired()
     {
-        // Productos próximos a vencer (próximos 30 días)
-        $products = Product::whereHas('inventoryMovements', function ($query) {
-            $query->where('expiry_date', '<=', now()->addDays(30))
-                  ->where('expiry_date', '>', now());
+        $threshold = now()->addDays(30);
+
+        $products = Product::where(function ($q) use ($threshold) {
+            // Fecha de vencimiento del producto (ya vencido o próximo a vencer)
+            $q->whereNotNull('expiry_date')
+              ->where('expiry_date', '<=', $threshold);
+        })->orWhereHas('inventoryMovements', function ($q) use ($threshold) {
+            // O lote con fecha de vencimiento ya vencido o próximo
+            $q->whereNotNull('expiry_date')
+              ->where('expiry_date', '<=', $threshold);
         })
         ->with('category')
         ->paginate(20);
