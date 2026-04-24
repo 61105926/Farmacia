@@ -10,7 +10,7 @@
         <p class="text-sm text-gray-600 mt-1">Registre un movimiento de entrada o salida de productos</p>
       </div>
 
-      <form @submit.prevent="submit">
+      <form @submit.prevent="submit" @keydown.enter="onEnterNavigate">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Main Form -->
           <div class="lg:col-span-2 space-y-6">
@@ -488,6 +488,18 @@ const formatPrice = (price) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(price)
+}
+
+const onEnterNavigate = (e) => {
+  const tag = e.target.tagName
+  if (tag === 'TEXTAREA') return
+  if (e.target.type === 'submit') return
+  e.preventDefault()
+  const focusable = Array.from(
+    e.currentTarget.querySelectorAll('input, select, textarea, button[type="submit"]')
+  ).filter(el => !el.disabled && el.offsetParent !== null)
+  const idx = focusable.indexOf(e.target)
+  if (idx >= 0 && idx < focusable.length - 1) focusable[idx + 1].focus()
 }
 
 const submit = () => {
