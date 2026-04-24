@@ -97,7 +97,10 @@
                     <div>
                       <div class="text-sm font-semibold text-gray-900">{{ product.description || product.name }}</div>
                       <div v-if="product.description" class="text-xs text-gray-600 mt-0.5">{{ product.name }}</div>
-                      <div class="text-xs text-gray-400 mt-0.5">{{ product.code }}</div>
+                      <div class="text-xs text-gray-400 mt-0.5">
+                        <span v-if="product.batches && product.batches[0]">Lote: {{ product.batches[0].batch_number }}</span>
+                        <span v-else>{{ product.code }}</span>
+                      </div>
                     </div>
                   </td>
                   <td class="px-6 py-4">
@@ -150,7 +153,7 @@
                         Ver
                       </Link>
                       <Link
-                        :href="`/inventario/crear?product=${product.id}`"
+                        :href="`/inventario/crear?product=${product.id}${product.batches && product.batches[0] ? '&batch=' + product.batches[0].batch_number : ''}`"
                         class="text-blue-600 hover:text-blue-900"
                       >
                         Movimiento

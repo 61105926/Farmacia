@@ -376,6 +376,7 @@ const props = defineProps({
   },
   error: String,
   selectedProductId: { type: Number, default: null },
+  selectedBatchNumber: { type: String, default: null },
 })
 
 const form = useForm({
@@ -406,6 +407,10 @@ onMounted(async () => {
     if (product) {
       form.product_id = product.id
       await onProductChange(product)
+      // Si viene con un lote específico desde la URL, usarlo directamente
+      if (props.selectedBatchNumber) {
+        form.batch_number = props.selectedBatchNumber
+      }
     }
   }
 })

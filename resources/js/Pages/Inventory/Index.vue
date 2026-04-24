@@ -226,7 +226,10 @@
                     <div>
                       <div class="text-sm font-semibold text-gray-900">{{ movement.product.description || movement.product.name }}</div>
                       <div v-if="movement.product.description" class="text-xs text-gray-600 mt-0.5">{{ movement.product.name }}</div>
-                      <div class="text-xs text-gray-400 mt-0.5">{{ movement.product.code }}</div>
+                      <div class="text-xs text-gray-400 mt-0.5">
+                        <span v-if="movement.batch_number">Lote: {{ movement.batch_number }}</span>
+                        <span v-else>{{ movement.product.code }}</span>
+                      </div>
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">

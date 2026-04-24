@@ -244,6 +244,7 @@
                   <div>
                     <div class="font-medium text-gray-900">{{ product.description || 'Sin descripción' }}</div>
                     <div v-if="product.name" class="text-xs text-gray-500 mt-0.5">{{ product.name }}</div>
+                    <div v-if="product.batches && product.batches[0]" class="text-xs text-gray-400 mt-0.5">Lote: {{ product.batches[0].batch_number }}</div>
                   </div>
                 </td>
                 <td class="py-3 px-4">

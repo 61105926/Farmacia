@@ -95,17 +95,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre Genérico</label>
-                <input
-                  v-model="form.active_ingredient"
-                  type="text"
-                  placeholder="Principio activo"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Concentración</label>
                 <input
@@ -118,101 +108,36 @@
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Forma</label>
-                <select
-                  v-model="form.presentation"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">Seleccionar forma</option>
-                  <option value="Tableta">Tableta</option>
-                  <option value="Cápsula">Cápsula</option>
-                  <option value="Jarabe">Jarabe</option>
-                  <option value="Suspensión">Suspensión</option>
-                  <option value="Inyectable">Inyectable</option>
-                  <option value="Crema">Crema</option>
-                  <option value="Pomada">Pomada</option>
-                  <option value="Gel">Gel</option>
-                  <option value="Gotas">Gotas</option>
-                  <option value="Supositorio">Supositorio</option>
-                  <option value="Parche">Parche</option>
-                  <option value="Polvo">Polvo</option>
-                  <option value="Solución">Solución</option>
-                  <option value="Spray">Spray</option>
-                  <option value="Óvulo">Óvulo</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Marca / Laboratorio</label>
                 <input
-                  v-model="form.brand"
+                  v-model="form.presentation"
                   type="text"
-                  placeholder="Nombre del laboratorio"
+                  list="formas-list"
+                  placeholder="Seleccionar o escribir forma"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
+                <datalist id="formas-list">
+                  <option value="Tableta" />
+                  <option value="Cápsula" />
+                  <option value="Jarabe" />
+                  <option value="Suspensión" />
+                  <option value="Inyectable" />
+                  <option value="Crema" />
+                  <option value="Pomada" />
+                  <option value="Gel" />
+                  <option value="Gotas" />
+                  <option value="Supositorio" />
+                  <option value="Parche" />
+                  <option value="Polvo" />
+                  <option value="Solución" />
+                  <option value="Spray" />
+                  <option value="Óvulo" />
+                </datalist>
               </div>
             </div>
+
           </CardContent>
         </Card>
 
-        <!-- Precios -->
-        <Card>
-          <CardHeader>
-            <CardTitle>Precios</CardTitle>
-          </CardHeader>
-          <CardContent class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Precio de Compra *</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-2 text-gray-500">Bs</span>
-                  <input
-                    v-model="form.cost_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    :class="{ 'border-red-500': errors.cost_price }"
-                  />
-                </div>
-                <p v-if="errors.cost_price" class="mt-1 text-sm text-red-600">{{ errors.cost_price }}</p>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Precio de Venta *</label>
-                <div class="relative">
-                  <span class="absolute left-3 top-2 text-gray-500">Bs</span>
-                  <input
-                    v-model="form.sale_price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    :class="{ 'border-red-500': errors.sale_price }"
-                  />
-                </div>
-                <p v-if="errors.sale_price" class="mt-1 text-sm text-red-600">{{ errors.sale_price }}</p>
-              </div>
-            </div>
-
-            <div v-if="form.cost_price && form.sale_price" class="bg-blue-50 p-4 rounded-md">
-              <div class="text-sm">
-                <div class="flex justify-between">
-                  <span>Margen de ganancia:</span>
-                  <span class="font-semibold">{{ calculateMargin() }}%</span>
-                </div>
-                <div class="flex justify-between">
-                  <span>Ganancia por unidad:</span>
-                  <span class="font-semibold">{{ formatCurrency(form.sale_price - form.cost_price) }}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         <!-- Actions -->
         <div class="flex justify-end space-x-4">
@@ -258,28 +183,10 @@ const form = reactive({
   description: '',
   action: '',
   supplier: '',
-  active_ingredient: '',
   dosage: '',
   presentation: '',
-  brand: '',
-  cost_price: '',
-  sale_price: '',
 })
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('es-BO', {
-    style: 'currency',
-    currency: 'BOB',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount || 0)
-}
-
-const calculateMargin = () => {
-  if (!form.cost_price || !form.sale_price) return 0
-  const margin = ((form.sale_price - form.cost_price) / form.cost_price) * 100
-  return margin.toFixed(2)
-}
 
 const submitForm = () => {
   isSubmitting.value = true

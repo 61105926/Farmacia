@@ -120,8 +120,8 @@
                   <td class="px-4 py-3 font-mono font-semibold text-gray-800">{{ batch.batch_number }}</td>
                   <td class="px-4 py-3">
                     <div class="font-medium text-gray-900">{{ batch.product?.description || batch.product?.name }}</div>
-                    <div class="text-xs text-gray-500">{{ batch.product?.name }}</div>
-                    <div class="text-xs text-gray-400">{{ batch.product?.code }}</div>
+                    <div v-if="batch.product?.description" class="text-xs text-gray-500">{{ batch.product?.name }}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">Lote: {{ batch.batch_number }}</div>
                   </td>
                   <td class="px-4 py-3 text-gray-600">{{ batch.supplier || '—' }}</td>
                   <td class="px-4 py-3 text-center text-gray-600">{{ formatDate(batch.entry_date) }}</td>

@@ -128,7 +128,7 @@
                         Ver
                       </Link>
                       <Link
-                        :href="`/inventario/crear?product=${product.id}`"
+                        :href="`/inventario/crear?product=${product.id}${product.batches && product.batches[0] ? '&batch=' + product.batches[0].batch_number : ''}`"
                         class="text-blue-600 hover:text-blue-900"
                       >
                         Movimiento

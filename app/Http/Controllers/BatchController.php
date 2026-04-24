@@ -83,13 +83,23 @@ class BatchController extends Controller
         return response()->json($batches);
     }
 
-    // API: devuelve el último lote registrado para un producto (para auto-rellenar formularios)
+    // API: devuelve el lote activo más antiguo (FIFO) para un producto
     public function lastBatch(int $productId)
     {
         $batch = Batch::where('product_id', $productId)
-            ->orderByDesc('entry_date')
-            ->orderByDesc('id')
+            ->where('status', 'active')
+            ->where('remaining_quantity', '>', 0)
+            ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')
+            ->orderBy('id', 'asc')
             ->first(['id', 'batch_number', 'expiry_date', 'entry_date', 'supplier', 'cost_price']);
+
+        // Si no hay activo, devolver el más reciente registrado como referencia
+        if (!$batch) {
+            $batch = Batch::where('product_id', $productId)
+                ->orderByDesc('entry_date')
+                ->orderByDesc('id')
+                ->first(['id', 'batch_number', 'expiry_date', 'entry_date', 'supplier', 'cost_price']);
+        }
 
         return response()->json($batch);
     }

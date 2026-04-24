@@ -117,7 +117,10 @@ class InventoryController extends Controller
     public function stock(Request $request)
     {
         // Obtener stock actual por producto
-        $query = Product::with('category');
+        $query = Product::with([
+            'category',
+            'batches' => fn($q) => $q->where('status', 'active')->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')->limit(1),
+        ]);
 
         if ($request->filled('search')) {
             $search = $request->get('search');
@@ -176,10 +179,11 @@ class InventoryController extends Controller
             }
 
             return Inertia::render('Inventory/Create', [
-                'products'          => InertiaHelper::sanitizeData($products),
-                'movementTypes'     => Inventory::getMovementTypes(),
-                'transactionTypes'  => Inventory::getTransactionTypes(),
-                'selectedProductId' => $request->integer('product') ?: null,
+                'products'            => InertiaHelper::sanitizeData($products),
+                'movementTypes'       => Inventory::getMovementTypes(),
+                'transactionTypes'    => Inventory::getTransactionTypes(),
+                'selectedProductId'   => $request->integer('product') ?: null,
+                'selectedBatchNumber' => $request->string('batch') ?: null,
             ]);
             
         } catch (\Exception $e) {
@@ -343,7 +347,10 @@ class InventoryController extends Controller
     public function lowStock()
     {
         $products = Product::whereColumn('stock_quantity', '<=', 'min_stock')
-            ->with('category')
+            ->with([
+                'category',
+                'batches' => fn($q) => $q->where('status', 'active')->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')->limit(1),
+            ])
             ->orderBy('stock_quantity', 'asc')
             ->paginate(20);
 
@@ -357,15 +364,16 @@ class InventoryController extends Controller
         $threshold = now()->addDays(30);
 
         $products = Product::where(function ($q) use ($threshold) {
-            // Fecha de vencimiento del producto (ya vencido o próximo a vencer)
             $q->whereNotNull('expiry_date')
               ->where('expiry_date', '<=', $threshold);
         })->orWhereHas('inventoryMovements', function ($q) use ($threshold) {
-            // O lote con fecha de vencimiento ya vencido o próximo
             $q->whereNotNull('expiry_date')
               ->where('expiry_date', '<=', $threshold);
         })
-        ->with('category')
+        ->with([
+            'category',
+            'batches' => fn($q) => $q->where('status', 'active')->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')->limit(1),
+        ])
         ->paginate(20);
 
         return Inertia::render('Inventory/Expired', [

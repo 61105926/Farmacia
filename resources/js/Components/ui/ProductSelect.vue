@@ -57,7 +57,8 @@
           <div class="font-medium text-gray-900 truncate">{{ product.description || product.name }}</div>
           <div v-if="product.description" class="text-xs text-gray-600 truncate">{{ product.name }}</div>
           <div class="text-xs text-gray-500 flex gap-2 mt-0.5">
-            <span v-if="product.code">{{ product.code }}</span>
+            <span v-if="product.sku">Lote: {{ product.sku }}</span>
+            <span v-else-if="product.code">{{ product.code }}</span>
             <span v-if="product.stock_quantity !== undefined">
               · Stock:
               <span :class="product.stock_quantity <= 0 ? 'text-red-500 font-semibold' : product.stock_quantity <= 10 ? 'text-orange-500 font-semibold' : 'text-green-600'">
@@ -97,7 +98,8 @@ const selectedLabel = computed(() => {
   const p = selectedProduct.value
   const main = p.description || p.name || ''
   const sub  = p.description && p.name && p.description !== p.name ? ` · ${p.name}` : ''
-  return main + sub + (p.code ? ` (${p.code})` : '')
+  const lote = p.sku ? ` (Lote: ${p.sku})` : (p.code ? ` (${p.code})` : '')
+  return main + sub + lote
 })
 
 const filtered = computed(() => {

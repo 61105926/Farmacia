@@ -207,7 +207,7 @@ class ReportController extends Controller
         $query = Product::with([
             'category',
             'inventoryMovements',
-            'batches' => fn($q) => $q->where('status', 'active')->orderBy('entry_date', 'asc')->limit(1),
+            'batches' => fn($q) => $q->where('status', 'active')->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')->limit(1),
         ]);
 
         // Filtros

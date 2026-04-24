@@ -41,7 +41,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { useForm, router } from '@inertiajs/vue3'
 import Sidebar from '@/Components/layout/Sidebar.vue'
 import Navbar from '@/Components/layout/Navbar.vue'
 import NotificationContainer from '@/Components/layout/NotificationContainer.vue'
@@ -94,12 +94,22 @@ const handleResize = () => {
   }
 }
 
+const handleEscape = (e) => {
+  if (e.key !== 'Escape') return
+  const active = document.activeElement
+  // Si hay un input/select/textarea abierto, dejar que lo cierre primero
+  if (active && ['INPUT', 'SELECT', 'TEXTAREA'].includes(active.tagName)) return
+  window.history.back()
+}
+
 onMounted(() => {
   window.addEventListener('resize', handleResize)
   handleResize()
+  window.addEventListener('keydown', handleEscape)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('keydown', handleEscape)
 })
 </script>

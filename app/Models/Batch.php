@@ -34,7 +34,7 @@ class Batch extends Model
         return $query->where('product_id', $productId)
                      ->where('status', 'active')
                      ->where('remaining_quantity', '>', 0)
-                     ->orderBy('entry_date', 'asc')
+                     ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')
                      ->orderBy('id', 'asc');
     }
 

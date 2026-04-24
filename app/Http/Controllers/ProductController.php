@@ -38,9 +38,11 @@ class ProductController extends Controller
             }
 
             $receivedFilters = $request->only(['search', 'presentation', 'status', 'stock_status', 'sort_by', 'sort_order']);
-            
 
-            $query = Product::with('category');
+            $query = Product::with([
+                'category',
+                'batches' => fn($q) => $q->where('status', 'active')->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')->limit(1),
+            ]);
 
             // Filtros
             if ($request->filled('search')) {
@@ -213,10 +215,6 @@ class ProductController extends Controller
             'supplier'     => 'nullable|string|max:255',
             'dosage'       => 'nullable|string|max:255',
             'presentation' => 'nullable|string|max:255',
-            'brand'        => 'nullable|string|max:255',
-            'active_ingredient' => 'nullable|string|max:255',
-            'cost_price'   => 'required|numeric|min:0',
-            'sale_price'   => 'required|numeric|min:0',
         ]);
 
         try {
@@ -239,11 +237,9 @@ class ProductController extends Controller
                 'supplier'          => $validated['supplier'] ?? null,
                 'dosage'            => $validated['dosage'] ?? null,
                 'presentation'      => $validated['presentation'] ?? null,
-                'brand'             => $validated['brand'] ?? null,
-                'active_ingredient' => $validated['active_ingredient'] ?? null,
-                'cost_price'        => $validated['cost_price'],
-                'base_price'        => $validated['cost_price'],
-                'sale_price'        => $validated['sale_price'],
+                'cost_price'        => 0,
+                'base_price'        => 0,
+                'sale_price'        => 0,
                 'stock_quantity'    => 0,
                 'min_stock'         => 0,
                 'max_stock'         => 0,
@@ -413,54 +409,32 @@ class ProductController extends Controller
             }
             
             $validated = validator($data, [
-                'name' => 'required|string|max:255',
-                'code' => 'required|string|max:50|unique:products,code,' . $product->id,
-                'description' => 'nullable|string|max:65535',
-                'category_id' => 'nullable|exists:product_categories,id',
-                'brand' => 'nullable|string|max:255',
-                'active_ingredient' => 'nullable|string|max:255',
-                'dosage' => 'nullable|string|max:255',
+                'name'         => 'required|string|max:255',
+                'code'         => 'required|string|max:50|unique:products,code,' . $product->id,
+                'description'  => 'nullable|string',
+                'action'       => 'nullable|string|max:255',
+                'supplier'     => 'nullable|string|max:255',
+                'dosage'       => 'nullable|string|max:255',
                 'presentation' => 'nullable|string|max:255',
-                'barcode' => 'nullable|string|max:255|unique:products,barcode,' . $product->id,
-                'base_price' => 'required|numeric|min:0',
-                'cost_price' => 'required|numeric|min:0',
-                'sale_price' => 'required|numeric|min:0',
-                'tax_rate' => 'nullable|numeric|min:0|max:100',
-                'stock_quantity' => 'required|integer|min:0',
-                'min_stock' => 'required|integer|min:0',
-                'max_stock' => 'nullable|integer|min:0',
-                'unit_type' => 'nullable|string|max:50',
-                'requires_prescription' => 'sometimes|boolean',
-                'is_controlled' => 'sometimes|boolean',
-                'is_active' => 'sometimes|boolean',
-                'expiry_date' => 'nullable|date',
+                'is_active'    => 'sometimes|boolean',
+                'cost_price'   => 'nullable|numeric|min:0',
+                'sale_price'   => 'nullable|numeric|min:0',
             ])->validate();
-            // Generar slug si cambió el nombre
+
             $updateData = [
-                'name' => $validated['name'],
-                'code' => $validated['code'],
-                'description' => !empty($validated['description']) ? $validated['description'] : null,
-                'category_id' => $validated['category_id'] ?? null,
-                'brand' => !empty($validated['brand']) ? $validated['brand'] : null,
-                'active_ingredient' => !empty($validated['active_ingredient']) ? $validated['active_ingredient'] : null,
-                'dosage' => !empty($validated['dosage']) ? $validated['dosage'] : null,
-                'presentation' => !empty($validated['presentation']) ? $validated['presentation'] : null,
-                'barcode' => !empty($validated['barcode']) ? $validated['barcode'] : null,
-                'expiry_date' => $validated['expiry_date'] ?? null,
-                'cost_price' => $validated['cost_price'],
-                'base_price' => $validated['base_price'] ?? $validated['cost_price'],
-                'sale_price' => $validated['sale_price'],
-                'tax_rate' => $validated['tax_rate'] ?? 0,
-                'stock_quantity' => $validated['stock_quantity'],
-                'min_stock' => $validated['min_stock'],
-                'max_stock' => $validated['max_stock'] ?? 0,
-                'unit_type' => $validated['unit_type'] ?? 'unidad',
-                'requires_prescription' => $validated['requires_prescription'] ?? false,
-                'is_controlled' => $validated['is_controlled'] ?? false,
-                'is_active' => $validated['is_active'] ?? true,
-                'expiry_date' => $validated['expiry_date'] ?? null,
-                'updated_by' => auth()->id(),
-                'updated_at' => now(),
+                'name'         => $validated['name'],
+                'code'         => $validated['code'],
+                'description'  => $validated['description'] ?? null,
+                'action'       => $validated['action'] ?? null,
+                'supplier'     => $validated['supplier'] ?? null,
+                'dosage'       => $validated['dosage'] ?? null,
+                'presentation' => $validated['presentation'] ?? null,
+                'is_active'    => $validated['is_active'] ?? true,
+                'cost_price'   => $validated['cost_price'] ?? 0,
+                'base_price'   => $validated['cost_price'] ?? 0,
+                'sale_price'   => $validated['sale_price'] ?? 0,
+                'updated_by'   => auth()->id(),
+                'updated_at'   => now(),
             ];
 
             // Si cambió el nombre, actualizar slug
@@ -1041,7 +1015,8 @@ class ProductController extends Controller
                 $from = ['á','à','ä','â','ã','é','è','ë','ê','í','ì','ï','î','ó','ò','ö','ô','õ','ú','ù','ü','û','ñ','Á','À','Ä','Â','Ã','É','È','Ë','Ê','Í','Ì','Ï','Î','Ó','Ò','Ö','Ô','Õ','Ú','Ù','Ü','Û','Ñ'];
                 $to   = ['a','a','a','a','a','e','e','e','e','i','i','i','i','o','o','o','o','o','u','u','u','u','n','a','a','a','a','a','e','e','e','e','i','i','i','i','o','o','o','o','o','u','u','u','u','n'];
                 $str = str_replace($from, $to, $str);
-                return preg_replace('/\s+/', ' ', $str);
+                $str = preg_replace('/\s*\([^)]*\)/', '', $str); // quitar "(opcional)", "(requerido)", etc.
+                return trim(preg_replace('/\s+/', ' ', $str));
             };
 
             $fieldAliases = [
@@ -1247,9 +1222,11 @@ class ProductController extends Controller
                                 ->where('status', 'active')
                                 ->delete();
 
+                            $batchNum = !empty($data['lot']) ? trim($data['lot']) : (trim($data['code']) . '-IMP-' . date('Ymd'));
+
                             DB::table('batches')->insert([
                                 'product_id'         => $productId,
-                                'batch_number'       => trim($data['code']),
+                                'batch_number'       => $batchNum,
                                 'initial_quantity'   => $stockQty,
                                 'remaining_quantity' => $stockQty,
                                 'expiry_date'        => $expiryDate,
@@ -1293,9 +1270,11 @@ class ProductController extends Controller
 
                         // Crear lote inicial si tiene stock
                         if ($stockQty > 0) {
+                            $batchNum = !empty($data['lot']) ? trim($data['lot']) : (trim($data['code']) . '-IMP-' . date('Ymd'));
+
                             DB::table('batches')->insert([
                                 'product_id'         => $productId,
-                                'batch_number'       => trim($data['code']),
+                                'batch_number'       => $batchNum,
                                 'initial_quantity'   => $stockQty,
                                 'remaining_quantity' => $stockQty,
                                 'expiry_date'        => $expiryDate,

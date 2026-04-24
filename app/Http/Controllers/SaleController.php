@@ -129,7 +129,7 @@ class SaleController extends Controller
                 if (\Schema::hasTable('products')) {
                     $products = \DB::table('products')
                         ->where('is_active', true)
-                        ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient', 'brand')
+                        ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient', 'brand', 'sku')
                         ->get()
                         ->toArray();
                 }
@@ -513,7 +513,7 @@ class SaleController extends Controller
                 ->select('id', 'business_name', 'trade_name')
                 ->get(),
             'products' => Product::where('is_active', true)
-                ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient')
+                ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient', 'sku')
                 ->get(),
             'salespeople' => User::whereHas('roles', fn($q) => $q->where('name', 'vendedor-ventas'))
                 ->select('id', 'name')

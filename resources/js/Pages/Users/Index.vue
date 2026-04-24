@@ -67,7 +67,7 @@
             <Shield class="h-8 w-8 text-purple-500" />
             <div class="ml-4">
               <p class="text-sm font-medium text-gray-500">Administradores</p>
-              <p class="text-2xl font-bold">{{ adminUsersCount }}</p>
+              <p class="text-2xl font-bold">{{ userStats?.admins ?? 0 }}</p>
             </div>
           </div>
         </CardContent>

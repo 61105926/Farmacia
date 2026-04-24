@@ -53,6 +53,7 @@ class UserController extends Controller
                 'total' => User::count(),
                 'active' => User::whereNull('blocked_at')->count(),
                 'blocked' => User::whereNotNull('blocked_at')->count(),
+                'admins' => User::whereHas('roles', fn($q) => $q->where('name', 'Administrador'))->count(),
             ],
         ]);
     }
