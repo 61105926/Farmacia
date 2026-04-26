@@ -36,7 +36,7 @@
     <!-- Dropdown -->
     <div
       v-if="open && !disabled"
-      class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto"
+      class="absolute z-50 min-w-full w-max max-w-xl mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-y-auto"
     >
       <div v-if="filtered.length === 0" class="px-3 py-3 text-sm text-gray-400 text-center">
         Sin resultados
@@ -54,8 +54,8 @@
         @mouseover="highlighted = idx"
       >
         <div class="flex-1 min-w-0">
-          <div class="font-medium text-gray-900 truncate">{{ product.description || product.name }}</div>
-          <div v-if="product.description" class="text-xs text-gray-600 truncate">{{ product.name }}</div>
+          <div class="font-medium text-gray-900">{{ product.description || product.name }}</div>
+          <div v-if="product.description" class="text-xs text-gray-600">{{ product.name }}</div>
           <div class="text-xs text-gray-500 flex gap-2 mt-0.5">
             <span v-if="product.sku">Lote: {{ product.sku }}</span>
             <span v-else-if="product.code">{{ product.code }}</span>

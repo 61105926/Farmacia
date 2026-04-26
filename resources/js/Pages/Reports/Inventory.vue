@@ -200,9 +200,6 @@
                         </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ product.category?.name || 'N/A' }}</div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">{{ product.stock_quantity }}</div>
                         <div class="text-xs text-gray-500">Reorden: {{ product.reorder_point }}</div>
                       </td>
@@ -262,7 +259,6 @@
                   </div>
                   <div class="text-right">
                     <div class="text-sm font-medium text-gray-900">{{ product.stock_quantity }}</div>
-                    <div class="text-xs text-gray-500">Reorden: {{ product.reorder_point }}</div>
                   </div>
                 </div>
               </div>

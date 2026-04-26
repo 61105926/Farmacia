@@ -30,6 +30,7 @@
                 <select
                   v-model="form.client_id"
                   required
+                  @change="form.presale_id = ''"
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Seleccionar cliente</option>
@@ -67,7 +68,7 @@
                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Sin preventa</option>
-                  <option v-for="presale in presales" :key="presale.id" :value="presale.id">
+                  <option v-for="presale in filteredPresales" :key="presale.id" :value="presale.id">
                     {{ presale.code }} - {{ presale.total }} Bs
                   </option>
                 </select>
@@ -323,8 +324,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
@@ -345,6 +346,9 @@ const props = defineProps({
   },
 })
 
+const { props: pageProps } = usePage()
+const currentUser = pageProps.auth?.user
+
 const form = reactive({
   client_id: '',
   salesperson_id: '',
@@ -358,6 +362,19 @@ const form = reactive({
   subtotal: 0,
   total_discount: 0,
   total: 0,
+})
+
+const filteredPresales = computed(() => {
+  if (!form.client_id) return props.presales
+  return props.presales.filter(p => p.client_id == form.client_id)
+})
+
+onMounted(() => {
+  const isAdmin = currentUser?.roles?.includes('Administrador')
+  if (!isAdmin && currentUser?.id) {
+    const match = props.salespeople.find(s => s.id === currentUser.id)
+    if (match) form.salesperson_id = match.id
+  }
 })
 
 const onlyIntegers = (event) => {

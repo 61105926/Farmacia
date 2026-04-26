@@ -29,7 +29,7 @@
 
     <!-- Form -->
     <div class="max-w-6xl mx-auto">
-      <form @submit.prevent="submitForm" class="space-y-6">
+      <form @submit.prevent="submitForm" @input.capture="toUppercase" class="space-y-6">
 
         <!-- Información Básica -->
         <Card>
@@ -187,6 +187,17 @@ const form = reactive({
   presentation: '',
 })
 
+
+const toUppercase = (e) => {
+  const el = e.target
+  if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return
+  if (el.type === 'number' || el.type === 'checkbox') return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  el.value = el.value.toUpperCase()
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+  el.setSelectionRange(start, end)
+}
 
 const submitForm = () => {
   isSubmitting.value = true

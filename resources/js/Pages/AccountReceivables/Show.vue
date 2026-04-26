@@ -380,6 +380,18 @@
                 />
               </div>
               <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cobrador</label>
+                <input
+                  v-model="paymentForm.received_by"
+                  type="text"
+                  :readonly="!isAdmin"
+                  :class="!isAdmin ? 'bg-gray-100 cursor-not-allowed' : ''"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  placeholder="Nombre del cobrador"
+                />
+              </div>
+
+              <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">
                   Observaciones
                 </label>
@@ -455,13 +467,16 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Link, router, useForm } from '@inertiajs/vue3'
+import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 import { usePermissions } from '@/composables/usePermissions'
 import { CreditCard, Receipt } from 'lucide-vue-next'
 
 const { can } = usePermissions()
+const page = usePage()
+const currentUser = page.props.auth?.user
+const isAdmin = currentUser?.roles?.includes('Administrador')
 
 const props = defineProps({
   invoice: {
@@ -486,6 +501,7 @@ const paymentForm = useForm({
   payment_method: '',
   payment_reference: '',
   notes: '',
+  received_by: isAdmin ? '' : (currentUser?.name || ''),
 })
 
 const cancelForm = useForm({

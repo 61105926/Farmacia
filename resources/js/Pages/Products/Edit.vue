@@ -16,7 +16,7 @@
     </template>
 
     <div class="max-w-6xl mx-auto">
-      <form @submit.prevent="submit" class="space-y-6">
+      <form @submit.prevent="submit" @input.capture="toUppercase" class="space-y-6">
 
         <!-- Información Básica -->
         <Card>
@@ -181,6 +181,17 @@ const form = useForm({
   presentation: props.product.presentation || '',
   is_active:    props.product.is_active ?? true,
 })
+
+const toUppercase = (e) => {
+  const el = e.target
+  if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return
+  if (el.type === 'number' || el.type === 'checkbox') return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  el.value = el.value.toUpperCase()
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+  el.setSelectionRange(start, end)
+}
 
 const submit = () => {
   form.put(`/productos/${props.product.id}`)

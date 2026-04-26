@@ -257,8 +257,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardHeader from '@/Components/ui/CardHeader.vue'
@@ -271,6 +271,17 @@ const props = defineProps({
   products: Array,
   salespeople: Array,
   errors: Object,
+})
+
+const { props: pageProps } = usePage()
+const currentUser = pageProps.auth?.user
+
+onMounted(() => {
+  const isAdmin = currentUser?.roles?.includes('Administrador')
+  if (!isAdmin && currentUser?.id) {
+    const match = props.salespeople.find(s => s.id === currentUser.id)
+    if (match) form.salesperson_id = match.id
+  }
 })
 
 const form = reactive({
