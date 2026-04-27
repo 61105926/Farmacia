@@ -459,22 +459,13 @@ class PresaleController extends Controller
                 $availableCredit = $client->credit_limit - $pendingBalance;
 
                 if ($totalPresale > $availableCredit) {
-                    Log::warning('PresaleController store - Cliente excede límite de crédito', [
-                        'client_id' => $client->id,
-                        'credit_limit' => $client->credit_limit,
-                        'pending_balance' => $pendingBalance,
-                        'available_credit' => $availableCredit,
-                        'presale_total' => $totalPresale
+                    throw ValidationException::withMessages([
+                        'credit_limit' => sprintf(
+                            'Crédito insuficiente. El cliente tiene Bs %.2f disponible y el total de la preventa es Bs %.2f.',
+                            $availableCredit,
+                            $totalPresale
+                        ),
                     ]);
-
-                    // No bloqueamos, solo advertimos
-                    session()->flash('warning', sprintf(
-                        'Advertencia: Esta preventa (%.2f) excede el crédito disponible del cliente (%.2f). Límite: %.2f, Pendiente: %.2f',
-                        $totalPresale,
-                        $availableCredit,
-                        $client->credit_limit,
-                        $pendingBalance
-                    ));
                 }
             }
 
@@ -920,19 +911,13 @@ class PresaleController extends Controller
                 $availableCredit = $presale->client->credit_limit - $pendingBalance;
 
                 if ($presale->total > $availableCredit) {
-                    Log::warning('PreSaleController convertToSale - Excede crédito', [
-                        'presale_id' => $presale->id,
-                        'client_id' => $presale->client_id,
-                        'credit_limit' => $presale->client->credit_limit,
-                        'pending_balance' => $pendingBalance,
-                        'sale_total' => $presale->total
+                    throw ValidationException::withMessages([
+                        'credit_limit' => sprintf(
+                            'Crédito insuficiente. El cliente tiene Bs %.2f disponible y el total de la preventa es Bs %.2f.',
+                            $availableCredit,
+                            $presale->total
+                        ),
                     ]);
-
-                    session()->flash('warning', sprintf(
-                        'Esta venta excede el crédito disponible del cliente. Disponible: %.2f, Total venta: %.2f',
-                        $availableCredit,
-                        $presale->total
-                    ));
                 }
             }
 

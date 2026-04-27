@@ -491,7 +491,11 @@ const convertToSale = () => {
           showAlert('success', 'Preventa convertida', 'La preventa ha sido convertida en venta exitosamente.')
         },
         onError: (errors) => {
-          showAlert('error', 'Error', 'No se pudo convertir la preventa.')
+          if (errors.credit_limit) {
+            showAlert('error', 'Crédito insuficiente', errors.credit_limit)
+          } else {
+            showAlert('error', 'Error', 'No se pudo convertir la preventa.')
+          }
         }
       })
     }

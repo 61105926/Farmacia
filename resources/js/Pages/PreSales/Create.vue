@@ -472,17 +472,28 @@ const submitForm = () => {
   
   router.post('/preventas', dataToSend, {
     preserveScroll: true,
+    preserveState: true,
     onSuccess: () => {
       console.log('Preventa creada exitosamente')
-      // Redirigir a la lista de preventas
       router.visit('/preventas')
     },
     onError: (errors) => {
       console.error('Errores al crear preventa:', errors)
-      // Mostrar errores de validación
+      if (errors.credit_limit) {
+        if (window.$notify) {
+          window.$notify.error(errors.credit_limit)
+        } else {
+          alert(errors.credit_limit)
+        }
+        return
+      }
       if (errors) {
         const errorMessages = Object.values(errors).flat()
-        alert('Error al crear la preventa:\n' + errorMessages.join('\n'))
+        if (window.$notify) {
+          window.$notify.error('Error al crear la preventa:\n' + errorMessages.join('\n'))
+        } else {
+          alert('Error al crear la preventa:\n' + errorMessages.join('\n'))
+        }
       }
     }
   })
