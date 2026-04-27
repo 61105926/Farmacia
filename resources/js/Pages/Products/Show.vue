@@ -76,16 +76,12 @@
               <CardContent>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-500">Categoría</label>
-                    <div class="text-sm text-gray-900">{{ product.category?.name || 'Sin categoría' }}</div>
+                    <label class="block text-sm font-medium text-gray-500">Lote</label>
+                    <div class="text-sm text-gray-900">{{ formatField(product.sku) }}</div>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-500">Marca/Laboratorio</label>
+                    <label class="block text-sm font-medium text-gray-500">Marca / Laboratorio</label>
                     <div class="text-sm text-gray-900">{{ formatField(product.brand) }}</div>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-500">Principio activo</label>
-                    <div class="text-sm text-gray-900">{{ formatField(product.active_ingredient) }}</div>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-500">Dosificación</label>
@@ -100,32 +96,19 @@
                     <div class="text-sm text-gray-900">{{ formatField(product.barcode) }}</div>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-500">SKU</label>
-                    <div class="text-sm text-gray-900">{{ formatField(product.sku) }}</div>
-                  </div>
-                  <div>
                     <label class="block text-sm font-medium text-gray-500">Tipo de Unidad</label>
                     <div class="text-sm text-gray-900">{{ formatField(product.unit_type) }}</div>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-500">Unidades por Paquete</label>
-                    <div class="text-sm text-gray-900">{{ product.units_per_package || 1 }}</div>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-500">Registro Sanitario</label>
-                    <div class="text-sm text-gray-900">{{ formatField(product.sanitary_registration) }}</div>
-                  </div>
-                  <div v-if="product.sanitary_expiry_date">
-                    <label class="block text-sm font-medium text-gray-500">Vencimiento Registro Sanitario</label>
-                    <div class="text-sm text-gray-900">{{ formatDate(product.sanitary_expiry_date) }}</div>
-                  </div>
-                  <div v-if="product.expiry_date">
                     <label class="block text-sm font-medium text-gray-500">Fecha de Vencimiento</label>
-                    <div class="text-sm" :class="getExpiryDateClass(product.expiry_date)">
-                      {{ formatDate(product.expiry_date) }}
-                      <span v-if="isExpired(product.expiry_date)" class="ml-2 text-red-600 font-medium">⚠ Vencido</span>
-                      <span v-else-if="isExpiringSoon(product.expiry_date)" class="ml-2 text-orange-600 font-medium">⚠ Por vencer</span>
-                    </div>
+                    <template v-if="product.nearest_expiry_date || product.expiry_date">
+                      <div class="text-sm" :class="getExpiryDateClass(product.nearest_expiry_date || product.expiry_date)">
+                        {{ formatDate(product.nearest_expiry_date || product.expiry_date) }}
+                        <span v-if="isExpired(product.nearest_expiry_date || product.expiry_date)" class="ml-2 text-red-600 font-medium">⚠ Vencido</span>
+                        <span v-else-if="isExpiringSoon(product.nearest_expiry_date || product.expiry_date)" class="ml-2 text-orange-600 font-medium">⚠ Por vencer</span>
+                      </div>
+                    </template>
+                    <div v-else class="text-sm text-gray-900">—</div>
                   </div>
                 </div>
                 <div class="mt-6">
@@ -157,10 +140,6 @@
                     <div class="text-xs text-gray-500">Precio Venta</div>
                     <div class="text-sm font-medium text-gray-900">Bs. {{ formatPrice(product.sale_price) }}</div>
                   </div>
-                </div>
-                <div class="mt-4">
-                  <div class="text-xs text-gray-500">Impuesto (%)</div>
-                  <div class="text-sm font-medium text-gray-900">{{ product.tax_rate ?? 0 }}%</div>
                 </div>
               </CardContent>
             </Card>
@@ -247,16 +226,7 @@
       <div v-if="activeTab === 'movements'">
         <Card>
           <CardHeader>
-            <div class="flex items-center justify-between">
-              <CardTitle>Movimientos de Inventario</CardTitle>
-              <Link
-                href="/inventario/nuevo"
-                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-              >
-                <Plus class="w-3.5 h-3.5" />
-                Nuevo Movimiento
-              </Link>
-            </div>
+            <CardTitle>Movimientos de Inventario</CardTitle>
           </CardHeader>
           <CardContent>
             <div v-if="movements.length === 0" class="text-center py-12 text-gray-500">
@@ -288,8 +258,8 @@
                     <td class="py-3 text-right font-medium" :class="mov.transaction_type === 'in' ? 'text-green-600' : 'text-red-600'">
                       {{ mov.transaction_type === 'in' ? '+' : '-' }}{{ mov.quantity }}
                     </td>
-                    <td class="py-3 text-right text-gray-500">{{ mov.stock_before ?? '—' }}</td>
-                    <td class="py-3 text-right text-gray-500">{{ mov.stock_after ?? '—' }}</td>
+                    <td class="py-3 text-right text-gray-500">{{ mov.previous_stock ?? '—' }}</td>
+                    <td class="py-3 text-right text-gray-500">{{ mov.new_stock ?? '—' }}</td>
                     <td class="py-3 text-gray-600 max-w-xs truncate">{{ mov.reason || mov.notes || '—' }}</td>
                     <td class="py-3 text-gray-500">{{ mov.creator?.name || '—' }}</td>
                   </tr>
@@ -304,16 +274,7 @@
       <div v-if="activeTab === 'batches'">
         <Card>
           <CardHeader>
-            <div class="flex items-center justify-between">
-              <CardTitle>Lotes (PEPS)</CardTitle>
-              <Link
-                href="/inventario/nuevo"
-                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
-              >
-                <Plus class="w-3.5 h-3.5" />
-                Registrar Lote
-              </Link>
-            </div>
+            <CardTitle>Lotes (PEPS)</CardTitle>
           </CardHeader>
           <CardContent>
             <div v-if="batches.length === 0" class="text-center py-12 text-gray-500">

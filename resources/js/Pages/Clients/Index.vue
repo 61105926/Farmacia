@@ -34,7 +34,7 @@
             <input
               v-model="filters.search"
               type="text"
-              placeholder="Nombre, RUC, email..."
+              placeholder="Nombre, NIT, email..."
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -44,6 +44,7 @@
             <select
               v-model="filters.status"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              @change="applyFilters"
             >
               <option value="">Todos</option>
               <option value="active">Activos</option>

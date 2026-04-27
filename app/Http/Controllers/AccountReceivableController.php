@@ -24,7 +24,9 @@ class AccountReceivableController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('client_name', 'like', "%{$search}%");
+                  ->orWhere('client_name', 'like', "%{$search}%")
+                  ->orWhereHas('client', fn($c) => $c->where('business_name', 'like', "%{$search}%")
+                      ->orWhere('trade_name', 'like', "%{$search}%"));
             });
         }
 
@@ -44,11 +46,11 @@ class AccountReceivableController extends Controller
             $query->where('invoice_date', '<=', $request->get('date_to'));
         }
 
-        if ($request->filled('overdue')) {
+        if ($request->boolean('overdue')) {
             $query->overdue();
         }
 
-        if ($request->filled('unpaid')) {
+        if ($request->boolean('unpaid')) {
             $query->unpaid();
         }
 

@@ -48,10 +48,11 @@
                 </label>
                 <select
                   v-model="form.salesperson_id"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  :disabled="!isAdmin"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="">Sin asignar</option>
-                  <option v-for="salesperson in salespeople" :key="salesperson.id" :value="salesperson.id">
+                  <option v-if="isAdmin" value="">Sin asignar</option>
+                  <option v-for="salesperson in filteredSalespeople" :key="salesperson.id" :value="salesperson.id">
                     {{ salesperson.name }}
                   </option>
                 </select>
@@ -275,9 +276,13 @@ const props = defineProps({
 
 const { props: pageProps } = usePage()
 const currentUser = pageProps.auth?.user
+const isAdmin = currentUser?.roles?.includes('Administrador') ?? false
+
+const filteredSalespeople = computed(() =>
+  isAdmin ? props.salespeople : props.salespeople.filter(s => s.id === currentUser?.id)
+)
 
 onMounted(() => {
-  const isAdmin = currentUser?.roles?.includes('Administrador')
   if (!isAdmin && currentUser?.id) {
     const match = props.salespeople.find(s => s.id === currentUser.id)
     if (match) form.salesperson_id = match.id

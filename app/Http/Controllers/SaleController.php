@@ -287,19 +287,13 @@ class SaleController extends Controller
                 $availableCredit = $client->credit_limit - $pendingBalance;
 
                 if ($total > $availableCredit) {
-                    Log::warning('SaleController store - Cliente excede límite de crédito', [
-                        'client_id' => $client->id,
-                        'credit_limit' => $client->credit_limit,
-                        'pending_balance' => $pendingBalance,
-                        'available_credit' => $availableCredit,
-                        'sale_total' => $total
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'credit_limit' => sprintf(
+                            'Crédito insuficiente. El cliente tiene Bs %.2f disponible y el total de la venta es Bs %.2f.',
+                            $availableCredit,
+                            $total
+                        ),
                     ]);
-
-                    session()->flash('warning', sprintf(
-                        'Advertencia: Esta venta (%.2f) excede el crédito disponible del cliente (%.2f).',
-                        $total,
-                        $availableCredit
-                    ));
                 }
             }
 

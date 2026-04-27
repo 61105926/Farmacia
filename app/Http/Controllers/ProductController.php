@@ -97,15 +97,20 @@ class ProductController extends Controller
             $products->getCollection()->transform(function ($product) {
                 $product->availableActions = $this->getAvailableActions($product);
                 
-                // Obtener la fecha de vencimiento más próxima del inventario
-                if (Schema::hasTable('inventories')) {
-                    $nearestExpiry = Inventory::where('product_id', $product->id)
+                // Fecha de vencimiento: primero del batch FEFO, luego de inventario
+                $batchExpiry = $product->batches->first()?->expiry_date;
+                if ($batchExpiry) {
+                    $product->nearest_expiry_date = is_string($batchExpiry)
+                        ? substr($batchExpiry, 0, 10)
+                        : \Carbon\Carbon::parse($batchExpiry)->format('Y-m-d');
+                } elseif (Schema::hasTable('inventories')) {
+                    $nearestExpiry = DB::table('inventories')
+                        ->where('product_id', $product->id)
                         ->whereNotNull('expiry_date')
                         ->where('expiry_date', '>=', now()->toDateString())
                         ->orderBy('expiry_date', 'asc')
                         ->value('expiry_date');
-                    
-                    $product->nearest_expiry_date = $nearestExpiry;
+                    $product->nearest_expiry_date = $nearestExpiry ? substr($nearestExpiry, 0, 10) : null;
                 } else {
                     $product->nearest_expiry_date = null;
                 }

@@ -10,9 +10,9 @@ class InertiaHelper
     public static function sanitizeData($data)
     {
         if ($data === null) {
-            return [];
+            return null;
         }
-        
+
         if (is_array($data)) {
             $sanitized = [];
             foreach ($data as $key => $value) {
@@ -20,16 +20,15 @@ class InertiaHelper
             }
             return $sanitized;
         }
-        
+
         if (is_object($data)) {
             return self::sanitizeObject($data);
         }
-        
-        // Convertir valores problemáticos a strings seguros
+
         if (is_resource($data) || is_callable($data)) {
             return '';
         }
-        
+
         return $data;
     }
     
@@ -39,7 +38,7 @@ class InertiaHelper
     public static function sanitizeObject($object)
     {
         if ($object === null) {
-            return (object) [];
+            return null;
         }
         
         // Si es una Collection de Laravel, convertir a array

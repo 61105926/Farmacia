@@ -43,15 +43,6 @@
             <Upload class="h-4 w-4 mr-2" />
             Importar Excel
           </Button>
-          <Button
-            v-if="isAdmin"
-            @click="openStockAdjustmentModal"
-            variant="outline"
-            class="border-orange-500 text-orange-600 hover:bg-orange-50"
-          >
-            <Package class="h-4 w-4 mr-2" />
-            Ajustar Stock
-          </Button>
         </div>
       </div>
     </template>
@@ -248,22 +239,22 @@
                   </div>
                 </td>
                 <td class="py-3 px-4">
-                  <span class="text-sm text-gray-700">{{ product.sku || '-' }}</span>
+                  <span class="text-sm text-gray-700">
+                    {{ product.batches?.[0]?.batch_number || product.sku || '-' }}
+                  </span>
                 </td>
                 <td class="py-3 px-4">
-                  <div v-if="product.expiry_date" :class="getExpiryDateClass(product.expiry_date)">
-                    {{ formatDate(product.expiry_date) }}
-                  </div>
-                  <div v-else-if="product.nearest_expiry_date" :class="getExpiryDateClass(product.nearest_expiry_date)">
-                    {{ formatDate(product.nearest_expiry_date) }}
-                    <span class="text-xs text-gray-500 ml-1">(Inventario)</span>
-                  </div>
-                  <div v-else class="text-sm text-gray-400">
-                    N/A
-                  </div>
+                  <template v-if="product.nearest_expiry_date || product.expiry_date">
+                    <div :class="getExpiryDateClass(product.nearest_expiry_date || product.expiry_date)">
+                      {{ formatDate(product.nearest_expiry_date || product.expiry_date) }}
+                    </div>
+                  </template>
+                  <div v-else class="text-sm text-gray-400">N/A</div>
                 </td>
                 <td class="py-3 px-4">
-                  <span class="text-sm text-gray-600">{{ cleanText(product.brand) || 'N/A' }}</span>
+                  <span class="text-sm text-gray-600">
+                    {{ product.batches?.[0]?.supplier || cleanText(product.brand) || 'N/A' }}
+                  </span>
                 </td>
                 <td class="py-3 px-4 text-right">
                   <div class="flex items-center justify-end">

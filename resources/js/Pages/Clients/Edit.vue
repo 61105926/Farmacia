@@ -10,7 +10,7 @@
         <p class="text-sm text-gray-600 mt-1">{{ client.business_name }}</p>
       </div>
 
-      <form @submit.prevent="submit">
+      <form @submit.prevent="submit" @input.capture="toUppercase">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Main Info -->
           <div class="lg:col-span-2">
@@ -428,6 +428,17 @@ const form = useForm({
   notes: props.client.notes || '',
   status: props.client.status || 'active',
 })
+
+const toUppercase = (e) => {
+  const el = e.target
+  if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return
+  if (el.type === 'number' || el.type === 'checkbox' || el.type === 'email') return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  el.value = el.value.toUpperCase()
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+  el.setSelectionRange(start, end)
+}
 
 // Validaciones
 const onlyNumbersAndPhoneChars = (event) => {

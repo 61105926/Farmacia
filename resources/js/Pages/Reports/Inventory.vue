@@ -201,7 +201,9 @@
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">{{ product.stock_quantity }}</div>
-                        <div class="text-xs text-gray-500">Reorden: {{ product.reorder_point }}</div>
+                        <div class="text-xs text-gray-500">
+                          Vence: {{ product.batches?.[0]?.expiry_date ? formatDate(product.batches[0].expiry_date) : '—' }}
+                        </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">{{ formatPrice(product.cost_price) }}</div>

@@ -49,10 +49,11 @@
                 </label>
                 <select
                   v-model="form.salesperson_id"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  :disabled="!isAdmin"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="">Sin asignar</option>
-                  <option v-for="salesperson in salespeople" :key="salesperson.id" :value="salesperson.id">
+                  <option v-if="isAdmin" value="">Sin asignar</option>
+                  <option v-for="salesperson in filteredSalespeople" :key="salesperson.id" :value="salesperson.id">
                     {{ salesperson.name }}
                   </option>
                 </select>
@@ -324,7 +325,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
@@ -346,8 +347,39 @@ const props = defineProps({
   },
 })
 
-const { props: pageProps } = usePage()
+const page = usePage()
+const { props: pageProps } = page
 const currentUser = pageProps.auth?.user
+
+let lastFlashError = null
+watch(
+  () => page.props.flash,
+  (flash) => {
+    const hasError = flash?.error
+      && flash.error !== lastFlashError
+      && flash.error !== '[]'
+      && flash.error !== '{}'
+      && typeof flash.error === 'string'
+      && flash.error.trim() !== ''
+    if (hasError) {
+      lastFlashError = flash.error
+      if (window.$notify) {
+        window.$notify.error('Error', flash.error)
+      } else {
+        alert(flash.error)
+      }
+    }
+    if (flash?.success && typeof flash.success === 'string' && flash.success.trim() !== '') {
+      window.$notify?.success('Éxito', flash.success)
+    }
+  },
+  { deep: true }
+)
+const isAdmin = currentUser?.roles?.includes('Administrador') ?? false
+
+const filteredSalespeople = computed(() =>
+  isAdmin ? props.salespeople : props.salespeople.filter(s => s.id === currentUser?.id)
+)
 
 const form = reactive({
   client_id: '',
@@ -573,23 +605,31 @@ const submitForm = () => {
     salesperson_id: form.salesperson_id || null,
   }
 
-  console.log('Enviando datos de venta:', dataToSend)
-  
   router.post('/ventas', dataToSend, {
     preserveScroll: true,
-    onSuccess: () => {
-      console.log('Venta creada exitosamente')
-      // Redirigir a la lista de ventas
+    preserveState: true,
+    onSuccess: (page) => {
+      const flash = page.props.flash
+      const errorMsg = flash?.error
+      if (errorMsg && typeof errorMsg === 'string' && errorMsg.trim() !== '') {
+        if (window.$notify) {
+          window.$notify.error('Error de crédito', errorMsg)
+        } else {
+          alert(errorMsg)
+        }
+        return
+      }
       router.visit('/ventas')
     },
     onError: (errors) => {
-      console.error('Errores al crear venta:', errors)
-      // Mostrar errores de validación
-      if (errors) {
-        const errorMessages = Object.values(errors).flat()
-        alert('Error al crear la venta:\n' + errorMessages.join('\n'))
+      const errorMessages = Object.values(errors).flat()
+      const msg = errorMessages.join('\n')
+      if (window.$notify) {
+        window.$notify.error('Error de validación', msg)
+      } else {
+        alert(msg)
       }
-    }
+    },
   })
 }
 

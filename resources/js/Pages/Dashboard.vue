@@ -41,13 +41,10 @@
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p class="text-gray-600 mb-4">
-            Aquí tienes un resumen completo de la actividad del sistema:
-          </p>
           <div class="flex items-center space-x-4 text-sm text-gray-500">
             <span>Rol: {{ user.roles?.[0]?.name || 'Sin rol asignado' }}</span>
             <span>•</span>
-            <span>Último acceso: {{ formatDate(user.last_login_at) }}</span>
+            <span>Último acceso: {{ formatDate(user.ultimo_acceso) }}</span>
           </div>
         </CardContent>
       </Card>
@@ -80,12 +77,15 @@
           <CardContent class="p-6">
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-sm font-medium text-gray-500">Crecimiento de Ingresos</p>
-                <p class="text-2xl font-bold" :class="(performanceMetrics?.revenue_growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'">
-                  {{ (performanceMetrics?.revenue_growth || 0) >= 0 ? '+' : '' }}{{ performanceMetrics?.revenue_growth || 0 }}%
+                <p class="text-sm font-medium text-gray-500">Ingresos este mes</p>
+                <p class="text-2xl font-bold" :class="(performanceMetrics?.revenue_growth ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'">
+                  {{ (performanceMetrics?.revenue_growth ?? 0) >= 0 ? '+' : '' }}{{ performanceMetrics?.revenue_growth ?? 0 }}%
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                  {{ formatCurrency(performanceMetrics?.current_revenue ?? 0) }} vs {{ formatCurrency(performanceMetrics?.last_revenue ?? 0) }} mes ant.
                 </p>
               </div>
-              <TrendingUp v-if="(performanceMetrics?.revenue_growth || 0) >= 0" class="h-8 w-8 text-green-500" />
+              <TrendingUp v-if="(performanceMetrics?.revenue_growth ?? 0) >= 0" class="h-8 w-8 text-green-500" />
               <TrendingDown v-else class="h-8 w-8 text-red-500" />
             </div>
           </CardContent>
@@ -95,12 +95,15 @@
           <CardContent class="p-6">
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-sm font-medium text-gray-500">Crecimiento de Órdenes</p>
-                <p class="text-2xl font-bold" :class="(performanceMetrics?.order_growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'">
-                  {{ (performanceMetrics?.order_growth || 0) >= 0 ? '+' : '' }}{{ performanceMetrics?.order_growth || 0 }}%
+                <p class="text-sm font-medium text-gray-500">Ventas este mes</p>
+                <p class="text-2xl font-bold" :class="(performanceMetrics?.order_growth ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'">
+                  {{ (performanceMetrics?.order_growth ?? 0) >= 0 ? '+' : '' }}{{ performanceMetrics?.order_growth ?? 0 }}%
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                  {{ performanceMetrics?.current_sales ?? 0 }} vs {{ performanceMetrics?.last_sales ?? 0 }} mes ant.
                 </p>
               </div>
-              <TrendingUp v-if="(performanceMetrics?.order_growth || 0) >= 0" class="h-8 w-8 text-green-500" />
+              <TrendingUp v-if="(performanceMetrics?.order_growth ?? 0) >= 0" class="h-8 w-8 text-green-500" />
               <TrendingDown v-else class="h-8 w-8 text-red-500" />
             </div>
           </CardContent>
@@ -110,12 +113,15 @@
           <CardContent class="p-6">
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-sm font-medium text-gray-500">Crecimiento de Clientes</p>
-                <p class="text-2xl font-bold" :class="(performanceMetrics?.client_growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'">
-                  {{ (performanceMetrics?.client_growth || 0) >= 0 ? '+' : '' }}{{ performanceMetrics?.client_growth || 0 }}%
+                <p class="text-sm font-medium text-gray-500">Clientes totales</p>
+                <p class="text-2xl font-bold" :class="(performanceMetrics?.client_growth ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'">
+                  {{ (performanceMetrics?.client_growth ?? 0) >= 0 ? '+' : '' }}{{ performanceMetrics?.client_growth ?? 0 }}%
+                </p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                  {{ performanceMetrics?.current_clients ?? 0 }} vs {{ performanceMetrics?.last_clients ?? 0 }} mes ant.
                 </p>
               </div>
-              <TrendingUp v-if="(performanceMetrics?.client_growth || 0) >= 0" class="h-8 w-8 text-green-500" />
+              <TrendingUp v-if="(performanceMetrics?.client_growth ?? 0) >= 0" class="h-8 w-8 text-green-500" />
               <TrendingDown v-else class="h-8 w-8 text-red-500" />
             </div>
           </CardContent>
@@ -249,7 +255,7 @@
       <!-- Sales Data Table -->
       <Card>
         <CardHeader>
-          <CardTitle>Tendencias de Ventas (6 meses)</CardTitle>
+          <CardTitle>Actividad (6 meses)</CardTitle>
         </CardHeader>
         <CardContent>
           <div v-if="salesChart && salesChart.length > 0" class="overflow-x-auto">
@@ -257,9 +263,10 @@
               <thead class="bg-gray-50">
                 <tr>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mes</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lotes Ingresados</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preventas</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ingresos</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Stock / Ingresos</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
@@ -268,20 +275,27 @@
                     {{ item.month }}
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ item.presales || 0 }}
+                    <span v-if="item.purchases > 0" class="text-blue-600 font-medium">{{ item.purchases }}</span>
+                    <span v-else class="text-gray-400">—</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ item.sales || 0 }}
+                    <span v-if="item.presales > 0" class="text-purple-600 font-medium">{{ item.presales }}</span>
+                    <span v-else class="text-gray-400">—</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {{ formatCurrency(item.revenue || 0) }}
+                    <span v-if="item.sales > 0" class="text-green-600 font-medium">{{ item.sales }}</span>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span v-if="item.revenue > 0" class="font-medium">{{ formatCurrency(item.revenue) }}</span>
+                    <span v-else class="text-gray-400">—</span>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div v-else class="text-center py-8 text-gray-500">
-            No hay datos de ventas disponibles
+            No hay actividad registrada
           </div>
         </CardContent>
       </Card>
@@ -297,17 +311,17 @@
               <div class="text-2xl font-bold text-yellow-600">{{ orderStats?.pending || 0 }}</div>
               <div class="text-sm text-yellow-800">Pendientes</div>
             </div>
-            <div class="text-center p-4 bg-blue-50 rounded-lg">
-              <div class="text-2xl font-bold text-blue-600">{{ orderStats?.confirmed || 0 }}</div>
-              <div class="text-sm text-blue-800">Confirmadas</div>
-            </div>
-            <div class="text-center p-4 bg-purple-50 rounded-lg">
-              <div class="text-2xl font-bold text-purple-600">{{ orderStats?.processing || 0 }}</div>
-              <div class="text-sm text-purple-800">Procesando</div>
-            </div>
             <div class="text-center p-4 bg-green-50 rounded-lg">
               <div class="text-2xl font-bold text-green-600">{{ orderStats?.delivered || 0 }}</div>
               <div class="text-sm text-green-800">Entregadas</div>
+            </div>
+            <div class="text-center p-4 bg-orange-50 rounded-lg">
+              <div class="text-2xl font-bold text-orange-600">{{ orderStats?.unpaid || 0 }}</div>
+              <div class="text-sm text-orange-800">Sin pagar</div>
+            </div>
+            <div class="text-center p-4 bg-red-50 rounded-lg">
+              <div class="text-2xl font-bold text-red-600">{{ orderStats?.cancelled || 0 }}</div>
+              <div class="text-sm text-red-800">Canceladas</div>
             </div>
           </div>
         </CardContent>
@@ -525,22 +539,24 @@ const getAlertClasses = (type) => {
 
 const getOrderStatusVariant = (status) => {
   const variants = {
-    pending: 'warning',
+    pending:   'warning',
     confirmed: 'info',
-    processing: 'primary',
+    processing:'primary',
+    completed: 'success',
     delivered: 'success',
-    cancelled: 'danger'
+    cancelled: 'danger',
   }
   return variants[status] || 'secondary'
 }
 
 const getOrderStatusText = (status) => {
   const texts = {
-    pending: 'Pendiente',
+    pending:   'Pendiente',
     confirmed: 'Confirmada',
-    processing: 'Procesando',
+    processing:'Procesando',
+    completed: 'Completada',
     delivered: 'Entregada',
-    cancelled: 'Cancelada'
+    cancelled: 'Cancelada',
   }
   return texts[status] || status
 }

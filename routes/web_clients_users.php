@@ -35,6 +35,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{client}/disable', [ClientController::class, 'disable'])->middleware('permission:clients.delete')->name('disable');
         Route::get('/credito-excedido', [ClientController::class, 'creditExceeded'])->middleware('permission:clients.view')->name('credit-exceeded');
         Route::get('/facturas-vencidas', [ClientController::class, 'overdueInvoices'])->middleware('permission:clients.view')->name('overdue-invoices');
+
+        // Contactos
+        Route::post('/{client}/contactos', [ClientController::class, 'storeContact'])->middleware('permission:clients.update')->name('contacts.store');
+        Route::put('/{client}/contactos/{contact}', [ClientController::class, 'updateContact'])->middleware('permission:clients.update')->name('contacts.update');
+        Route::delete('/{client}/contactos/{contact}', [ClientController::class, 'destroyContact'])->middleware('permission:clients.update')->name('contacts.destroy');
     });
 
     // Usuarios
@@ -92,6 +97,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('role:administrador|Administrador|ADMINISTRADOR')->prefix('lotes')->name('batches.')->group(function () {
         Route::get('/', [App\Http\Controllers\BatchController::class, 'index'])->name('index');
         Route::get('/producto/{productId}', [App\Http\Controllers\BatchController::class, 'show'])->name('show');
+        Route::get('/{batch}/editar', [App\Http\Controllers\BatchController::class, 'edit'])->name('edit');
+        Route::put('/{batch}', [App\Http\Controllers\BatchController::class, 'update'])->name('update');
     });
 
     // API lotes (acceso para todos los roles autenticados — usada en ventas/preventas)

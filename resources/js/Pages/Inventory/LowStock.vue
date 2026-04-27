@@ -80,7 +80,7 @@
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <span class="text-sm text-gray-900">{{ product.brand || '—' }}</span>
+                    <span class="text-sm text-gray-900">{{ product.batches?.[0]?.supplier || product.brand || '—' }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">

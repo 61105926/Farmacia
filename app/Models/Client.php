@@ -48,6 +48,8 @@ class Client extends Model
         'credit_days' => 'integer',
     ];
 
+    protected $appends = ['pending_balance', 'available_credit'];
+
     /**
      * Lista de precios asignada
      */

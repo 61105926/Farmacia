@@ -99,6 +99,9 @@ class ClientController extends Controller
             'visit_day' => 'nullable|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
             'visit_frequency' => 'nullable|in:weekly,biweekly,monthly',
             'notes' => 'nullable|string',
+        ], [
+            'tax_id.unique' => 'El NIT ingresado ya está registrado en otro cliente.',
+            'tax_id.required' => 'El NIT es obligatorio.',
         ]);
 
         try {
@@ -142,25 +145,40 @@ class ClientController extends Controller
             'contacts',
             'addresses',
             'creator',
+            'creditHistory.changer',
         ]);
+
+        // Últimas ventas del cliente
+        $recentSales = $client->sales()
+            ->with('salesperson:id,name')
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get(['id', 'code', 'invoice_number', 'total', 'payment_status', 'payment_method', 'created_at', 'salesperson_id']);
+
+        // Cuentas por cobrar del cliente
+        $recentReceivables = $client->receivables()
+            ->orderByDesc('due_date')
+            ->limit(20)
+            ->get(['id', 'invoice_id', 'amount', 'balance', 'status', 'due_date']);
 
         // Cargar estadísticas del cliente
         $stats = [
-            'total_sales' => $client->sales()->sum('total'),
+            'total_sales'     => $client->sales()->sum('total'),
             'pending_balance' => $client->pending_balance,
-            'available_credit' => $client->available_credit,
-            'last_sale_date' => $client->sales()->latest()->value('created_at'),
-            'total_invoices' => $client->invoices()->count(),
-            'overdue_invoices' => $client->receivables()->where('status', 'overdue')->count(),
+            'available_credit'=> $client->available_credit,
+            'last_sale_date'  => $client->sales()->latest()->value('created_at'),
+            'total_invoices'  => $client->invoices()->count(),
+            'overdue_invoices'=> $client->receivables()->where('status', 'overdue')->count(),
         ];
 
-        // Agregar datos calculados al cliente para el componente
-        $client->total_purchases = $client->sales()->sum('total');
-        $client->last_purchase_date = $client->sales()->latest()->value('created_at');
+        $client->total_purchases = $stats['total_sales'];
+        $client->last_purchase_date = $stats['last_sale_date'];
 
         return Inertia::render('Clients/Show', [
-            'client' => $client,
-            'stats' => $stats,
+            'client'             => $client,
+            'stats'              => $stats,
+            'recentSales'        => $recentSales,
+            'recentReceivables'  => $recentReceivables,
         ]);
     }
 
@@ -299,14 +317,32 @@ class ClientController extends Controller
             $rules['collector_id'] = 'nullable';
         }
 
-        $validated = validator($data, $rules)->validate();
+        $validated = validator($data, $rules, [
+            'tax_id.unique'    => 'El NIT ingresado ya está registrado en otro cliente.',
+            'tax_id.required'  => 'El NIT es obligatorio.',
+        ])->validate();
 
         // Validar website solo si no está vacío
         if (!empty($validated['website']) && !filter_var($validated['website'], FILTER_VALIDATE_URL)) {
             return back()->withErrors(['website' => 'El sitio web debe ser una URL válida.'])->withInput();
         }
 
+        $oldLimit = (float) $client->credit_limit;
+        $newLimit = (float) ($validated['credit_limit'] ?? $oldLimit);
+
         $client->update($validated);
+
+        // Registrar cambio de límite de crédito en el historial
+        if ($oldLimit !== $newLimit) {
+            $client->creditHistory()->create([
+                'type'        => 'credit_adjustment',
+                'amount'      => $newLimit,
+                'balance'     => $oldLimit,
+                'description' => "Límite actualizado de Bs " . number_format($oldLimit, 2) . " a Bs " . number_format($newLimit, 2),
+                'changer_id'  => auth()->id(),
+                'status'      => 'completed',
+            ]);
+        }
 
         return redirect()->route('clients.show', $client)
             ->with('success', 'Cliente actualizado exitosamente.');
@@ -498,10 +534,12 @@ class ClientController extends Controller
 
         // Registrar en el historial de cambios
         $client->creditHistory()->create([
-            'old_limit' => $client->getOriginal('credit_limit'),
-            'new_limit' => $validated['credit_limit'],
-            'reason' => $validated['reason'],
-            'changed_by' => auth()->id(),
+            'type'        => 'credit_adjustment',
+            'amount'      => $validated['credit_limit'],
+            'balance'     => $client->getOriginal('credit_limit'),
+            'description' => $validated['reason'],
+            'changer_id'  => auth()->id(),
+            'status'      => 'completed',
         ]);
 
         return back()->with('success', 'Límite de crédito actualizado exitosamente.');
@@ -874,5 +912,58 @@ class ClientController extends Controller
         ]);
 
         return back()->with('success', 'Cliente deshabilitado exitosamente.');
+    }
+
+    public function storeContact(Request $request, Client $client): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name'         => 'required|string|max:255',
+            'position'     => 'nullable|string|max:255',
+            'phone'        => 'nullable|string|max:50',
+            'email'        => 'nullable|email|max:255',
+            'contact_type' => 'nullable|string|max:50',
+            'is_primary'   => 'boolean',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        if (!empty($validated['is_primary'])) {
+            $client->contacts()->update(['is_primary' => false]);
+        }
+
+        $client->contacts()->create($validated);
+
+        return back()->with('success', 'Contacto agregado correctamente.');
+    }
+
+    public function updateContact(Request $request, Client $client, \App\Models\ClientContact $contact): RedirectResponse
+    {
+        abort_if($contact->client_id !== $client->id, 403);
+
+        $validated = $request->validate([
+            'name'         => 'required|string|max:255',
+            'position'     => 'nullable|string|max:255',
+            'phone'        => 'nullable|string|max:50',
+            'email'        => 'nullable|email|max:255',
+            'contact_type' => 'nullable|string|max:50',
+            'is_primary'   => 'boolean',
+            'notes'        => 'nullable|string|max:500',
+        ]);
+
+        if (!empty($validated['is_primary'])) {
+            $client->contacts()->where('id', '!=', $contact->id)->update(['is_primary' => false]);
+        }
+
+        $contact->update($validated);
+
+        return back()->with('success', 'Contacto actualizado correctamente.');
+    }
+
+    public function destroyContact(Client $client, \App\Models\ClientContact $contact): RedirectResponse
+    {
+        abort_if($contact->client_id !== $client->id, 403);
+
+        $contact->delete();
+
+        return back()->with('success', 'Contacto eliminado correctamente.');
     }
 }

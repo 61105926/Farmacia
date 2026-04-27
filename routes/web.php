@@ -35,8 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/pharmacies/{pharmacy}/toggle-status', [App\Http\Controllers\PharmacyController::class, 'toggleStatus'])->name('pharmacies.toggle-status');
     Route::resource('pharmacies', App\Http\Controllers\PharmacyController::class);
 
-    // Alias para clientes (farmacias son los clientes)
-    Route::redirect('/clientes', '/pharmacies');
+
 });
 
 // Rutas de Clientes y Usuarios

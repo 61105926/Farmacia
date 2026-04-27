@@ -52,6 +52,7 @@
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Restante</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Uso %</th>
                 <th class="text-center px-4 py-3 font-semibold text-gray-600">Estado</th>
+              <th class="text-center px-4 py-3 font-semibold text-gray-600">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -102,6 +103,14 @@
                   <span class="px-2 py-1 rounded-full text-xs font-semibold" :class="statusClass(batch.status)">
                     {{ statusLabel(batch.status) }}
                   </span>
+                </td>
+                <td class="px-4 py-3 text-center">
+                  <Link
+                    :href="`/lotes/${batch.id}/editar`"
+                    class="text-primary-700 hover:text-primary-900 text-xs font-medium"
+                  >
+                    Editar
+                  </Link>
                 </td>
               </tr>
             </tbody>

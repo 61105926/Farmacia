@@ -272,11 +272,15 @@ class InventoryController extends Controller
                 $batchId = $batch->id;
             }
 
-            // Si es salida manual, descontar de lotes FIFO
+            // Si es salida manual, descontar de lotes FEFO
             if ($validated['transaction_type'] === 'out') {
                 $batchService = new BatchService();
                 $result = $batchService->deductFifo($validated['product_id'], $validated['quantity'], $validated['notes'] ?? '');
                 $batchId = $result['batch_id'];
+                if ($batchId) {
+                    $batchUsed = \App\Models\Batch::find($batchId);
+                    $validated['batch_number'] = $batchUsed?->batch_number;
+                }
             }
 
             // Crear movimiento de inventario
@@ -361,7 +365,7 @@ class InventoryController extends Controller
 
     public function expired()
     {
-        $threshold = now()->addDays(30);
+        $threshold = now()->addDays(90);
 
         $products = Product::where(function ($q) use ($threshold) {
             $q->whereNotNull('expiry_date')

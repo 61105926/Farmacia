@@ -199,9 +199,10 @@
                 <CardTitle>Contactos</CardTitle>
                 <button
                   v-if="can('clients.update')"
+                  @click="openContactModal(null)"
                   class="px-3 py-1 text-sm bg-primary-700 text-white rounded-md hover:bg-primary-800"
                 >
-                  Agregar Contacto
+                  + Agregar Contacto
                 </button>
               </div>
             </CardHeader>
@@ -221,12 +222,24 @@
                         <p v-if="contact.email">📧 {{ contact.email }}</p>
                       </div>
                     </div>
-                    <span
-                      v-if="contact.is_primary"
-                      class="px-2 py-1 text-xs font-medium bg-accent-100 text-accent-800 rounded-full"
-                    >
-                      Principal
-                    </span>
+                    <div class="flex items-center gap-2">
+                      <span
+                        v-if="contact.is_primary"
+                        class="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full"
+                      >
+                        Principal
+                      </span>
+                      <button
+                        v-if="can('clients.update')"
+                        @click="openContactModal(contact)"
+                        class="text-xs text-blue-600 hover:text-blue-800"
+                      >Editar</button>
+                      <button
+                        v-if="can('clients.update')"
+                        @click="deleteContact(contact)"
+                        class="text-xs text-red-600 hover:text-red-800"
+                      >Eliminar</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -235,6 +248,53 @@
               </p>
             </CardContent>
           </Card>
+
+          <!-- Modal Contacto -->
+          <div v-if="showContactModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                {{ editingContact ? 'Editar Contacto' : 'Nuevo Contacto' }}
+              </h3>
+              <form @submit.prevent="submitContact" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nombre <span class="text-red-500">*</span></label>
+                  <input v-model="contactForm.name" type="text" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500" />
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Cargo</label>
+                    <input v-model="contactForm.position" type="text"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                    <input v-model="contactForm.phone" type="text"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500" />
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input v-model="contactForm.email" type="email"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500" />
+                </div>
+                <div class="flex items-center gap-2">
+                  <input v-model="contactForm.is_primary" type="checkbox" id="is_primary" class="rounded" />
+                  <label for="is_primary" class="text-sm text-gray-700">Contacto principal</label>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                  <button type="button" @click="showContactModal = false"
+                    class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                    Cancelar
+                  </button>
+                  <button type="submit" :disabled="contactForm.processing"
+                    class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 disabled:opacity-50">
+                    {{ contactForm.processing ? 'Guardando...' : 'Guardar' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
 
         <!-- Credit Tab -->
@@ -269,23 +329,15 @@
                   <p class="text-sm text-gray-600">Utilización de Crédito</p>
                   <div class="mt-2">
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         class="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                        :style="{ width: `${Math.min(100, (client.pending_balance / client.credit_limit) * 100)}%` }"
+                        :style="{ width: `${creditUtilizationPct}%` }"
                       ></div>
                     </div>
                     <p class="text-xs text-gray-500 mt-1">
-                      {{ Math.round((client.pending_balance / client.credit_limit) * 100) }}% utilizado
+                      {{ creditUtilizationPct }}% utilizado
                     </p>
                   </div>
-                </div>
-                <div v-if="can('clients.update')" class="pt-4 border-t">
-                  <button
-                    @click="showCreditModal = true"
-                    class="w-full px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors"
-                  >
-                    Actualizar Límite de Crédito
-                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -312,9 +364,9 @@
                     <div class="flex justify-between items-start">
                       <div>
                         <p class="text-sm font-medium text-gray-900">
-                          Bs {{ formatNumber(entry.old_limit) }} → Bs {{ formatNumber(entry.new_limit) }}
+                          Bs {{ formatNumber(entry.balance) }} → Bs {{ formatNumber(entry.amount) }}
                         </p>
-                        <p class="text-xs text-gray-600">{{ entry.reason }}</p>
+                        <p class="text-xs text-gray-600">{{ entry.description }}</p>
                       </div>
                       <div class="text-right">
                         <p class="text-xs text-gray-500">{{ formatDate(entry.created_at) }}</p>
@@ -324,7 +376,8 @@
                   </div>
                 </div>
                 <p v-else class="text-gray-500 text-center py-4">
-                  No hay historial de cambios de crédito
+                  No hay historial de cambios de crédito.<br>
+                  <span class="text-xs">Se registra automáticamente al editar el límite en el formulario del cliente.</span>
                 </p>
               </CardContent>
             </Card>
@@ -337,10 +390,45 @@
             <CardHeader>
               <CardTitle>Historial de Ventas</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p class="text-gray-500 text-center py-8">
-                El historial de ventas estará disponible cuando se implemente el módulo de ventas
-              </p>
+            <CardContent class="p-0">
+              <div v-if="recentSales?.length > 0" class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Venta</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado Pago</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Método</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendedor</th>
+                      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    <tr v-for="sale in recentSales" :key="sale.id" class="hover:bg-gray-50">
+                      <td class="px-4 py-3 font-mono text-gray-800">{{ sale.invoice_number || sale.code || `#${sale.id}` }}</td>
+                      <td class="px-4 py-3 text-gray-600">{{ formatDate(sale.created_at) }}</td>
+                      <td class="px-4 py-3 text-right font-medium text-gray-900">Bs {{ formatNumber(sale.total) }}</td>
+                      <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                          :class="{
+                            'bg-green-100 text-green-800': sale.payment_status === 'paid',
+                            'bg-yellow-100 text-yellow-800': sale.payment_status === 'pending',
+                            'bg-red-100 text-red-800': sale.payment_status === 'overdue',
+                          }">
+                          {{ { paid: 'Pagado', pending: 'Pendiente', overdue: 'Vencido', partial: 'Parcial' }[sale.payment_status] || sale.payment_status }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 text-gray-600 capitalize">{{ sale.payment_method || '—' }}</td>
+                      <td class="px-4 py-3 text-gray-600">{{ sale.salesperson?.name || '—' }}</td>
+                      <td class="px-4 py-3 text-right">
+                        <Link :href="`/ventas/${sale.id}`" class="text-primary-700 hover:text-primary-900 text-xs">Ver</Link>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p v-else class="text-gray-500 text-center py-8">No hay ventas registradas para este cliente.</p>
             </CardContent>
           </Card>
         </div>
@@ -351,10 +439,43 @@
             <CardHeader>
               <CardTitle>Cuentas por Cobrar</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p class="text-gray-500 text-center py-8">
-                Las cuentas por cobrar estarán disponibles cuando se implemente el módulo correspondiente
-              </p>
+            <CardContent class="p-0">
+              <div v-if="recentReceivables?.length > 0" class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Referencia</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vencimiento</th>
+                      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monto</th>
+                      <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Saldo</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-100">
+                    <tr v-for="rec in recentReceivables" :key="rec.id" class="hover:bg-gray-50">
+                      <td class="px-4 py-3 text-gray-800">{{ rec.invoice_id ? `Factura #${rec.invoice_id}` : `#${rec.id}` }}</td>
+                      <td class="px-4 py-3 text-gray-600">{{ rec.due_date ? formatDate(rec.due_date) : '—' }}</td>
+                      <td class="px-4 py-3 text-right text-gray-900">Bs {{ formatNumber(rec.amount) }}</td>
+                      <td class="px-4 py-3 text-right font-medium"
+                        :class="rec.balance > 0 ? 'text-red-600' : 'text-green-600'">
+                        Bs {{ formatNumber(rec.balance) }}
+                      </td>
+                      <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                          :class="{
+                            'bg-green-100 text-green-800': rec.status === 'paid',
+                            'bg-yellow-100 text-yellow-800': rec.status === 'pending',
+                            'bg-orange-100 text-orange-800': rec.status === 'partial',
+                            'bg-red-100 text-red-800': rec.status === 'overdue',
+                          }">
+                          {{ { paid: 'Pagado', pending: 'Pendiente', partial: 'Parcial', overdue: 'Vencido', cancelled: 'Cancelado' }[rec.status] || rec.status }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p v-else class="text-gray-500 text-center py-8">No hay cuentas por cobrar para este cliente.</p>
             </CardContent>
           </Card>
         </div>
@@ -391,8 +512,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 import { usePermissions } from '@/composables/usePermissions'
@@ -402,9 +523,18 @@ const { can } = usePermissions()
 
 const props = defineProps({
   client: Object,
+  recentSales: { type: Array, default: () => [] },
+  recentReceivables: { type: Array, default: () => [] },
 })
 
 const activeTab = ref('general')
+
+const creditUtilizationPct = computed(() => {
+  const limit = props.client?.credit_limit || 0
+  const balance = props.client?.pending_balance || 0
+  if (!limit) return 0
+  return Math.min(100, Math.round((balance / limit) * 100))
+})
 
 const tabs = [
   { id: 'general', label: 'Información General' },
@@ -455,5 +585,45 @@ const toggleStatus = () => {
   if (confirm(`¿Está seguro de ${action} este cliente?`)) {
     router.post(`/clientes/${props.client.id}/toggle-status`)
   }
+}
+
+// Contactos
+const showContactModal = ref(false)
+const editingContact = ref(null)
+
+const contactForm = useForm({
+  name: '',
+  position: '',
+  phone: '',
+  email: '',
+  is_primary: false,
+})
+
+const openContactModal = (contact) => {
+  editingContact.value = contact
+  contactForm.name = contact?.name || ''
+  contactForm.position = contact?.position || ''
+  contactForm.phone = contact?.phone || ''
+  contactForm.email = contact?.email || ''
+  contactForm.is_primary = contact?.is_primary || false
+  showContactModal.value = true
+}
+
+const submitContact = () => {
+  const clientId = props.client.id
+  if (editingContact.value) {
+    contactForm.put(`/clientes/${clientId}/contactos/${editingContact.value.id}`, {
+      onSuccess: () => { showContactModal.value = false },
+    })
+  } else {
+    contactForm.post(`/clientes/${clientId}/contactos`, {
+      onSuccess: () => { showContactModal.value = false },
+    })
+  }
+}
+
+const deleteContact = (contact) => {
+  if (!confirm(`¿Eliminar el contacto "${contact.name}"?`)) return
+  router.delete(`/clientes/${props.client.id}/contactos/${contact.id}`)
 }
 </script>

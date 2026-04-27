@@ -117,12 +117,16 @@ class DashboardController extends Controller
     
     private function getOrderStats()
     {
-        // Estadísticas de preventas por estado
         return [
-            'pending' => Presale::where('status', 'draft')->count(),
-            'confirmed' => Presale::where('status', 'confirmed')->count(),
-            'processing' => Presale::where('status', 'confirmed')->count(), // Preventas confirmadas en proceso
-            'delivered' => Presale::where('status', 'converted')->count(), // Preventas convertidas a ventas
+            'pending'   => Presale::where('status', 'draft')->count()
+                         + Sale::where('status', 'pending')->count(),
+            'delivered' => Sale::where('status', 'completed')->count()
+                         + Presale::where('status', 'converted')->count(),
+            'unpaid'    => Sale::where('payment_status', '!=', 'paid')
+                               ->where('status', '!=', 'cancelled')
+                               ->count(),
+            'cancelled' => Sale::where('status', 'cancelled')->count()
+                         + Presale::where('status', 'cancelled')->count(),
         ];
     }
     
@@ -138,26 +142,49 @@ class DashboardController extends Controller
     private function getSalesChart()
     {
         $salesChart = [];
-        for ($i = 5; $i >= 0; $i--) {
+        for ($i = 0; $i <= 5; $i++) {
             $date = Carbon::now()->subMonths($i);
-            
-            $monthData = [
-                'month' => $date->format('M Y'),
-                'presales' => Presale::whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
-                    ->count(),
-                'sales' => Sale::whereMonth('created_at', $date->month)
-                    ->whereYear('created_at', $date->year)
-                    ->count(),
-                'revenue' => Invoice::whereMonth('invoice_date', $date->month)
-                    ->whereYear('invoice_date', $date->year)
-                    ->where('status', '!=', 'cancelled')
-                    ->sum('total') ?? 0,
-            ];
-            
-            $salesChart[] = $monthData;
+
+            $presales = Presale::whereMonth('created_at', $date->month)
+                ->whereYear('created_at', $date->year)
+                ->count();
+
+            $sales = Sale::whereMonth('created_at', $date->month)
+                ->whereYear('created_at', $date->year)
+                ->count();
+
+            // Ingresos: ventas si hay, si no suma de lotes ingresados ese mes
+            $revenue = Sale::whereMonth('created_at', $date->month)
+                ->whereYear('created_at', $date->year)
+                ->where('status', '!=', 'cancelled')
+                ->sum('total');
+
+            if ($revenue == 0) {
+                // Usar valor de lotes ingresados como referencia de movimiento
+                $revenue = DB::table('batches')
+                    ->whereMonth('entry_date', $date->month)
+                    ->whereYear('entry_date', $date->year)
+                    ->selectRaw('COALESCE(SUM(initial_quantity * cost_price), 0) as total')
+                    ->value('total') ?? 0;
+            }
+
+            $purchases = DB::table('batches')
+                ->whereMonth('entry_date', $date->month)
+                ->whereYear('entry_date', $date->year)
+                ->count();
+
+            // Solo incluir meses con alguna actividad
+            if ($presales > 0 || $sales > 0 || $purchases > 0) {
+                $salesChart[] = [
+                    'month'     => $date->format('M Y'),
+                    'presales'  => $presales,
+                    'sales'     => $sales,
+                    'purchases' => $purchases,
+                    'revenue'   => round($revenue, 2),
+                ];
+            }
         }
-        
+
         return $salesChart;
     }
     
@@ -182,7 +209,7 @@ class DashboardController extends Controller
                     ] : null,
                     'status' => $sale->status,
                     'total' => $sale->total,
-                    'created_at' => $sale->created_at,
+                    'created_at' => $sale->created_at?->format('Y-m-d H:i:s'),
                 ];
             });
     }
@@ -282,7 +309,7 @@ class DashboardController extends Controller
                 'type' => 'warning',
                 'title' => 'Productos Próximos a Vencer',
                 'message' => "{$expiringProductsCount} productos vencen en los próximos 90 días",
-                'action' => '/productos?filter=expiring'
+                'action' => '/inventario/por-vencer'
             ];
         }
         
@@ -316,57 +343,48 @@ class DashboardController extends Controller
     
     private function getPerformanceMetrics()
     {
-        $currentMonth = Carbon::now();
-        $lastMonth = Carbon::now()->subMonth();
-        
-        $metrics = [
-            'revenue_growth' => 0,
-            'order_growth' => 0,
-            'client_growth' => 0,
+        $now         = Carbon::now();
+        $currentFrom = $now->copy()->startOfMonth();
+        $currentTo   = $now->copy()->endOfMonth();
+        $lastFrom    = $now->copy()->subMonth()->startOfMonth();
+        $lastTo      = $now->copy()->subMonth()->endOfMonth();
+
+        // Ingresos: suma de ventas del mes (no canceladas)
+        $currentRevenue = Sale::whereBetween('created_at', [$currentFrom, $currentTo])
+            ->where('status', '!=', 'cancelled')
+            ->sum('total');
+
+        $lastRevenue = Sale::whereBetween('created_at', [$lastFrom, $lastTo])
+            ->where('status', '!=', 'cancelled')
+            ->sum('total');
+
+        // Órdenes: cantidad de ventas del mes
+        $currentSales = Sale::whereBetween('created_at', [$currentFrom, $currentTo])->count();
+        $lastSales    = Sale::whereBetween('created_at', [$lastFrom, $lastTo])->count();
+
+        // Clientes: total acumulado hasta fin de cada mes
+        $currentClients = Client::where('created_at', '<=', $currentTo)->count();
+        $lastClients    = Client::where('created_at', '<=', $lastTo)->count();
+
+        return [
+            'revenue_growth' => $this->growthPercent($lastRevenue, $currentRevenue),
+            'order_growth'   => $this->growthPercent($lastSales, $currentSales),
+            'client_growth'  => $this->growthPercent($lastClients, $currentClients),
+            // Valores absolutos para referencia en la vista
+            'current_revenue' => round($currentRevenue, 2),
+            'last_revenue'    => round($lastRevenue, 2),
+            'current_sales'   => $currentSales,
+            'last_sales'      => $lastSales,
+            'current_clients' => $currentClients,
+            'last_clients'    => $lastClients,
         ];
-        
-        // Crecimiento de ingresos (basado en facturas)
-        $currentRevenue = Invoice::whereMonth('invoice_date', $currentMonth->month)
-            ->whereYear('invoice_date', $currentMonth->year)
-            ->where('status', '!=', 'cancelled')
-            ->sum('total') ?? 0;
-            
-        $lastRevenue = Invoice::whereMonth('invoice_date', $lastMonth->month)
-            ->whereYear('invoice_date', $lastMonth->year)
-            ->where('status', '!=', 'cancelled')
-            ->sum('total') ?? 0;
-            
-        if ($lastRevenue > 0) {
-            $metrics['revenue_growth'] = round((($currentRevenue - $lastRevenue) / $lastRevenue) * 100, 2);
-        }
-        
-        // Crecimiento de ventas
-        $currentSales = Sale::whereMonth('created_at', $currentMonth->month)
-            ->whereYear('created_at', $currentMonth->year)
-            ->count();
-            
-        $lastSales = Sale::whereMonth('created_at', $lastMonth->month)
-            ->whereYear('created_at', $lastMonth->year)
-            ->count();
-            
-        if ($lastSales > 0) {
-            $metrics['order_growth'] = round((($currentSales - $lastSales) / $lastSales) * 100, 2);
-        }
-        
-        // Crecimiento de clientes
-        $currentClients = Client::whereMonth('created_at', $currentMonth->month)
-            ->whereYear('created_at', $currentMonth->year)
-            ->count();
-            
-        $lastClients = Client::whereMonth('created_at', $lastMonth->month)
-            ->whereYear('created_at', $lastMonth->year)
-            ->count();
-            
-        if ($lastClients > 0) {
-            $metrics['client_growth'] = round((($currentClients - $lastClients) / $lastClients) * 100, 2);
-        }
-        
-        return $metrics;
+    }
+
+    private function growthPercent($previous, $current): float
+    {
+        if ($previous == 0 && $current == 0) return 0.0;
+        if ($previous == 0) return 100.0;
+        return round((($current - $previous) / $previous) * 100, 1);
     }
     
     private function getExpiringProducts()

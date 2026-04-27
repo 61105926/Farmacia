@@ -10,7 +10,7 @@
         <p class="text-sm text-gray-600 mt-1">Complete los datos del nuevo cliente</p>
       </div>
 
-      <form @submit.prevent="submit" @keydown.enter="onEnterNavigate">
+      <form @submit.prevent="submit" @keydown.enter="onEnterNavigate" @input.capture="toUppercase">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <!-- Main Info -->
           <div class="lg:col-span-2">
@@ -308,10 +308,11 @@
                   </label>
                   <select
                     v-model="form.salesperson_id"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :disabled="!isAdmin"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:text-gray-500"
                   >
-                    <option :value="null">Sin asignar</option>
-                    <option v-for="salesperson in salespeople" :key="salesperson.id" :value="salesperson.id">
+                    <option v-if="isAdmin" :value="null">Sin asignar</option>
+                    <option v-for="salesperson in filteredSalespeople" :key="salesperson.id" :value="salesperson.id">
                       {{ salesperson.name }}
                     </option>
                   </select>
@@ -324,10 +325,11 @@
                   </label>
                   <select
                     v-model="form.collector_id"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :disabled="!isAdmin"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 disabled:text-gray-500"
                   >
-                    <option :value="null">Sin asignar</option>
-                    <option v-for="collector in collectors" :key="collector.id" :value="collector.id">
+                    <option v-if="isAdmin" :value="null">Sin asignar</option>
+                    <option v-for="collector in filteredCollectors" :key="collector.id" :value="collector.id">
                       {{ collector.name }}
                     </option>
                   </select>
@@ -360,8 +362,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useForm, Link } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import { useForm, Link, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 
@@ -371,6 +373,16 @@ const props = defineProps({
   salespeople: Array,
   collectors: Array,
 })
+
+const currentUser = usePage().props.auth?.user
+const isAdmin = currentUser?.roles?.includes('Administrador') ?? false
+
+const filteredSalespeople = computed(() =>
+  isAdmin ? props.salespeople : props.salespeople.filter(s => s.id === currentUser?.id)
+)
+const filteredCollectors = computed(() =>
+  isAdmin ? props.collectors : props.collectors.filter(c => c.id === currentUser?.id)
+)
 
 const emailError = ref('')
 
@@ -382,17 +394,17 @@ const form = useForm({
   category: 'B',
   address: '',
   city: '',
-  state: '',
+  state: 'Pando',
   phone: '',
   email: '',
   website: '',
-  price_list_id: null,
+  price_list_id: 1,
   default_discount: 0,
-  payment_term_id: null,
+  payment_term_id: 2,
   credit_limit: 0,
   credit_days: 0,
-  salesperson_id: null,
-  collector_id: null,
+  salesperson_id: isAdmin ? null : (currentUser?.id ?? null),
+  collector_id: isAdmin ? null : (currentUser?.id ?? null),
   zone: '',
   visit_day: null,
   visit_frequency: 'weekly',
@@ -441,6 +453,17 @@ const validateEmail = () => {
       emailError.value = 'Por favor ingrese un email válido'
     }
   }
+}
+
+const toUppercase = (e) => {
+  const el = e.target
+  if (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') return
+  if (el.type === 'number' || el.type === 'checkbox' || el.type === 'email') return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  el.value = el.value.toUpperCase()
+  el.dispatchEvent(new Event('input', { bubbles: true }))
+  el.setSelectionRange(start, end)
 }
 
 const onEnterNavigate = (e) => {

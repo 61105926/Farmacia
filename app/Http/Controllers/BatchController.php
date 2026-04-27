@@ -75,6 +75,36 @@ class BatchController extends Controller
         ]);
     }
 
+    public function edit(Batch $batch)
+    {
+        $batch->load('product');
+
+        return Inertia::render('Batches/Edit', [
+            'batch'   => $batch,
+            'product' => $batch->product,
+        ]);
+    }
+
+    public function update(Request $request, Batch $batch)
+    {
+        $validated = $request->validate([
+            'batch_number'      => 'required|string|max:100',
+            'supplier'          => 'nullable|string|max:255',
+            'entry_date'        => 'required|date',
+            'expiry_date'       => 'nullable|date',
+            'initial_quantity'  => 'required|integer|min:0',
+            'remaining_quantity'=> 'required|integer|min:0',
+            'cost_price'        => 'nullable|numeric|min:0',
+            'notes'             => 'nullable|string|max:1000',
+            'status'            => 'required|in:active,depleted,expired',
+        ]);
+
+        $batch->update($validated);
+
+        return redirect("/lotes/producto/{$batch->product_id}")
+            ->with('success', 'Lote actualizado correctamente.');
+    }
+
     // API: devuelve lotes activos de un producto en orden FIFO
     public function forProduct(int $productId)
     {
