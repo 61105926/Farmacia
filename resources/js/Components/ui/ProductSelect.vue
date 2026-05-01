@@ -45,25 +45,30 @@
         v-for="(product, idx) in filtered"
         :key="product.id"
         type="button"
-        class="w-full text-left px-3 py-2 text-sm hover:bg-primary-50 transition-colors flex items-start gap-2"
+        class="w-full text-left px-3 py-2 text-sm transition-colors flex items-start gap-2"
         :class="{
           'bg-primary-100': modelValue == product.id,
-          'bg-gray-100': highlighted === idx && modelValue != product.id
+          'bg-gray-100': highlighted === idx && modelValue != product.id,
+          'opacity-50 cursor-not-allowed': isBlocked(product),
+          'hover:bg-primary-50': !isBlocked(product),
         }"
-        @mousedown.prevent="select(product)"
+        @mousedown.prevent="!isBlocked(product) && select(product)"
         @mouseover="highlighted = idx"
       >
         <div class="flex-1 min-w-0">
-          <div class="font-medium text-gray-900">{{ product.description || product.name }}</div>
-          <div v-if="product.description" class="text-xs text-gray-600">{{ product.name }}</div>
-          <div class="text-xs text-gray-500 flex gap-2 mt-0.5">
-            <span v-if="product.sku">Lote: {{ product.sku }}</span>
-            <span v-else-if="product.code">{{ product.code }}</span>
+          <div class="font-medium" :class="isBlocked(product) ? 'text-gray-400' : 'text-gray-900'">{{ product.description || product.name }}</div>
+          <div v-if="product.description" class="text-xs text-gray-500">{{ product.name }}</div>
+          <div class="text-xs flex gap-2 mt-0.5 flex-wrap">
+            <span v-if="isExpired(product)" class="text-red-600 font-semibold">⛔ Vencido</span>
+            <span v-else-if="product.expiry_date" class="text-gray-400">Vence: {{ formatExpiry(product.expiry_date) }}</span>
+            <span v-if="product.sku" class="text-gray-500">Lote: {{ product.sku }}</span>
+            <span v-else-if="product.code" class="text-gray-500">{{ product.code }}</span>
             <span v-if="product.stock_quantity !== undefined">
               · Stock:
-              <span :class="product.stock_quantity <= 0 ? 'text-red-500 font-semibold' : product.stock_quantity <= 10 ? 'text-orange-500 font-semibold' : 'text-green-600'">
+              <span :class="product.stock_quantity <= 0 ? 'text-red-600 font-semibold' : 'text-green-600'">
                 {{ product.stock_quantity }}
               </span>
+              <span v-if="product.stock_quantity <= 0" class="text-red-600 font-semibold"> ⛔ Sin stock</span>
             </span>
           </div>
         </div>

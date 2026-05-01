@@ -74,13 +74,13 @@ class ProductController extends Controller
             if ($stockStatus && $stockStatus !== '' && $stockStatus !== null) {
                 switch ($stockStatus) {
                     case 'low_stock':
-                        $query->where('stock_quantity', '<=', 10)->where('stock_quantity', '>', 0);
+                        $query->whereColumn('stock_quantity', '<=', 'min_stock')->where('stock_quantity', '>', 0);
                         break;
                     case 'out_of_stock':
                         $query->where('stock_quantity', '<=', 0);
                         break;
                     case 'in_stock':
-                        $query->where('stock_quantity', '>', 10);
+                        $query->whereColumn('stock_quantity', '>', 'min_stock');
                         break;
                 }
             }
@@ -131,7 +131,7 @@ class ProductController extends Controller
             $stats = [
                 'total_products' => Product::count(),
                 'active_products' => Product::where('is_active', true)->count(),
-                'low_stock_products' => Product::whereRaw('stock_quantity <= 10')->where('stock_quantity', '>', 0)->count(),
+                'low_stock_products' => Product::whereColumn('stock_quantity', '<=', 'min_stock')->where('stock_quantity', '>', 0)->count(),
                 'out_of_stock_products' => Product::where('stock_quantity', '<=', 0)->count(),
                 'total_value' => Product::sum(DB::raw('stock_quantity * cost_price')),
             ];

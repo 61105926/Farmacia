@@ -255,10 +255,25 @@ class SaleController extends Controller
                     ]);
                 }
 
-                // Validar que la cantidad no exceda el stock disponible
+                // Validar que el producto no esté vencido
+                $productLabel = $product->description ?: $product->name;
+                if ($product->expiry_date && \Carbon\Carbon::parse($product->expiry_date)->isPast()) {
+                    $expiryFormatted = \Carbon\Carbon::parse($product->expiry_date)->format('d/m/Y');
+                    throw ValidationException::withMessages([
+                        "items.{$index}.product_id" => "El producto '{$productLabel}' está vencido (venció el {$expiryFormatted})."
+                    ]);
+                }
+
+                // Validar que haya stock disponible
                 $availableStock = $product->stock_quantity ?? 0;
                 $requestedQuantity = $item['quantity'];
-                
+
+                if ($availableStock <= 0) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.product_id" => "El producto '{$productLabel}' no tiene stock disponible."
+                    ]);
+                }
+
                 if ($requestedQuantity > $availableStock) {
                     throw ValidationException::withMessages([
                         "items.{$index}.quantity" => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
