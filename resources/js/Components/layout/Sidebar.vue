@@ -142,7 +142,7 @@
     <div class="p-4 border-t border-primary-800 bg-primary-800">
       <div v-if="!isCollapsed" class="text-center">
         <p class="text-xs text-accent-400">Versión 3.0</p>
-        <p class="text-xs text-accent-300">Farmacia ERP</p>
+        <p class="text-xs text-accent-300">SISPANDO</p>
       </div>
     </div>
   </aside>
