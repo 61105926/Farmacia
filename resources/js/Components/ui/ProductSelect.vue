@@ -90,6 +90,23 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
+const isExpired = (product) => {
+  if (!product.expiry_date) return false
+  const expiry = new Date(product.expiry_date + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return expiry < today
+}
+
+const isBlocked = (product) => {
+  return isExpired(product) || (product.stock_quantity !== undefined && product.stock_quantity <= 0)
+}
+
+const formatExpiry = (date) => {
+  if (!date) return ''
+  return new Date(date + 'T00:00:00').toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
 const search      = ref('')
 const open        = ref(false)
 const highlighted = ref(0)

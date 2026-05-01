@@ -564,6 +564,25 @@ const submitForm = () => {
     return
   }
 
+  // Validar stock y vencimiento
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (const item of itemsWithProducts) {
+    const product = props.products.find(p => p.id == item.product_id)
+    if (!product) continue
+    if (product.expiry_date) {
+      const expiry = new Date(product.expiry_date + 'T00:00:00')
+      if (expiry < today) {
+        alert(`El producto "${product.description || product.name}" está vencido y no se puede vender.`)
+        return
+      }
+    }
+    if ((product.stock_quantity || 0) <= 0) {
+      alert(`El producto "${product.description || product.name}" no tiene stock disponible.`)
+      return
+    }
+  }
+
   // Validar cliente
   if (!form.client_id || form.client_id === '') {
     alert('Debe seleccionar un cliente')
