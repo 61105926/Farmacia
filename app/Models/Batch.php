@@ -8,7 +8,7 @@ class Batch extends Model
 {
     protected $fillable = [
         'product_id', 'batch_number', 'initial_quantity', 'remaining_quantity',
-        'expiry_date', 'entry_date', 'cost_price', 'supplier', 'notes',
+        'expiry_date', 'entry_date', 'cost_price', 'sale_price', 'supplier', 'notes',
         'status', 'created_by',
     ];
 

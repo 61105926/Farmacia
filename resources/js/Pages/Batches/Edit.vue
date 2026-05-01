@@ -93,9 +93,21 @@
 
               <!-- Costo -->
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Precio Costo</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Precio Compra</label>
                 <input
                   v-model.number="form.cost_price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+
+              <!-- Precio Venta -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Precio Venta</label>
+                <input
+                  v-model.number="form.sale_price"
                   type="number"
                   min="0"
                   step="0.01"
@@ -175,6 +187,7 @@ const form = useForm({
   initial_quantity:  props.batch.initial_quantity,
   remaining_quantity:props.batch.remaining_quantity,
   cost_price:        props.batch.cost_price || '',
+  sale_price:        props.batch.sale_price || '',
   notes:             props.batch.notes || '',
   status:            props.batch.status,
 })

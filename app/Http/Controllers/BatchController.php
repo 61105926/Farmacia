@@ -17,7 +17,8 @@ class BatchController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('batch_number', 'like', "%{$search}%")
-                  ->orWhereHas('product', fn($p) => $p->where('name', 'like', "%{$search}%")
+                  ->orWhereHas('product', fn($p) => $p->where('description', 'like', "%{$search}%")
+                                                       ->orWhere('name', 'like', "%{$search}%")
                                                        ->orWhere('code', 'like', "%{$search}%"));
             });
         }
@@ -53,7 +54,7 @@ class BatchController extends Controller
 
         return Inertia::render('Batches/Index', [
             'batches'  => $batches,
-            'products' => Product::active()->orderBy('name')->get(['id', 'name', 'code']),
+            'products' => Product::active()->orderBy('description')->get(['id', 'name', 'description', 'code']),
             'stats'    => $stats,
             'filters'  => $request->only(['search', 'product_id', 'status', 'expiring_soon']),
         ]);
@@ -95,11 +96,25 @@ class BatchController extends Controller
             'initial_quantity'  => 'required|integer|min:0',
             'remaining_quantity'=> 'required|integer|min:0',
             'cost_price'        => 'nullable|numeric|min:0',
+            'sale_price'        => 'nullable|numeric|min:0',
             'notes'             => 'nullable|string|max:1000',
             'status'            => 'required|in:active,depleted,expired',
         ]);
 
         $batch->update($validated);
+
+        // Si el producto no tiene precio de costo o venta, tomarlo del lote
+        $product = $batch->product;
+        $changes = [];
+        if (!empty($validated['cost_price']) && (!$product->cost_price || $product->cost_price == 0)) {
+            $changes['cost_price'] = $validated['cost_price'];
+        }
+        if (!empty($validated['sale_price']) && (!$product->sale_price || $product->sale_price == 0)) {
+            $changes['sale_price'] = $validated['sale_price'];
+        }
+        if (!empty($changes)) {
+            $product->update($changes);
+        }
 
         return redirect("/lotes/producto/{$batch->product_id}")
             ->with('success', 'Lote actualizado correctamente.');
