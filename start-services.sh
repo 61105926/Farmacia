@@ -60,10 +60,9 @@ echo "App key generated successfully"
 echo "Testing database connection..."
 php artisan tinker --execute="DB::connection()->getPdo(); echo 'Database connected successfully';"
 
-# Run fresh migrations with seeders (for Coolify deployment)
-# This will drop all tables and recreate them with seed data
-echo "Running fresh migrations with seeders..."
-php artisan migrate:fresh --seed --force
+# Ejecutar solo migraciones pendientes (NO borra datos existentes)
+echo "Running migrations..."
+php artisan migrate --force
 
 # Set proper permissions
 chown -R www-data:www-data /var/www/html/storage
