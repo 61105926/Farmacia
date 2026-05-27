@@ -64,6 +64,10 @@ php artisan tinker --execute="DB::connection()->getPdo(); echo 'Database connect
 echo "Running migrations..."
 php artisan migrate --force
 
+# Crear symlink de storage para archivos subidos (logos, etc.)
+echo "Creating storage link..."
+php artisan storage:link --force
+
 # Set proper permissions
 chown -R www-data:www-data /var/www/html/storage
 chown -R www-data:www-data /var/www/html/bootstrap/cache

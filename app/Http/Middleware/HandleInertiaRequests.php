@@ -111,16 +111,20 @@ class HandleInertiaRequests extends Middleware
             ],
             'csrf_token' => csrf_token(),
             'system_settings' => fn () => (function () {
-                $s = SystemSetting::current();
-                return [
-                    'site_name'      => $s->site_name,
-                    'logo_url'       => $s->logo_path
-                        ? \Storage::disk('public')->url($s->logo_path)
-                        : null,
-                    'logo_icon_url'  => $s->logo_icon_path
-                        ? \Storage::disk('public')->url($s->logo_icon_path)
-                        : null,
-                ];
+                try {
+                    $s = SystemSetting::current();
+                    return [
+                        'site_name'     => $s->site_name,
+                        'logo_url'      => $s->logo_path
+                            ? \Storage::disk('public')->url($s->logo_path)
+                            : null,
+                        'logo_icon_url' => $s->logo_icon_path
+                            ? \Storage::disk('public')->url($s->logo_icon_path)
+                            : null,
+                    ];
+                } catch (\Exception $e) {
+                    return ['site_name' => 'SISPANDO', 'logo_url' => null, 'logo_icon_url' => null];
+                }
             })(),
         ];
     }
