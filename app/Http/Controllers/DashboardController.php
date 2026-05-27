@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\Presale;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Receivable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -71,6 +72,14 @@ class DashboardController extends Controller
                 'alerts' => $this->sanitizeData($alerts),
                 'performanceMetrics' => $this->sanitizeData($performanceMetrics),
                 'expiringProducts' => $this->sanitizeData($expiringProducts),
+                // Analytics
+                'analyticsKpis'       => $this->sanitizeData($this->getAnalyticsKpis()),
+                'monthlyChartData'    => $this->sanitizeData($this->getMonthlyChartData()),
+                'periodComparison'    => $this->sanitizeData($this->getPeriodComparisonData()),
+                'receivablesBreakdown'=> $this->sanitizeData($this->getReceivablesBreakdown()),
+                'salesProjection'     => $this->sanitizeData($this->getSalesProjection()),
+                'receivablesProjection'=> $this->sanitizeData($this->getReceivablesProjection()),
+                'churnedClients'      => $this->sanitizeData($this->getChurnedClients()),
             ]);
             
         } catch (\Exception $e) {
@@ -430,6 +439,236 @@ class DashboardController extends Controller
         ];
     }
     
+    // ─── ANALYTICS ────────────────────────────────────────────────────────────
+
+    private function getAnalyticsKpis(): array
+    {
+        $now         = Carbon::now();
+        $curFrom     = $now->copy()->startOfMonth();
+        $curTo       = $now->copy()->endOfMonth();
+        $lastFrom    = $now->copy()->subMonth()->startOfMonth();
+        $lastTo      = $now->copy()->subMonth()->endOfMonth();
+
+        $ventasMes   = Sale::whereBetween('created_at', [$curFrom, $curTo])->where('status', '!=', 'cancelled')->sum('total') ?? 0;
+        $ventasAnt   = Sale::whereBetween('created_at', [$lastFrom, $lastTo])->where('status', '!=', 'cancelled')->sum('total') ?? 0;
+        $cantMes     = Sale::whereBetween('created_at', [$curFrom, $curTo])->where('status', '!=', 'cancelled')->count();
+        $cantAnt     = Sale::whereBetween('created_at', [$lastFrom, $lastTo])->where('status', '!=', 'cancelled')->count();
+
+        $cobrosMes   = Payment::whereBetween('payment_date', [$curFrom, $curTo])->where('status', 'completed')->sum('amount') ?? 0;
+        $cobrosAnt   = Payment::whereBetween('payment_date', [$lastFrom, $lastTo])->where('status', 'completed')->sum('amount') ?? 0;
+
+        $porCobrar   = Receivable::whereIn('status', ['pending', 'partial'])->sum('balance') ?? 0;
+        $vencido     = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
+            ->where('due_date', '<', $now)->sum('balance') ?? 0;
+        $clientesVenc = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
+            ->where('due_date', '<', $now)->distinct('client_id')->count('client_id');
+
+        return [
+            'ventas_mes'          => round($ventasMes, 2),
+            'ventas_anterior'     => round($ventasAnt, 2),
+            'ventas_growth'       => $this->growthPercent($ventasAnt, $ventasMes),
+            'cant_ventas_mes'     => $cantMes,
+            'cant_growth'         => $this->growthPercent($cantAnt, $cantMes),
+            'cobros_mes'          => round($cobrosMes, 2),
+            'cobros_anterior'     => round($cobrosAnt, 2),
+            'cobros_growth'       => $this->growthPercent($cobrosAnt, $cobrosMes),
+            'total_por_cobrar'    => round($porCobrar, 2),
+            'total_vencido'       => round($vencido, 2),
+            'clientes_vencidos'   => $clientesVenc,
+        ];
+    }
+
+    private function getMonthlyChartData(): array
+    {
+        $names = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        $data  = [];
+
+        for ($i = 11; $i >= 0; $i--) {
+            $d    = Carbon::now()->subMonths($i);
+            $from = $d->copy()->startOfMonth();
+            $to   = $d->copy()->endOfMonth();
+
+            $ventas  = Sale::whereBetween('created_at', [$from, $to])->where('status', '!=', 'cancelled')->sum('total') ?? 0;
+            $cobros  = Payment::whereBetween('payment_date', [$from, $to])->where('status', 'completed')->sum('amount') ?? 0;
+            $presales = Presale::whereBetween('created_at', [$from, $to])->where('status', '!=', 'cancelled')->count();
+
+            $data[] = [
+                'label'    => $names[$d->month - 1] . ' ' . $d->year,
+                'ventas'   => round($ventas, 2),
+                'cobros'   => round($cobros, 2),
+                'presales' => $presales,
+            ];
+        }
+
+        return $data;
+    }
+
+    private function getPeriodComparisonData(): array
+    {
+        $names    = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        $curYear  = Carbon::now()->year;
+        $prevYear = $curYear - 1;
+        $curMonth = Carbon::now()->month;
+
+        $months = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $curVal = $m <= $curMonth
+                ? round(Sale::whereYear('created_at', $curYear)->whereMonth('created_at', $m)->where('status', '!=', 'cancelled')->sum('total') ?? 0, 2)
+                : null;
+            $prevVal = round(Sale::whereYear('created_at', $prevYear)->whereMonth('created_at', $m)->where('status', '!=', 'cancelled')->sum('total') ?? 0, 2);
+
+            $months[] = [
+                'month'         => $names[$m - 1],
+                'current_year'  => $curVal,
+                'previous_year' => $prevVal,
+            ];
+        }
+
+        return [
+            'current_year'  => $curYear,
+            'previous_year' => $prevYear,
+            'months'        => $months,
+        ];
+    }
+
+    private function getReceivablesBreakdown(): array
+    {
+        $today = Carbon::today();
+
+        return [
+            'al_dia'         => round(Receivable::whereIn('status', ['pending', 'partial'])->where('due_date', '>=', $today)->sum('balance') ?? 0, 2),
+            'vencido_30'     => round(Receivable::whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', $today)->where('due_date', '>=', $today->copy()->subDays(30))->sum('balance') ?? 0, 2),
+            'vencido_60'     => round(Receivable::whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', $today->copy()->subDays(30))->where('due_date', '>=', $today->copy()->subDays(60))->sum('balance') ?? 0, 2),
+            'vencido_mas60'  => round(Receivable::whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', $today->copy()->subDays(60))->sum('balance') ?? 0, 2),
+        ];
+    }
+
+    private function getSalesProjection(): array
+    {
+        $names = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+        // Base: promedio de últimos 3 meses completados
+        $history = [];
+        for ($i = 3; $i >= 1; $i--) {
+            $d   = Carbon::now()->subMonths($i);
+            $val = Sale::whereYear('created_at', $d->year)->whereMonth('created_at', $d->month)
+                ->where('status', '!=', 'cancelled')->sum('total') ?? 0;
+            $history[] = $val;
+        }
+        $avg   = count($history) > 0 ? array_sum($history) / count($history) : 0;
+        $trend = (count($history) >= 2 && $history[0] > 0)
+            ? ($history[count($history) - 1] - $history[0]) / $history[0] / count($history)
+            : 0;
+        $trend = max(-0.2, min(0.2, $trend)); // limitar ±20%
+
+        $projection = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $d   = Carbon::now()->addMonths($i);
+            $est = round($avg * (1 + $trend * $i), 2);
+            $projection[] = [
+                'label'     => $names[$d->month - 1] . ' ' . $d->year,
+                'estimated' => max(0, $est),
+                'growth'    => round($trend * 100, 1),
+            ];
+        }
+
+        return [
+            'avg_base'   => round($avg, 2),
+            'trend_pct'  => round($trend * 100, 1),
+            'projection' => $projection,
+        ];
+    }
+
+    private function getReceivablesProjection(): array
+    {
+        $names = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        $windows = [
+            ['label' => 'Próximos 30 días',  'from' => Carbon::today(),          'to' => Carbon::today()->addDays(30)],
+            ['label' => 'Próximos 31-60 días','from' => Carbon::today()->addDays(31), 'to' => Carbon::today()->addDays(60)],
+            ['label' => 'Próximos 61-90 días','from' => Carbon::today()->addDays(61), 'to' => Carbon::today()->addDays(90)],
+        ];
+
+        $projection = [];
+        foreach ($windows as $w) {
+            $amount = Receivable::whereIn('status', ['pending', 'partial'])
+                ->whereBetween('due_date', [$w['from'], $w['to']])
+                ->sum('balance') ?? 0;
+            $count = Receivable::whereIn('status', ['pending', 'partial'])
+                ->whereBetween('due_date', [$w['from'], $w['to']])
+                ->count();
+            $projection[] = [
+                'label'  => $w['label'],
+                'amount' => round($amount, 2),
+                'count'  => $count,
+            ];
+        }
+
+        // Próximos 6 meses detallado (para gráfico)
+        $monthly = [];
+        for ($i = 0; $i <= 5; $i++) {
+            $d    = Carbon::now()->addMonths($i);
+            $from = $d->copy()->startOfMonth();
+            $to   = $d->copy()->endOfMonth();
+            // Solo futuro
+            if ($from->lt(Carbon::today())) $from = Carbon::today();
+            if ($from->gt($to)) continue;
+
+            $amount = Receivable::whereIn('status', ['pending', 'partial'])
+                ->whereBetween('due_date', [$from, $to])
+                ->sum('balance') ?? 0;
+
+            $monthly[] = [
+                'label'  => $names[$d->month - 1] . ' ' . $d->year,
+                'amount' => round($amount, 2),
+            ];
+        }
+
+        return [
+            'windows' => $projection,
+            'monthly' => $monthly,
+            'total_proyectado' => round(array_sum(array_column($projection, 'amount')), 2),
+        ];
+    }
+
+    private function getChurnedClients(): array
+    {
+        // Clientes que compraron antes del mes pasado pero no tienen ventas en los últimos 60 días
+        $cutoff     = Carbon::now()->subDays(60);
+        $prevCutoff = Carbon::now()->subDays(180); // solo clientes que compraron en los últimos 6 meses
+
+        $churnedIds = DB::table('sales')
+            ->select('client_id')
+            ->where('status', '!=', 'cancelled')
+            ->where('created_at', '>=', $prevCutoff)
+            ->groupBy('client_id')
+            ->havingRaw('MAX(created_at) < ?', [$cutoff])
+            ->pluck('client_id')
+            ->toArray();
+
+        if (empty($churnedIds)) return [];
+
+        return Client::whereIn('id', $churnedIds)
+            ->limit(10)
+            ->get()
+            ->map(function ($client) {
+                $lastSale = Sale::where('client_id', $client->id)
+                    ->where('status', '!=', 'cancelled')
+                    ->latest()
+                    ->first();
+                $daysSince = $lastSale ? (int) Carbon::parse($lastSale->created_at)->diffInDays(now()) : null;
+
+                return [
+                    'id'            => $client->id,
+                    'name'          => $client->business_name ?? $client->nombre_comercial ?? 'Sin nombre',
+                    'last_sale_date'=> $lastSale?->created_at?->format('Y-m-d'),
+                    'last_sale_amount'=> $lastSale ? round($lastSale->total, 2) : 0,
+                    'days_since'    => $daysSince,
+                ];
+            })->toArray();
+    }
+
+    // ─── END ANALYTICS ────────────────────────────────────────────────────────
+
     /**
      * Sanitizar datos para evitar valores null que causen problemas con Inertia
      */

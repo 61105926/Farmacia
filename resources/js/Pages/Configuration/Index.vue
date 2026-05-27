@@ -204,6 +204,89 @@
             </div>
           </div>
 
+          <!-- Sistema (solo admin) -->
+          <div v-if="activeSection === 'system' && isAdmin" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">Configuración del Sistema</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Personaliza el nombre y los logos que aparecen en la interfaz</p>
+
+            <div class="space-y-6">
+              <!-- Nombre del sistema -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Nombre del sistema
+                </label>
+                <input
+                  type="text"
+                  v-model="systemForm.site_name"
+                  maxlength="80"
+                  class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary-500 focus:ring-primary-500"
+                  placeholder="SISPANDO"
+                />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Se muestra en el pie del menú lateral
+                </p>
+              </div>
+
+              <!-- Logo principal -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Logo principal (barra lateral expandida)
+                </label>
+                <div class="flex items-start gap-4">
+                  <div class="w-40 h-16 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-primary-700">
+                    <img v-if="logoPreview" :src="logoPreview" class="h-12 object-contain" alt="Logo preview" />
+                    <ImageIcon v-else class="w-8 h-8 text-gray-400" />
+                  </div>
+                  <div class="flex-1">
+                    <label class="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded-md cursor-pointer transition-colors w-fit">
+                      <Upload class="w-4 h-4" />
+                      Subir imagen
+                      <input type="file" class="hidden" accept="image/*" @change="onLogoChange" />
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      PNG, JPG, SVG o WEBP · máx. 2 MB<br>
+                      Recomendado: imagen horizontal con texto (ej. 300×60 px)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Logo icono -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Ícono (barra lateral colapsada)
+                </label>
+                <div class="flex items-start gap-4">
+                  <div class="w-16 h-16 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center overflow-hidden bg-primary-700">
+                    <img v-if="logoIconPreview" :src="logoIconPreview" class="w-10 h-10 object-contain rounded" alt="Icon preview" />
+                    <ImageIcon v-else class="w-6 h-6 text-gray-400" />
+                  </div>
+                  <div class="flex-1">
+                    <label class="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded-md cursor-pointer transition-colors w-fit">
+                      <Upload class="w-4 h-4" />
+                      Subir ícono
+                      <input type="file" class="hidden" accept="image/*" @change="onLogoIconChange" />
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      PNG, JPG, SVG o WEBP · máx. 2 MB<br>
+                      Recomendado: imagen cuadrada (ej. 64×64 px)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botón guardar -->
+              <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  @click="saveSystemSettings"
+                  class="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md transition-colors"
+                >
+                  Guardar configuración del sistema
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Preferencias -->
           <div v-if="activeSection === 'preferences'" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Preferencias</h2>
@@ -300,15 +383,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import { router, useForm } from '@inertiajs/vue3'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { router, useForm, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
-import { 
-  Palette, 
-  Bell, 
-  Settings, 
-  Sun, 
-  Moon, 
+import {
+  Palette,
+  Bell,
+  Settings,
+  Sun,
+  Moon,
   Monitor,
   Check,
   ShoppingCart,
@@ -316,11 +399,20 @@ import {
   CreditCard,
   BarChart,
   Users,
-  UserCheck
+  UserCheck,
+  Building2,
+  Upload,
+  ImageIcon
 } from 'lucide-vue-next'
 import { useAlert } from '@/composables/useAlert'
 
 const { showAlert } = useAlert()
+
+const page = usePage()
+const isAdmin = computed(() => {
+  const roles = Array.isArray(page.props.auth?.roles) ? page.props.auth.roles : []
+  return roles.some(r => String(r).toLowerCase() === 'administrador')
+})
 
 const props = defineProps({
   settings: {
@@ -331,11 +423,17 @@ const props = defineProps({
 
 const activeSection = ref('appearance')
 
-const sections = [
-  { id: 'appearance', name: 'Apariencia', icon: Palette },
-  { id: 'notifications', name: 'Notificaciones', icon: Bell },
-  { id: 'preferences', name: 'Preferencias', icon: Settings },
-]
+const sections = computed(() => {
+  const base = [
+    { id: 'appearance', name: 'Apariencia', icon: Palette },
+    { id: 'notifications', name: 'Notificaciones', icon: Bell },
+    { id: 'preferences', name: 'Preferencias', icon: Settings },
+  ]
+  if (isAdmin.value) {
+    base.push({ id: 'system', name: 'Sistema', icon: Building2 })
+  }
+  return base
+})
 
 const themes = [
   {
@@ -415,6 +513,50 @@ const notificationModules = [
     icon: BarChart
   }
 ]
+
+// System settings form (admin only)
+const systemSettings = computed(() => page.props.system_settings ?? {})
+const systemForm = ref({
+  site_name: systemSettings.value.site_name ?? 'SISPANDO',
+  logo: null,
+  logo_icon: null,
+})
+const logoPreview     = ref(systemSettings.value.logo_url ?? null)
+const logoIconPreview = ref(systemSettings.value.logo_icon_url ?? null)
+
+const onLogoChange = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  systemForm.value.logo = file
+  logoPreview.value = URL.createObjectURL(file)
+}
+
+const onLogoIconChange = (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  systemForm.value.logo_icon = file
+  logoIconPreview.value = URL.createObjectURL(file)
+}
+
+const saveSystemSettings = () => {
+  const data = new FormData()
+  data.append('site_name', systemForm.value.site_name)
+  if (systemForm.value.logo)      data.append('logo', systemForm.value.logo)
+  if (systemForm.value.logo_icon) data.append('logo_icon', systemForm.value.logo_icon)
+  data.append('_method', 'POST')
+
+  router.post('/configuracion/system', data, {
+    preserveScroll: true,
+    onSuccess: () => {
+      systemForm.value.logo = null
+      systemForm.value.logo_icon = null
+      showAlert({ type: 'success', title: 'Sistema actualizado', message: 'La configuración del sistema se guardó correctamente' })
+    },
+    onError: () => {
+      showAlert({ type: 'error', title: 'Error', message: 'No se pudo guardar la configuración del sistema' })
+    }
+  })
+}
 
 const pushPermissionGranted = ref(false)
 const pushPermissionDenied = ref(false)

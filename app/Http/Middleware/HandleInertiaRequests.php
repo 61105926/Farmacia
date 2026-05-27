@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\SystemSetting;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -109,6 +110,18 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             'csrf_token' => csrf_token(),
+            'system_settings' => fn () => (function () {
+                $s = SystemSetting::current();
+                return [
+                    'site_name'      => $s->site_name,
+                    'logo_url'       => $s->logo_path
+                        ? \Storage::disk('public')->url($s->logo_path)
+                        : null,
+                    'logo_icon_url'  => $s->logo_icon_path
+                        ? \Storage::disk('public')->url($s->logo_icon_path)
+                        : null,
+                ];
+            })(),
         ];
     }
 }

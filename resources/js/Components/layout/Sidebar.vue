@@ -5,14 +5,14 @@
       <div class="flex items-center space-x-2" v-if="!isCollapsed">
         <img
           :src="logoNombre"
-          alt="Farmacia Pando Central"
+          :alt="siteName"
           class="h-12 object-contain"
         />
       </div>
       <div class="flex items-center justify-center" v-else>
         <img
           :src="logoIcon"
-          alt="Farmacia Logo"
+          :alt="siteName"
           class="w-10 h-10 object-contain rounded-lg"
         />
       </div>
@@ -142,7 +142,7 @@
     <div class="p-4 border-t border-primary-800 bg-primary-800">
       <div v-if="!isCollapsed" class="text-center">
         <p class="text-xs text-accent-400">Versión 3.0</p>
-        <p class="text-xs text-accent-300">SISPANDO</p>
+        <p class="text-xs text-accent-300">{{ siteName }}</p>
       </div>
     </div>
   </aside>
@@ -152,8 +152,8 @@
 import { computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import SidebarItem from './SidebarItem.vue'
-import logoNombreImg from '@/../assets/images/logo-nombre.jpeg'
-import logoIconImg from '@/../assets/images/logo.jpeg'
+import defaultLogoNombre from '@/../assets/images/logo-nombre.jpeg'
+import defaultLogoIcon from '@/../assets/images/logo.jpeg'
 
 defineProps({
   isCollapsed: {
@@ -164,10 +164,13 @@ defineProps({
 
 defineEmits(['toggle'])
 
-const logoNombre = logoNombreImg
-const logoIcon = logoIconImg
-
 const page = usePage()
+
+const systemSettings = computed(() => page.props.system_settings ?? {})
+const siteName     = computed(() => systemSettings.value.site_name ?? 'SISPANDO')
+const logoNombre   = computed(() => systemSettings.value.logo_url      ?? defaultLogoNombre)
+const logoIcon     = computed(() => systemSettings.value.logo_icon_url ?? defaultLogoIcon)
+
 const isAdmin = computed(() => {
   try {
     const roles = Array.isArray(page.props.auth?.roles) ? page.props.auth.roles : []

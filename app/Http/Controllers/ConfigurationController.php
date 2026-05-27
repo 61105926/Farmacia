@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\Auth;
+use App\Models\SystemSetting;
 
 class ConfigurationController extends Controller
 {
@@ -98,5 +99,45 @@ class ConfigurationController extends Controller
             'message' => 'Tema actualizado correctamente',
             'theme' => $request->theme,
         ]);
+    }
+
+    /**
+     * Actualizar configuración global del sistema (nombre y logos)
+     */
+    public function updateSystem(Request $request)
+    {
+        $request->validate([
+            'site_name'      => 'nullable|string|max:80',
+            'logo'           => 'nullable|image|mimes:jpeg,jpg,png,gif,svg,webp|max:2048',
+            'logo_icon'      => 'nullable|image|mimes:jpeg,jpg,png,gif,svg,webp|max:2048',
+        ]);
+
+        $settings = SystemSetting::firstOrCreate([]);
+
+        if ($request->filled('site_name')) {
+            $settings->site_name = $request->site_name;
+        }
+
+        if ($request->hasFile('logo') && $request->file('logo')->isValid()) {
+            // Eliminar logo anterior si existe y no es el predeterminado
+            if ($settings->logo_path && \Storage::disk('public')->exists($settings->logo_path)) {
+                \Storage::disk('public')->delete($settings->logo_path);
+            }
+            $path = $request->file('logo')->store('logos', 'public');
+            $settings->logo_path = $path;
+        }
+
+        if ($request->hasFile('logo_icon') && $request->file('logo_icon')->isValid()) {
+            if ($settings->logo_icon_path && \Storage::disk('public')->exists($settings->logo_icon_path)) {
+                \Storage::disk('public')->delete($settings->logo_icon_path);
+            }
+            $path = $request->file('logo_icon')->store('logos', 'public');
+            $settings->logo_icon_path = $path;
+        }
+
+        $settings->save();
+        SystemSetting::clearCache();
+
+        return back()->with('success', 'Configuración del sistema actualizada correctamente');
     }
 }
