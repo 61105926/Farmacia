@@ -10,7 +10,10 @@
       "Bash(grep -n 'protected $fillable' /Applications/MAMP/htdocs/Farmacia/app/Models/Client.php -A 30)",
       "Bash(grep -n 'protected $fillable' /Applications/MAMP/htdocs/Farmacia/app/Models/Client.php)",
       "Bash(git commit -m 'feat: add professional PDF reports with DomPDF *)",
-      "Bash(git commit -m 'feat: PDF ruta de cobros por fecha seleccionable *)"
+      "Bash(git commit -m 'feat: PDF ruta de cobros por fecha seleccionable *)",
+      "Bash(composer --version)",
+      "Bash(php --version)",
+      "Bash(/Applications/MAMP/bin/php/php8.3.30/bin/php /Applications/MAMP/bin/composer require barryvdh/laravel-dompdf:^3.0 --no-interaction --no-scripts)"
     ]
   }
 }

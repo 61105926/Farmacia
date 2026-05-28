@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe de Entregables — SISPANDO</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: #1e293b;
+    background: #f8fafc;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #fff;
+    padding: 0;
+  }
+
+  /* ── Cover ── */
+  .cover {
+    background: linear-gradient(135deg, #1e40af 0%, #0f766e 100%);
+    color: #fff;
+    padding: 60px 48px 48px;
+    min-height: 297mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .cover-logo {
+    width: 56px; height: 56px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 800;
+    margin-bottom: 48px;
+  }
+  .cover h1 { font-size: 36px; font-weight: 800; line-height: 1.2; margin-bottom: 12px; }
+  .cover h2 { font-size: 18px; font-weight: 400; opacity: 0.8; margin-bottom: 32px; }
+  .cover-divider { width: 60px; height: 3px; background: rgba(255,255,255,0.4); border-radius: 2px; margin-bottom: 32px; }
+  .cover-desc { font-size: 13px; opacity: 0.85; line-height: 1.7; max-width: 420px; }
+
+  .cover-meta { margin-top: auto; }
+  .cover-meta table { border-collapse: collapse; width: 100%; }
+  .cover-meta td { padding: 6px 0; font-size: 11px; vertical-align: top; }
+  .cover-meta td:first-child { color: rgba(255,255,255,0.6); width: 120px; }
+  .cover-meta td:last-child { font-weight: 600; color: #fff; }
+
+  .cover-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 99px;
+    padding: 4px 14px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  /* ── Content pages ── */
+  .content-page {
+    padding: 40px 48px;
+    background: #fff;
+    page-break-before: always;
+  }
+
+  /* ── Section header ── */
+  .section-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #94a3b8;
+    margin-bottom: 6px;
+  }
+  .section-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 4px;
+  }
+  .section-sub {
+    font-size: 11px;
+    color: #64748b;
+    margin-bottom: 24px;
+  }
+  .section-divider {
+    height: 2px;
+    background: linear-gradient(90deg, #1e40af, #0f766e, transparent);
+    border-radius: 1px;
+    margin-bottom: 28px;
+  }
+
+  /* ── Module block ── */
+  .module {
+    margin-bottom: 32px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .module-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+  }
+  .module-header.blue   { background: linear-gradient(90deg, #eff6ff, #f0fdf4); border-bottom: 1px solid #dbeafe; }
+  .module-header.green  { background: linear-gradient(90deg, #f0fdf4, #ecfdf5); border-bottom: 1px solid #bbf7d0; }
+  .module-header.purple { background: linear-gradient(90deg, #f5f3ff, #fdf4ff); border-bottom: 1px solid #e9d5ff; }
+  .module-header.amber  { background: linear-gradient(90deg, #fffbeb, #fef9c3); border-bottom: 1px solid #fde68a; }
+  .module-header.teal   { background: linear-gradient(90deg, #f0fdfa, #ecfdf5); border-bottom: 1px solid #99f6e4; }
+
+  .module-num {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  .bg-blue   { background: #1e40af; }
+  .bg-green  { background: #059669; }
+  .bg-purple { background: #7c3aed; }
+  .bg-amber  { background: #d97706; }
+  .bg-teal   { background: #0f766e; }
+
+  .module-title { font-size: 13px; font-weight: 700; color: #1e293b; }
+  .module-desc  { font-size: 10px; color: #64748b; margin-top: 1px; }
+
+  .module-badge {
+    margin-left: auto;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-done    { background: #dcfce7; color: #166534; }
+  .badge-pending { background: #fef9c3; color: #92400e; }
+
+  /* ── Feature rows ── */
+  .feature-table { width: 100%; border-collapse: collapse; }
+  .feature-table tr:not(:last-child) td { border-bottom: 1px solid #f1f5f9; }
+  .feature-table td { padding: 9px 18px; vertical-align: middle; font-size: 10.5px; }
+  .feature-table td:first-child { color: #475569; width: 42%; }
+  .feature-table td:nth-child(2) { color: #64748b; width: 28%; font-size: 10px; }
+  .feature-table td:last-child { width: 30%; }
+  .feature-table tr:nth-child(even) td { background: #fafafa; }
+
+  .check { color: #16a34a; font-weight: 700; }
+  .clock { color: #d97706; font-weight: 700; }
+  .dot   { color: #94a3b8; }
+
+  .feat-name { font-weight: 600; color: #1e293b; }
+  .feat-url  { font-size: 9.5px; color: #6366f1; font-family: monospace; }
+
+  /* ── Summary table ── */
+  .summary-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .summary-table thead tr { background: #1e293b; color: #fff; }
+  .summary-table thead th { padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
+  .summary-table tbody tr:nth-child(even) { background: #f8fafc; }
+  .summary-table tbody td { padding: 9px 14px; border-bottom: 1px solid #e2e8f0; font-size: 10.5px; }
+  .summary-table tfoot tr { background: #0f172a; color: #fff; }
+  .summary-table tfoot td { padding: 10px 14px; font-weight: 700; font-size: 11px; }
+
+  /* ── Stats row ── */
+  .stats-row { display: flex; gap: 12px; margin-bottom: 28px; }
+  .stat-card {
+    flex: 1;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .stat-val { font-size: 28px; font-weight: 800; }
+  .stat-lbl { font-size: 9.5px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+  .blue-val  { color: #1e40af; }
+  .green-val { color: #059669; }
+  .amber-val { color: #d97706; }
+  .gray-val  { color: #64748b; }
+
+  /* ── Locations table ── */
+  .loc-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  .loc-table thead tr { background: #0f766e; color: #fff; }
+  .loc-table thead th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 600; }
+  .loc-table tbody tr:nth-child(even) { background: #f0fdf4; }
+  .loc-table tbody td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; }
+  .loc-table tfoot tr { background: #1e293b; color: #fff; font-weight: 700; }
+  .loc-table tfoot td { padding: 9px 12px; }
+
+  /* ── Footer ── */
+  .page-footer {
+    margin-top: 40px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: #94a3b8;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; }
+    .no-print { display: none; }
+  }
+
+  /* ── Screen only ── */
+  @media screen {
+    body { padding: 24px 0 60px; }
+    .print-btn {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #1e40af; color: #fff;
+      border: none; border-radius: 12px;
+      padding: 14px 24px; font-size: 14px; font-weight: 600;
+      cursor: pointer; box-shadow: 0 4px 20px rgba(30,64,175,0.4);
+      display: flex; align-items: center; gap: 8px;
+      transition: all .2s;
+    }
+    .print-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ PORTADA ══ -->
+<div class="page">
+  <div class="cover">
+    <div>
+      <div class="cover-logo">S</div>
+      <div class="cover-badge">Informe de Entregables</div>
+      <h1>Sistema de Gestión<br>Farmacéutica</h1>
+      <h2>Módulo Analítico &amp; Reportes</h2>
+      <div class="cover-divider"></div>
+      <p class="cover-desc">
+        Documento técnico que detalla el desarrollo, alcance y estado de implementación
+        de los 5 módulos analíticos integrados al sistema SISPANDO, incluyendo
+        dashboards interactivos, proyecciones, gráficos dinámicos y exportación de PDFs.
+      </p>
+    </div>
+    <div class="cover-meta">
+      <table>
+        <tr><td>Sistema</td><td>SISPANDO — Farmacia</td></tr>
+        <tr><td>Módulos</td><td>5 módulos analíticos</td></tr>
+        <tr><td>Funcionalidades</td><td>31 en total</td></tr>
+        <tr><td>Estado general</td><td>✅ Completado</td></tr>
+        <tr><td>Fecha</td><td>Mayo 2026</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESUMEN EJECUTIVO ══ -->
+<div class="page content-page">
+
+  <div class="section-label">Resumen Ejecutivo</div>
+  <div class="section-title">Visión General del Proyecto</div>
+  <div class="section-sub">Estado consolidado de todos los módulos desarrollados</div>
+  <div class="section-divider"></div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-val blue-val">5</div>
+      <div class="stat-lbl">Módulos entregados</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val green-val">31</div>
+      <div class="stat-lbl">Funcionalidades</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val amber-val">4</div>
+      <div class="stat-lbl">PDFs generables</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val gray-val">4</div>
+      <div class="stat-lbl">Gráficos interactivos</div>
+    </div>
+  </div>
+
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Módulo</th>
+        <th>Funcionalidades</th>
+        <th>Ubicación en el sistema</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1</strong></td>
+        <td><strong>Dashboard Analítico — KPIs</strong></td>
+        <td>5 indicadores clave</td>
+        <td>/dashboard</td>
+        <td><span class="check">✅ Completo</span></td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td><strong>Gráficos Dinámicos</strong></td>
+        <td>4 gráficos interactivos</td>
+        <td>/dashboard</td>
+        <td><span class="check">✅ Completo</span></td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td><strong>Comparativa de Ventas</strong></td>
+        <td>2 vistas comparativas</td>
+        <td>/dashboard</td>
+        <td><span class="check">✅ Completo</span></td>
+      </tr>
+      <tr>
+        <td><strong>4</strong></td>
+        <td><strong>Proyección de Cuentas por Cobrar</strong></td>
+        <td>9 funcionalidades + 3 PDFs</td>
+        <td>/dashboard · /pdf/*</td>
+        <td><span class="check">✅ Completo</span></td>
+      </tr>
+      <tr>
+        <td><strong>5</strong></td>
+        <td><strong>Proyección de Ventas Futuras</strong></td>
+        <td>9 funcionalidades + 1 PDF</td>
+        <td>/dashboard · /pdf/ventas</td>
+        <td><span class="check">✅ Completo</span></td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2">TOTAL</td>
+        <td>31 funcionalidades · 4 PDFs</td>
+        <td>6 URLs</td>
+        <td>✅ Entregado</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="page-footer">
+    <span>SISPANDO — Sistema de Gestión Farmacéutica</span>
+    <span>Informe de Entregables · Mayo 2026</span>
+  </div>
+</div>
+
+<!-- ══ MÓDULO 1 ══ -->
+<div class="page content-page">
+
+  <div class="section-label">Módulo 1 de 5</div>
+  <div class="section-title">Dashboard Analítico — KPIs</div>
+  <div class="section-sub">Indicadores clave de ventas y cobranzas en tiempo real</div>
+  <div class="section-divider"></div>
+
+  <div class="module">
+    <div class="module-header blue">
+      <div class="module-num bg-blue">1</div>
+      <div>
+        <div class="module-title">Dashboard Analítico — KPIs de Ventas y Cobranzas</div>
+        <div class="module-desc">Página principal del sistema · /dashboard</div>
+      </div>
+      <span class="module-badge badge-done">✅ Completo</span>
+    </div>
+    <table class="feature-table">
+      <tr>
+        <td><span class="feat-name">KPI: Ventas del mes</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Monto total + variación % vs mes anterior</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">KPI: Cobros del mes</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Pagos recibidos + variación % vs mes anterior</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">KPI: Total por cobrar</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Saldo activo pendiente total</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">KPI: Cartera vencida</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Monto vencido + conteo de clientes afectados</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">KPI: Cantidad de ventas</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> N° de transacciones del mes + variación %</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Indicadores visuales ↑↓</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Verde ↑ crecimiento · Rojo ↓ caída</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;margin-top:8px;">
+    <p style="font-size:10.5px;color:#166534;font-weight:600;margin-bottom:4px;">📍 Cómo acceder</p>
+    <p style="font-size:10px;color:#15803d;">Ingresar al sistema → Dashboard. Los KPIs se cargan automáticamente con datos reales de la base de datos al abrir la página.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>SISPANDO — Módulo 1: Dashboard Analítico</span>
+    <span>Mayo 2026</span>
+  </div>
+</div>
+
+<!-- ══ MÓDULO 2 ══ -->
+<div class="page content-page">
+
+  <div class="section-label">Módulo 2 de 5</div>
+  <div class="section-title">Gráficos Dinámicos — Visualización Interactiva</div>
+  <div class="section-sub">Gráficos Chart.js con datos en tiempo real e interacción del usuario</div>
+  <div class="section-divider"></div>
+
+  <div class="module">
+    <div class="module-header green">
+      <div class="module-num bg-green">2</div>
+      <div>
+        <div class="module-title">Gráficos Dinámicos e Interactivos</div>
+        <div class="module-desc">Dashboard principal · /dashboard · Chart.js v4</div>
+      </div>
+      <span class="module-badge badge-done">✅ Completo</span>
+    </div>
+    <table class="feature-table">
+      <tr>
+        <td><span class="feat-name">Gráfico de área: Ventas vs Cobros</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Tendencia mensual lado a lado</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Selector de período 3/6/12 meses</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Actualiza el gráfico en tiempo real</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Gráfico de dona: Distribución cartera</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Al día / Venc. 30 / Venc. 60 / Venc. +60</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Gráfico de barras: Comparativa anual</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Año actual vs año anterior mes a mes</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Mini gráfico: Cobros futuros</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Barras de proyección 30/60/90 días</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Tooltips al pasar el cursor</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Valores exactos en moneda local (Bs)</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;margin-top:8px;">
+    <p style="font-size:10.5px;color:#1e40af;font-weight:600;margin-bottom:4px;">📍 Cómo acceder</p>
+    <p style="font-size:10px;color:#1d4ed8;">Dashboard → Los gráficos aparecen en la sección central. El selector de período (3/6/12 meses) está encima del gráfico de tendencia.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>SISPANDO — Módulo 2: Gráficos Dinámicos</span>
+    <span>Mayo 2026</span>
+  </div>
+</div>
+
+<!-- ══ MÓDULO 3 ══ -->
+<div class="page content-page">
+
+  <div class="section-label">Módulo 3 de 5</div>
+  <div class="section-title">Comparativa de Ventas — Comparación por Período</div>
+  <div class="section-sub">Análisis año actual vs año anterior para identificar tendencias y estacionalidad</div>
+  <div class="section-divider"></div>
+
+  <div class="module">
+    <div class="module-header purple">
+      <div class="module-num bg-purple">3</div>
+      <div>
+        <div class="module-title">Comparativa de Ventas por Período</div>
+        <div class="module-desc">Dashboard principal · /dashboard · 12 meses comparados</div>
+      </div>
+      <span class="module-badge badge-done">✅ Completo</span>
+    </div>
+    <table class="feature-table">
+      <tr>
+        <td><span class="feat-name">Gráfico barras: año actual vs anterior</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Azul = actual · Gris = anterior</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Comparativa mes a mes (12 meses)</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Ene–Dic con etiquetas y montos</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Cálculo automático de variación</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> % de crecimiento o caída por mes</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Datos desde base de datos real</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Sin datos de prueba, todo es real</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:14px 18px;margin-top:8px;">
+    <p style="font-size:10.5px;color:#6d28d9;font-weight:600;margin-bottom:4px;">📍 Cómo acceder</p>
+    <p style="font-size:10px;color:#7c3aed;">Dashboard → Sección "Comparativa de Ventas" (debajo del gráfico de tendencia). Se activa automáticamente cuando hay ventas de al menos 2 años distintos en el sistema.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>SISPANDO — Módulo 3: Comparativa de Ventas</span>
+    <span>Mayo 2026</span>
+  </div>
+</div>
+
+<!-- ══ MÓDULO 4 ══ -->
+<div class="page content-page">
+
+  <div class="section-label">Módulo 4 de 5</div>
+  <div class="section-title">Proyección de Cuentas por Cobrar</div>
+  <div class="section-sub">Proyección de cobros futuros + exportación PDF personalizada para trabajo de campo</div>
+  <div class="section-divider"></div>
+
+  <div class="module">
+    <div class="module-header amber">
+      <div class="module-num bg-amber">4</div>
+      <div>
+        <div class="module-title">Proyección de Cuentas por Cobrar + PDFs</div>
+        <div class="module-desc">Dashboard + 3 PDFs descargables</div>
+      </div>
+      <span class="module-badge badge-done">✅ Completo</span>
+    </div>
+    <table class="feature-table">
+      <tr>
+        <td><span class="feat-name">Ventanas 30 / 60 / 90 días</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Montos y cantidad de facturas por vencer</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Total proyectado 90 días</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Suma total de cobros esperados</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Selector de fecha Desde / Hasta</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Para generar ruta de cobros personalizada</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">PDF: Cartera de Cobranzas</span></td>
+        <td><span class="feat-url">/pdf/cartera</span></td>
+        <td><span class="check">✅</span> Aging al día/30/60/+60 + detalle clientes</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">PDF: Proyecciones generales</span></td>
+        <td><span class="feat-url">/pdf/proyecciones</span></td>
+        <td><span class="check">✅</span> KPIs + proyección cobros + clientes inactivos</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">PDF: Ruta de cobros por fecha</span></td>
+        <td><span class="feat-url">/pdf/ruta-cobros</span></td>
+        <td><span class="check">✅</span> Por cliente: dirección, teléfono, facturas</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Casilla de firma + monto cobrado</span></td>
+        <td><span class="feat-url">/pdf/ruta-cobros</span></td>
+        <td><span class="check">✅</span> Para uso en campo por el cobrador</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Resumen final del cobrador</span></td>
+        <td><span class="feat-url">/pdf/ruta-cobros</span></td>
+        <td><span class="check">✅</span> Total programado vs cobrado efectivo/transferencia</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Vencidas marcadas en rojo</span></td>
+        <td><span class="feat-url">Todos los PDFs</span></td>
+        <td><span class="check">✅</span> Prioridad visual para gestión urgente</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-top:8px;">
+    <p style="font-size:10.5px;color:#92400e;font-weight:600;margin-bottom:4px;">📍 Cómo acceder</p>
+    <p style="font-size:10px;color:#b45309;">Dashboard → botón "PDFs" (arriba derecha) → Cartera de Cobranzas o Proyecciones. Para Ruta de Cobros: ir al widget "Proyección de Cobros" → seleccionar fecha Desde/Hasta → Descargar PDF de Cobros.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>SISPANDO — Módulo 4: Proyección de Cuentas por Cobrar</span>
+    <span>Mayo 2026</span>
+  </div>
+</div>
+
+<!-- ══ MÓDULO 5 ══ -->
+<div class="page content-page">
+
+  <div class="section-label">Módulo 5 de 5</div>
+  <div class="section-title">Proyección de Ventas Futuras</div>
+  <div class="section-sub">Estimación basada en historial comercial + identificación de clientes inactivos</div>
+  <div class="section-divider"></div>
+
+  <div class="module">
+    <div class="module-header teal">
+      <div class="module-num bg-teal">5</div>
+      <div>
+        <div class="module-title">Proyección de Ventas + Clientes Inactivos + PDF</div>
+        <div class="module-desc">Dashboard + /pdf/ventas</div>
+      </div>
+      <span class="module-badge badge-done">✅ Completo</span>
+    </div>
+    <table class="feature-table">
+      <tr>
+        <td><span class="feat-name">Algoritmo de proyección 3 meses</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Escanea 12 meses, tendencia compuesta</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Mes en curso + proyección al cierre</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Extrapola el ritmo diario actual</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Mejor y peor mes del año</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Detección automática del historial</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Barras de progreso por mes</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Visual azul/índigo/violeta por mes</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Estado vacío informativo</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Mensaje claro cuando no hay datos</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Clientes inactivos +60 días</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Tabla con días sin comprar y badge</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Badge Crítico / En riesgo</span></td>
+        <td><span class="feat-url">/dashboard</span></td>
+        <td><span class="check">✅</span> Crítico +90 días · En riesgo 60–90</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">PDF: Reporte de Ventas mensual</span></td>
+        <td><span class="feat-url">/pdf/ventas</span></td>
+        <td><span class="check">✅</span> Tabla mes a mes con barras de progreso</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Top 10 clientes por ventas</span></td>
+        <td><span class="feat-url">/pdf/ventas</span></td>
+        <td><span class="check">✅</span> Con ranking ★★★ y barras</td>
+      </tr>
+      <tr>
+        <td><span class="feat-name">Top 10 productos más vendidos</span></td>
+        <td><span class="feat-url">/pdf/ventas</span></td>
+        <td><span class="check">✅</span> Por cantidad vendida + monto total</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:14px 18px;margin-top:8px;">
+    <p style="font-size:10.5px;color:#0f766e;font-weight:600;margin-bottom:4px;">📍 Cómo acceder</p>
+    <p style="font-size:10px;color:#0d9488;">Dashboard → widget "Proyección de Ventas" (sección central). Para PDF: botón "PDFs" → Reporte de Ventas. Tiene selector de período 3/6/12 meses.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>SISPANDO — Módulo 5: Proyección de Ventas Futuras</span>
+    <span>Mayo 2026</span>
+  </div>
+</div>
+
+<!-- ══ MAPA DE URLS ══ -->
+<div class="page content-page">
+
+  <div class="section-label">Apéndice Técnico</div>
+  <div class="section-title">Mapa de Funcionalidades por URL</div>
+  <div class="section-sub">Dónde vive cada funcionalidad dentro del sistema</div>
+  <div class="section-divider"></div>
+
+  <table class="loc-table">
+    <thead>
+      <tr>
+        <th>URL</th>
+        <th>Qué hace</th>
+        <th>Módulos que sirve</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>/dashboard</code></td>
+        <td>Dashboard analítico completo con KPIs, gráficos y widgets</td>
+        <td>Módulos 1, 2, 3, 4 y 5</td>
+      </tr>
+      <tr>
+        <td><code>/pdf/proyecciones</code></td>
+        <td>PDF: KPIs del mes + proyección ventas/cobros + clientes inactivos</td>
+        <td>Módulos 4 y 5</td>
+      </tr>
+      <tr>
+        <td><code>/pdf/ventas?months=12</code></td>
+        <td>PDF: Reporte mensual + top 10 clientes + top 10 productos</td>
+        <td>Módulo 5</td>
+      </tr>
+      <tr>
+        <td><code>/pdf/cartera</code></td>
+        <td>PDF: Antigüedad de saldos (aging) + detalle completo por cliente</td>
+        <td>Módulo 4</td>
+      </tr>
+      <tr>
+        <td><code>/pdf/ruta-cobros?from=&amp;to=</code></td>
+        <td>PDF: Ruta de campo por cliente con casilla de firma y cobro</td>
+        <td>Módulo 4</td>
+      </tr>
+      <tr>
+        <td><code>/configuracion</code></td>
+        <td>Cambiar logo y nombre del sistema (aparece en PDFs y menú)</td>
+        <td>Transversal</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:28px;">
+    <div class="section-label" style="margin-bottom:10px;">Archivos del sistema modificados / creados</div>
+    <table class="loc-table">
+      <thead>
+        <tr><th>Archivo</th><th>Tipo</th><th>Propósito</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>DashboardController.php</code></td><td>Backend</td><td>7 métodos analíticos nuevos (KPIs, gráficos, proyecciones)</td></tr>
+        <tr><td><code>PdfController.php</code></td><td>Backend</td><td>4 métodos de exportación PDF (cartera, ventas, proyecciones, ruta)</td></tr>
+        <tr><td><code>ConfigurationController.php</code></td><td>Backend</td><td>Gestión de logo y nombre del sistema</td></tr>
+        <tr><td><code>Dashboard.vue</code></td><td>Frontend</td><td>Reescritura completa con Chart.js y todos los widgets</td></tr>
+        <tr><td><code>pdf/cartera.blade.php</code></td><td>PDF</td><td>Template cartera de cobranzas</td></tr>
+        <tr><td><code>pdf/ventas.blade.php</code></td><td>PDF</td><td>Template reporte de ventas (2 páginas)</td></tr>
+        <tr><td><code>pdf/proyecciones.blade.php</code></td><td>PDF</td><td>Template proyecciones analíticas</td></tr>
+        <tr><td><code>pdf/ruta-cobros.blade.php</code></td><td>PDF</td><td>Template ruta de campo con firma</td></tr>
+        <tr><td><code>HandleInertiaRequests.php</code></td><td>Middleware</td><td>Props compartidas (logo, nombre del sistema)</td></tr>
+        <tr><td><code>web_clients_users.php</code></td><td>Rutas</td><td>5 rutas PDF + ruta de configuración</td></tr>
+        <tr><td><code>composer.json</code></td><td>Dependencias</td><td>DomPDF para generación de PDFs</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span>SISPANDO — Sistema de Gestión Farmacéutica</span>
+    <span>Informe de Entregables · Mayo 2026 · Confidencial</span>
+  </div>
+</div>
+
+<!-- Botón imprimir (solo en pantalla) -->
+<button class="print-btn no-print" onclick="window.print()">
+  🖨️ Imprimir / Guardar PDF
+</button>
+
+</body>
+</html>
