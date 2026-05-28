@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\Auth;
@@ -118,18 +121,24 @@ class ConfigurationController extends Controller
             $settings->site_name = $request->site_name;
         }
 
+        // Asegurar que el symlink y directorio existen
+        if (!File::exists(public_path('storage'))) {
+            Artisan::call('storage:link');
+        }
+        Storage::disk('public')->makeDirectory('logos');
+
         if ($request->hasFile('logo') && $request->file('logo')->isValid()) {
             // Eliminar logo anterior si existe y no es el predeterminado
-            if ($settings->logo_path && \Storage::disk('public')->exists($settings->logo_path)) {
-                \Storage::disk('public')->delete($settings->logo_path);
+            if ($settings->logo_path && Storage::disk('public')->exists($settings->logo_path)) {
+                Storage::disk('public')->delete($settings->logo_path);
             }
             $path = $request->file('logo')->store('logos', 'public');
             $settings->logo_path = $path;
         }
 
         if ($request->hasFile('logo_icon') && $request->file('logo_icon')->isValid()) {
-            if ($settings->logo_icon_path && \Storage::disk('public')->exists($settings->logo_icon_path)) {
-                \Storage::disk('public')->delete($settings->logo_icon_path);
+            if ($settings->logo_icon_path && Storage::disk('public')->exists($settings->logo_icon_path)) {
+                Storage::disk('public')->delete($settings->logo_icon_path);
             }
             $path = $request->file('logo_icon')->store('logos', 'public');
             $settings->logo_icon_path = $path;

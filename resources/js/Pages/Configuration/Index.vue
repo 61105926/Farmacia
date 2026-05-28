@@ -543,7 +543,10 @@ const saveSystemSettings = () => {
   data.append('site_name', systemForm.value.site_name)
   if (systemForm.value.logo)      data.append('logo', systemForm.value.logo)
   if (systemForm.value.logo_icon) data.append('logo_icon', systemForm.value.logo_icon)
-  data.append('_method', 'POST')
+
+  // CSRF token para uploads con FormData
+  const csrfMeta = document.querySelector('meta[name="csrf-token"]')
+  if (csrfMeta) data.append('_token', csrfMeta.getAttribute('content'))
 
   router.post('/configuracion/system', data, {
     preserveScroll: true,
