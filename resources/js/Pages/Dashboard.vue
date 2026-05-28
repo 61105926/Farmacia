@@ -217,25 +217,92 @@
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <p class="text-xs text-blue-600 dark:text-blue-400 font-medium">Base de cálculo</p>
-              <p class="text-sm text-blue-800 dark:text-blue-200">Promedio últimos 3 meses: <strong>{{ fmtCurrency(salesProjection.avg_base) }}</strong> · Tendencia: <strong :class="salesProjection.trend_pct >= 0 ? 'text-green-600' : 'text-red-500'">{{ salesProjection.trend_pct >= 0 ? '+' : '' }}{{ salesProjection.trend_pct }}% / mes</strong></p>
+
+            <!-- Sin datos -->
+            <div v-if="!salesProjection.has_data"
+              class="flex flex-col items-center justify-center py-6 text-center text-gray-400 dark:text-gray-500">
+              <TrendingUp class="w-10 h-10 mb-2 opacity-30" />
+              <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Sin historial de ventas</p>
+              <p class="text-xs mt-1">Registra ventas para activar la proyección automática.</p>
             </div>
-            <div class="space-y-3">
-              <div v-for="(item, i) in salesProjection.projection" :key="i"
-                class="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <div>
-                  <p class="font-medium text-gray-900 dark:text-white text-sm">{{ item.label }}</p>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Estimado</p>
+
+            <!-- Con datos -->
+            <template v-else>
+              <!-- Mes en curso -->
+              <div class="mb-4 grid grid-cols-2 gap-2">
+                <div class="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <p class="text-xs text-blue-600 dark:text-blue-400 font-medium">Mes en curso</p>
+                  <p class="text-lg font-bold text-blue-800 dark:text-blue-200">{{ fmtCurrency(salesProjection.current_month_val) }}</p>
+                  <p class="text-xs text-blue-500 dark:text-blue-400 mt-0.5">Proyectado al cierre: <strong>{{ fmtCurrency(salesProjection.current_projected) }}</strong></p>
                 </div>
-                <div class="text-right">
-                  <p class="font-bold text-gray-900 dark:text-white">{{ fmtCurrency(item.estimated) }}</p>
-                  <p class="text-xs" :class="item.growth >= 0 ? 'text-green-500' : 'text-red-500'">
-                    {{ item.growth >= 0 ? '↑' : '↓' }} {{ Math.abs(item.growth * (i+1)).toFixed(1) }}% vs base
+                <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 font-medium">Base de cálculo</p>
+                  <p class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ fmtCurrency(salesProjection.avg_base) }}</p>
+                  <p class="text-xs mt-0.5" :class="salesProjection.trend_pct >= 0 ? 'text-green-600' : 'text-red-500'">
+                    {{ salesProjection.trend_pct >= 0 ? '▲' : '▼' }} {{ Math.abs(salesProjection.trend_pct).toFixed(1) }}% tendencia mensual
                   </p>
                 </div>
               </div>
-            </div>
+
+              <!-- Mejor/peor mes -->
+              <div v-if="salesProjection.best_month || salesProjection.worst_month" class="mb-4 flex gap-2">
+                <div v-if="salesProjection.best_month" class="flex-1 flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-900">
+                  <span class="text-green-500 text-base">★</span>
+                  <div>
+                    <p class="text-xs text-green-600 dark:text-green-400 font-semibold">Mejor mes</p>
+                    <p class="text-xs text-green-800 dark:text-green-200">{{ salesProjection.best_month.label }}</p>
+                    <p class="text-xs font-bold text-green-700 dark:text-green-300">{{ fmtCurrency(salesProjection.best_month.value) }}</p>
+                  </div>
+                </div>
+                <div v-if="salesProjection.worst_month" class="flex-1 flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900">
+                  <span class="text-red-400 text-base">↓</span>
+                  <div>
+                    <p class="text-xs text-red-600 dark:text-red-400 font-semibold">Mes más bajo</p>
+                    <p class="text-xs text-red-800 dark:text-red-200">{{ salesProjection.worst_month.label }}</p>
+                    <p class="text-xs font-bold text-red-700 dark:text-red-300">{{ fmtCurrency(salesProjection.worst_month.value) }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Proyección mensual -->
+              <div class="space-y-2">
+                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Proyección</p>
+                <div v-for="(item, i) in salesProjection.projection" :key="i"
+                  :class="['rounded-lg border transition-colors hover:bg-gray-50 dark:hover:bg-gray-800',
+                    i === 0 ? 'border-blue-200 dark:border-blue-800' : i === 1 ? 'border-indigo-200 dark:border-indigo-800' : 'border-purple-200 dark:border-purple-800']">
+                  <div class="flex items-center justify-between px-3 py-2.5">
+                    <div class="flex items-center gap-2">
+                      <span :class="['w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white',
+                        i === 0 ? 'bg-blue-500' : i === 1 ? 'bg-indigo-500' : 'bg-purple-500']">{{ i+1 }}</span>
+                      <div>
+                        <p class="font-semibold text-gray-900 dark:text-white text-sm">{{ item.label }}</p>
+                        <p class="text-xs text-gray-400">estimado</p>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <p class="font-bold text-gray-900 dark:text-white">{{ fmtCurrency(item.estimated) }}</p>
+                      <p class="text-xs" :class="item.growth >= 0 ? 'text-green-500' : 'text-red-500'">
+                        {{ item.growth >= 0 ? '↑' : '↓' }} {{ Math.abs(item.growth_abs).toFixed(1) }}% vs base
+                      </p>
+                    </div>
+                  </div>
+                  <!-- Mini barra de progreso -->
+                  <div class="px-3 pb-2">
+                    <div class="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div :class="['h-full rounded-full transition-all',
+                        i === 0 ? 'bg-blue-400' : i === 1 ? 'bg-indigo-400' : 'bg-purple-400']"
+                        :style="`width:${salesProjection.avg_base > 0 ? Math.min(100, Math.round(item.estimated / salesProjection.avg_base * 100)) : 0}%`">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-3 text-center">
+                Basado en {{ salesProjection.months_with_data }} {{ salesProjection.months_with_data === 1 ? 'mes' : 'meses' }} con historial de ventas
+              </p>
+            </template>
+
           </CardContent>
         </Card>
 

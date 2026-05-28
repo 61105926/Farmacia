@@ -547,35 +547,79 @@ class DashboardController extends Controller
     {
         $names = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-        // Base: promedio de últimos 3 meses completados
-        $history = [];
-        for ($i = 3; $i >= 1; $i--) {
+        // Intentar con hasta 12 meses de historial para tener suficiente base
+        $rawHistory = [];
+        for ($i = 12; $i >= 1; $i--) {
             $d   = Carbon::now()->subMonths($i);
-            $val = Sale::whereYear('created_at', $d->year)->whereMonth('created_at', $d->month)
-                ->where('status', '!=', 'cancelled')->sum('total') ?? 0;
-            $history[] = $val;
+            $val = (float) (Sale::whereYear('created_at', $d->year)
+                ->whereMonth('created_at', $d->month)
+                ->where('status', '!=', 'cancelled')
+                ->sum('total') ?? 0);
+            $rawHistory[] = ['month' => $d->format('M Y'), 'value' => $val];
         }
-        $avg   = count($history) > 0 ? array_sum($history) / count($history) : 0;
-        $trend = (count($history) >= 2 && $history[0] > 0)
-            ? ($history[count($history) - 1] - $history[0]) / $history[0] / count($history)
-            : 0;
-        $trend = max(-0.2, min(0.2, $trend)); // limitar ±20%
+
+        // Filtrar solo meses con datos para el cálculo
+        $withData = array_filter($rawHistory, fn($m) => $m['value'] > 0);
+        $hasData  = count($withData) > 0;
+
+        // Usar los últimos 3 meses con datos (o todos si hay menos de 3)
+        $recent = array_slice(array_values($withData), -3);
+        $vals   = array_column($recent, 'value');
+
+        $avg = $hasData ? array_sum($vals) / count($vals) : 0;
+
+        // Tendencia: variación porcentual promedio entre períodos consecutivos
+        $trend = 0;
+        if (count($vals) >= 2) {
+            $changes = [];
+            for ($i = 1; $i < count($vals); $i++) {
+                if ($vals[$i - 1] > 0) {
+                    $changes[] = ($vals[$i] - $vals[$i - 1]) / $vals[$i - 1];
+                }
+            }
+            $trend = count($changes) > 0 ? array_sum($changes) / count($changes) : 0;
+        }
+        $trend = max(-0.25, min(0.25, $trend));
+
+        // Mejor y peor mes del historial
+        $allVals    = array_column($rawHistory, 'value');
+        $bestVal    = $hasData ? max($allVals) : 0;
+        $worstVal   = $hasData ? min(array_filter($allVals)) : 0;
+        $bestIdx    = $bestVal > 0 ? array_search($bestVal, $allVals) : null;
+        $worstIdx   = ($worstVal > 0 && $worstVal !== $bestVal) ? array_search($worstVal, $allVals) : null;
+
+        // Mes actual (en curso)
+        $currentMonth = (float) (Sale::whereYear('created_at', Carbon::now()->year)
+            ->whereMonth('created_at', Carbon::now()->month)
+            ->where('status', '!=', 'cancelled')
+            ->sum('total') ?? 0);
+        $daysInMonth  = Carbon::now()->daysInMonth;
+        $dayOfMonth   = Carbon::now()->day;
+        $projectedCurrent = $dayOfMonth > 0 ? round($currentMonth / $dayOfMonth * $daysInMonth, 2) : 0;
 
         $projection = [];
         for ($i = 1; $i <= 3; $i++) {
             $d   = Carbon::now()->addMonths($i);
-            $est = round($avg * (1 + $trend * $i), 2);
+            $est = round($avg * pow(1 + $trend, $i), 2);
             $projection[] = [
-                'label'     => $names[$d->month - 1] . ' ' . $d->year,
-                'estimated' => max(0, $est),
-                'growth'    => round($trend * 100, 1),
+                'label'        => $names[$d->month - 1] . ' ' . $d->year,
+                'estimated'    => max(0, $est),
+                'growth'       => round($trend * 100, 1),
+                'growth_abs'   => round($trend * $i * 100, 1),
             ];
         }
 
         return [
-            'avg_base'   => round($avg, 2),
-            'trend_pct'  => round($trend * 100, 1),
-            'projection' => $projection,
+            'avg_base'          => round($avg, 2),
+            'trend_pct'         => round($trend * 100, 1),
+            'projection'        => $projection,
+            'has_data'          => $hasData,
+            'months_with_data'  => count($withData),
+            'best_month'        => $bestIdx !== null ? ['label' => $rawHistory[$bestIdx]['month'], 'value' => $bestVal] : null,
+            'worst_month'       => $worstIdx !== null ? ['label' => $rawHistory[$worstIdx]['month'], 'value' => $worstVal] : null,
+            'current_month_val' => round($currentMonth, 2),
+            'current_projected' => $projectedCurrent,
+            'history'           => array_map(fn($m) => ['label' => $m['month'], 'value' => $m['value']], $rawHistory),
         ];
     }
 
