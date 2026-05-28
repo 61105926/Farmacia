@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(/Applications/MAMP/bin/php/php8.2.0/bin/php /Applications/MAMP/htdocs/Farmacia/artisan make:migration create_system_settings_table)",
+      "Bash(/Applications/MAMP/bin/php/php8.3.30/bin/php /Applications/MAMP/htdocs/Farmacia/artisan migrate --path=database/migrations/2026_05_26_000001_create_system_settings_table.php)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(grep -n 'protected $fillable' /Applications/MAMP/htdocs/Farmacia/app/Models/Client.php -A 30)",
+      "Bash(grep -n 'protected $fillable' /Applications/MAMP/htdocs/Farmacia/app/Models/Client.php)",
+      "Bash(git commit -m 'feat: add professional PDF reports with DomPDF *)",
+      "Bash(git commit -m 'feat: PDF ruta de cobros por fecha seleccionable *)"
+    ]
+  }
+}
