@@ -515,49 +515,42 @@ const notificationModules = [
 ]
 
 // System settings form (admin only)
-const systemSettings = computed(() => page.props.system_settings ?? {})
-const systemForm = ref({
+const systemSettings  = computed(() => page.props.system_settings ?? {})
+const logoPreview     = ref(systemSettings.value.logo_url ?? null)
+const logoIconPreview = ref(systemSettings.value.logo_icon_url ?? null)
+
+const systemForm = useForm({
   site_name: systemSettings.value.site_name ?? 'SISPANDO',
   logo: null,
   logo_icon: null,
 })
-const logoPreview     = ref(systemSettings.value.logo_url ?? null)
-const logoIconPreview = ref(systemSettings.value.logo_icon_url ?? null)
 
 const onLogoChange = (e) => {
   const file = e.target.files[0]
   if (!file) return
-  systemForm.value.logo = file
+  systemForm.logo = file
   logoPreview.value = URL.createObjectURL(file)
 }
 
 const onLogoIconChange = (e) => {
   const file = e.target.files[0]
   if (!file) return
-  systemForm.value.logo_icon = file
+  systemForm.logo_icon = file
   logoIconPreview.value = URL.createObjectURL(file)
 }
 
 const saveSystemSettings = () => {
-  const data = new FormData()
-  data.append('site_name', systemForm.value.site_name)
-  if (systemForm.value.logo)      data.append('logo', systemForm.value.logo)
-  if (systemForm.value.logo_icon) data.append('logo_icon', systemForm.value.logo_icon)
-
-  // CSRF token para uploads con FormData
-  const csrfMeta = document.querySelector('meta[name="csrf-token"]')
-  if (csrfMeta) data.append('_token', csrfMeta.getAttribute('content'))
-
-  router.post('/configuracion/system', data, {
+  systemForm.post('/configuracion/system', {
+    forceFormData: true,
     preserveScroll: true,
     onSuccess: () => {
-      systemForm.value.logo = null
-      systemForm.value.logo_icon = null
+      systemForm.logo = null
+      systemForm.logo_icon = null
       showAlert({ type: 'success', title: 'Sistema actualizado', message: 'La configuración del sistema se guardó correctamente' })
     },
     onError: () => {
       showAlert({ type: 'error', title: 'Error', message: 'No se pudo guardar la configuración del sistema' })
-    }
+    },
   })
 }
 
