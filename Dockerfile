@@ -48,8 +48,8 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Install PHP dependencies (update regenerates lock file if composer.json changed)
+RUN composer update --no-dev --optimize-autoloader --no-interaction
 
 # Install Node.js dependencies and build assets
 RUN npm install --legacy-peer-deps && npm run build
