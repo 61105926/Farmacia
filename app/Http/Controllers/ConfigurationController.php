@@ -3,9 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\Auth;
@@ -110,43 +107,50 @@ class ConfigurationController extends Controller
     public function updateSystem(Request $request)
     {
         $request->validate([
-            'site_name'      => 'nullable|string|max:80',
-            'logo'           => 'nullable|image|mimes:jpeg,jpg,png,gif,svg,webp|max:2048',
-            'logo_icon'      => 'nullable|image|mimes:jpeg,jpg,png,gif,svg,webp|max:2048',
+            'site_name' => 'nullable|string|max:80',
+            'logo'      => 'nullable|image|mimes:jpeg,jpg,png,gif,svg,webp|max:2048',
+            'logo_icon' => 'nullable|image|mimes:jpeg,jpg,png,gif,svg,webp|max:2048',
         ]);
 
-        $settings = SystemSetting::firstOrCreate([]);
+        try {
+            $settings = SystemSetting::firstOrCreate([]);
 
-        if ($request->filled('site_name')) {
-            $settings->site_name = $request->site_name;
-        }
-
-        // Asegurar que el symlink y directorio existen
-        if (!File::exists(public_path('storage'))) {
-            Artisan::call('storage:link');
-        }
-        Storage::disk('public')->makeDirectory('logos');
-
-        if ($request->hasFile('logo') && $request->file('logo')->isValid()) {
-            // Eliminar logo anterior si existe y no es el predeterminado
-            if ($settings->logo_path && Storage::disk('public')->exists($settings->logo_path)) {
-                Storage::disk('public')->delete($settings->logo_path);
+            if ($request->filled('site_name')) {
+                $settings->site_name = $request->site_name;
             }
-            $path = $request->file('logo')->store('logos', 'public');
-            $settings->logo_path = $path;
-        }
 
-        if ($request->hasFile('logo_icon') && $request->file('logo_icon')->isValid()) {
-            if ($settings->logo_icon_path && Storage::disk('public')->exists($settings->logo_icon_path)) {
-                Storage::disk('public')->delete($settings->logo_icon_path);
+            // Crear directorio físico directamente (sin depender del symlink)
+            $logosDir = storage_path('app/public/logos');
+            if (!is_dir($logosDir)) {
+                mkdir($logosDir, 0775, true);
             }
-            $path = $request->file('logo_icon')->store('logos', 'public');
-            $settings->logo_icon_path = $path;
+
+            if ($request->hasFile('logo') && $request->file('logo')->isValid()) {
+                if ($settings->logo_path) {
+                    $oldPath = storage_path('app/public/' . $settings->logo_path);
+                    if (file_exists($oldPath)) @unlink($oldPath);
+                }
+                $path = $request->file('logo')->store('logos', 'public');
+                $settings->logo_path = $path;
+            }
+
+            if ($request->hasFile('logo_icon') && $request->file('logo_icon')->isValid()) {
+                if ($settings->logo_icon_path) {
+                    $oldPath = storage_path('app/public/' . $settings->logo_icon_path);
+                    if (file_exists($oldPath)) @unlink($oldPath);
+                }
+                $path = $request->file('logo_icon')->store('logos', 'public');
+                $settings->logo_icon_path = $path;
+            }
+
+            $settings->save();
+            SystemSetting::clearCache();
+
+            return back()->with('success', 'Configuración del sistema actualizada correctamente');
+
+        } catch (\Exception $e) {
+            \Log::error('updateSystem error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return back()->withErrors(['error' => 'Error interno: ' . $e->getMessage()]);
         }
-
-        $settings->save();
-        SystemSetting::clearCache();
-
-        return back()->with('success', 'Configuración del sistema actualizada correctamente');
     }
 }
