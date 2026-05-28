@@ -220,10 +220,10 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Configuración
-    Route::prefix('configuracion')->name('config.')->group(function () {
-        Route::get('/', [App\Http\Controllers\ConfigurationController::class, 'index'])->middleware('permission:config.system')->name('index');
-        Route::put('/', [App\Http\Controllers\ConfigurationController::class, 'update'])->middleware('permission:config.system')->name('update');
+    Route::prefix('configuracion')->name('config.')->middleware('role:super-admin|Administrador|administrador|admin')->group(function () {
+        Route::get('/', [App\Http\Controllers\ConfigurationController::class, 'index'])->name('index');
+        Route::put('/', [App\Http\Controllers\ConfigurationController::class, 'update'])->name('update');
         Route::post('/theme', [App\Http\Controllers\ConfigurationController::class, 'updateTheme'])->name('update-theme');
-        Route::post('/system', [App\Http\Controllers\ConfigurationController::class, 'updateSystem'])->middleware('permission:config.system')->name('update-system');
+        Route::post('/system', [App\Http\Controllers\ConfigurationController::class, 'updateSystem'])->name('update-system');
     });
 });
