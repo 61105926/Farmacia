@@ -7,10 +7,33 @@
           <p class="text-gray-500 dark:text-gray-400 mt-1">{{ currentMonthLabel }} · {{ user?.name }}</p>
         </div>
         <div class="flex items-center gap-3">
-          <button @click="printProjections" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            <Printer class="w-4 h-4" />
-            Exportar PDF
-          </button>
+          <!-- PDF Downloads dropdown -->
+          <div class="relative" ref="pdfMenuRef">
+            <button @click="pdfMenuOpen = !pdfMenuOpen"
+              class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
+              <FileDown class="w-4 h-4" />
+              PDFs
+              <ChevronDown class="w-3 h-3" />
+            </button>
+            <div v-if="pdfMenuOpen"
+              class="absolute right-0 top-full mt-1 w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+              <a href="/pdf/proyecciones" target="_blank"
+                class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors">
+                <TrendingUp class="w-4 h-4 text-blue-600" />
+                Proyecciones
+              </a>
+              <a href="/pdf/ventas" target="_blank"
+                class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700">
+                <BarChart2 class="w-4 h-4 text-green-600" />
+                Reporte de Ventas
+              </a>
+              <a href="/pdf/cartera" target="_blank"
+                class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700">
+                <CreditCard class="w-4 h-4 text-amber-600" />
+                Cartera de Cobranzas
+              </a>
+            </div>
+          </div>
           <Badge variant="success" size="md">
             <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
             Sistema Activo
@@ -545,7 +568,8 @@ import {
   Users, Building2, Package, ShoppingCart, FileText,
   AlertCircle, AlertTriangle, Info,
   TrendingUp, TrendingDown, CreditCard, Receipt,
-  LineChart, BarChart2, PieChart, Printer, Wallet, UserX
+  LineChart, BarChart2, PieChart, Wallet, UserX,
+  FileDown, ChevronDown
 } from 'lucide-vue-next'
 
 Chart.register(...registerables)
@@ -563,10 +587,12 @@ const props = defineProps({
 })
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const trendRef  = ref(null)
-const compRef   = ref(null)
-const donutRef  = ref(null)
-const cobrosRef = ref(null)
+const trendRef   = ref(null)
+const compRef    = ref(null)
+const donutRef   = ref(null)
+const cobrosRef  = ref(null)
+const pdfMenuRef = ref(null)
+const pdfMenuOpen = ref(false)
 
 let trendChart = null, compChart = null, donutChart = null, cobrosChart = null
 
@@ -771,11 +797,18 @@ const buildCobros = () => {
 const printProjections = () => window.print()
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
+const closePdfMenu = (e) => {
+  if (pdfMenuRef.value && !pdfMenuRef.value.contains(e.target)) {
+    pdfMenuOpen.value = false
+  }
+}
+
 onMounted(() => {
   buildTrend()
   buildComparison()
   buildDonut()
   buildCobros()
+  document.addEventListener('click', closePdfMenu)
 })
 
 onUnmounted(() => {
@@ -783,6 +816,7 @@ onUnmounted(() => {
   compChart?.destroy()
   donutChart?.destroy()
   cobrosChart?.destroy()
+  document.removeEventListener('click', closePdfMenu)
 })
 
 // ── Status helpers ────────────────────────────────────────────────────────────

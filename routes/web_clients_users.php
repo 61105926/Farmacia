@@ -198,6 +198,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/exportar', [App\Http\Controllers\ReportController::class, 'export'])->name('export');
     });
 
+    // PDFs personalizados
+    Route::prefix('pdf')->name('pdf.')->group(function () {
+        Route::get('/proyecciones', [App\Http\Controllers\PdfController::class, 'proyecciones'])->name('proyecciones');
+        Route::get('/ventas', [App\Http\Controllers\PdfController::class, 'ventas'])->name('ventas');
+        Route::get('/cartera', [App\Http\Controllers\PdfController::class, 'cartera'])->name('cartera');
+    });
+
     // Rutas de monitoreo del sistema
     Route::prefix('sistema')->name('system.')->group(function () {
         Route::get('/monitor', [App\Http\Controllers\SystemMonitorController::class, 'index'])->name('monitor');
