@@ -32,6 +32,11 @@
                 <CreditCard class="w-4 h-4 text-amber-600" />
                 Cartera de Cobranzas
               </a>
+              <button @click="downloadRutaCobros(); pdfMenuOpen = false"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-gray-700 transition-colors border-t border-gray-100 dark:border-gray-700">
+                <MapPin class="w-4 h-4 text-emerald-600" />
+                Ruta de Cobros (fecha)
+              </button>
             </div>
           </div>
           <Badge variant="success" size="md">
@@ -264,6 +269,32 @@
             <!-- Mini chart de cobros mensuales -->
             <div class="mt-4" style="position:relative;height:100px">
               <canvas ref="cobrosRef"></canvas>
+            </div>
+
+            <!-- ── Ruta de cobros por fecha ── -->
+            <div class="mt-5 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+                <MapPin class="w-3.5 h-3.5 text-emerald-500" />
+                Generar ruta de cobros
+              </p>
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Desde</label>
+                  <input type="date" v-model="cobrosFrom"
+                    class="w-full text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+                </div>
+                <div class="flex-1">
+                  <label class="text-xs text-gray-500 dark:text-gray-400 block mb-1">Hasta</label>
+                  <input type="date" v-model="cobrosTo"
+                    class="w-full text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+                </div>
+              </div>
+              <button @click="downloadRutaCobros"
+                :disabled="!cobrosFrom || !cobrosTo"
+                class="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-md transition-colors">
+                <FileDown class="w-3.5 h-3.5" />
+                Descargar PDF de Cobros
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -569,7 +600,7 @@ import {
   AlertCircle, AlertTriangle, Info,
   TrendingUp, TrendingDown, CreditCard, Receipt,
   LineChart, BarChart2, PieChart, Wallet, UserX,
-  FileDown, ChevronDown
+  FileDown, ChevronDown, MapPin
 } from 'lucide-vue-next'
 
 Chart.register(...registerables)
@@ -591,8 +622,18 @@ const trendRef   = ref(null)
 const compRef    = ref(null)
 const donutRef   = ref(null)
 const cobrosRef  = ref(null)
-const pdfMenuRef = ref(null)
+const pdfMenuRef  = ref(null)
 const pdfMenuOpen = ref(false)
+
+// Ruta de cobros
+const today = new Date().toISOString().slice(0, 10)
+const cobrosFrom = ref(today)
+const cobrosTo   = ref(today)
+
+const downloadRutaCobros = () => {
+  if (!cobrosFrom.value || !cobrosTo.value) return
+  window.open(`/pdf/ruta-cobros?from=${cobrosFrom.value}&to=${cobrosTo.value}`, '_blank')
+}
 
 let trendChart = null, compChart = null, donutChart = null, cobrosChart = null
 

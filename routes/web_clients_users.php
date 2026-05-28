@@ -203,6 +203,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/proyecciones', [App\Http\Controllers\PdfController::class, 'proyecciones'])->name('proyecciones');
         Route::get('/ventas', [App\Http\Controllers\PdfController::class, 'ventas'])->name('ventas');
         Route::get('/cartera', [App\Http\Controllers\PdfController::class, 'cartera'])->name('cartera');
+        Route::get('/ruta-cobros', [App\Http\Controllers\PdfController::class, 'rutaCobros'])->name('ruta-cobros');
     });
 
     // Rutas de monitoreo del sistema

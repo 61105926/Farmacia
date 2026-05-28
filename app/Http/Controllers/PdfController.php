@@ -224,6 +224,93 @@ class PdfController extends Controller
         return $pdf->download('reporte-ventas-' . $now->format('Y-m') . '.pdf');
     }
 
+    // ─── PDF: Ruta de cobros por fecha ───────────────────────────────────────
+
+    public function rutaCobros(Request $request)
+    {
+        $from  = Carbon::parse($request->get('from', today()))->startOfDay();
+        $to    = Carbon::parse($request->get('to',   today()))->endOfDay();
+        $now   = Carbon::now();
+        $today = Carbon::today();
+
+        // Cuentas con vencimiento en el rango seleccionado
+        $receivables = Receivable::with(['client:id,business_name,trade_name,phone,address,city,tax_id'])
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->where(function ($q) use ($from, $to) {
+                // Incluye vencidas dentro del rango Y también las ya vencidas si el rango empieza hoy o antes
+                $q->whereBetween('due_date', [$from->toDateString(), $to->toDateString()]);
+            })
+            ->orderBy('due_date')
+            ->get();
+
+        // También incluir las ya vencidas si el from <= hoy
+        $overdueExtra = collect();
+        if ($from->lte($today)) {
+            $overdueExtra = Receivable::with(['client:id,business_name,trade_name,phone,address,city,tax_id'])
+                ->whereIn('status', ['pending', 'partial', 'overdue'])
+                ->where('due_date', '<', $today->toDateString())
+                ->orderBy('due_date')
+                ->get();
+        }
+
+        // Merge y deduplicar por id
+        $all = $receivables->merge($overdueExtra)->unique('id')->sortBy('due_date');
+
+        // Agrupar por cliente
+        $byClient = $all->groupBy('client_id')->map(function ($rows) use ($today) {
+            $client = $rows->first()->client;
+            return [
+                'name'      => $client?->business_name ?? '—',
+                'trade'     => $client?->trade_name,
+                'phone'     => $client?->phone,
+                'address'   => $client?->address,
+                'city'      => $client?->city,
+                'tax_id'    => $client?->tax_id,
+                'facturas'  => $rows->map(function ($r) use ($today) {
+                    $days = $today->diffInDays($r->due_date, false);
+                    return [
+                        'id'       => $r->id,
+                        'due_date' => $r->due_date?->format('d/m/Y'),
+                        'amount'   => round($r->amount, 2),
+                        'balance'  => round($r->balance, 2),
+                        'status'   => $r->status,
+                        'notes'    => $r->notes,
+                        'overdue'  => $days < 0,
+                        'days'     => (int) abs($days),
+                    ];
+                })->values()->toArray(),
+                'total_balance' => round($rows->sum('balance'), 2),
+                'has_overdue'   => $rows->filter(fn($r) => $today->gt($r->due_date))->count() > 0,
+            ];
+        })->values()->sortByDesc('has_overdue')->values();
+
+        $isSameDay = $from->isSameDay($to);
+        $periodLabel = $isSameDay
+            ? $from->format('d/m/Y')
+            : $from->format('d/m/Y') . ' al ' . $to->format('d/m/Y');
+
+        $data = [
+            'system'       => $this->systemInfo(),
+            'generatedAt'  => $now->format('d/m/Y H:i'),
+            'generatedBy'  => Auth::user()->name ?? '—',
+            'periodLabel'  => $periodLabel,
+            'from'         => $from,
+            'to'           => $to,
+            'byClient'     => $byClient,
+            'totalClients' => $byClient->count(),
+            'totalBalance' => round($all->sum('balance'), 2),
+            'totalFacturas'=> $all->count(),
+        ];
+
+        $pdf = Pdf::loadView('pdf.ruta-cobros', $data)
+            ->setPaper('a4', 'portrait')
+            ->setOption('isHtml5ParserEnabled', true)
+            ->setOption('isRemoteEnabled', false)
+            ->setOption('defaultFont', 'sans-serif');
+
+        return $pdf->download('ruta-cobros-' . $from->format('Y-m-d') . '.pdf');
+    }
+
     // ─── PDF: Cartera de cobranzas ────────────────────────────────────────────
 
     public function cartera()
