@@ -547,6 +547,8 @@ const saveSystemSettings = () => {
       systemForm.logo = null
       systemForm.logo_icon = null
       showAlert({ type: 'success', title: 'Sistema actualizado', message: 'La configuración del sistema se guardó correctamente' })
+      // Recargar para que el sidebar y header tomen el nuevo nombre/logo
+      setTimeout(() => router.reload({ only: [] }), 800)
     },
     onError: () => {
       showAlert({ type: 'error', title: 'Error', message: 'No se pudo guardar la configuración del sistema' })

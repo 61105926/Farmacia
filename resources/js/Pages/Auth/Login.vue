@@ -5,11 +5,18 @@
       <!-- Logo + Título -->
       <div class="flex flex-col items-center space-y-3">
         <img
-          :src="logoNombre"
-          alt="Farmacias Pando Central"
+          v-if="logoUrl"
+          :src="logoUrl"
+          :alt="siteName"
           class="h-20 object-contain"
         />
-        <h1 class="text-4xl font-extrabold text-gray-900 tracking-wide">SISPANDO</h1>
+        <img
+          v-else
+          :src="defaultLogo"
+          :alt="siteName"
+          class="h-20 object-contain"
+        />
+        <h1 class="text-4xl font-extrabold text-gray-900 tracking-wide">{{ siteName }}</h1>
         <p class="text-xs font-semibold text-gray-600 tracking-widest text-center uppercase">
           Gestión de Preventas, Ventas y Cuentas por Cobrar
         </p>
@@ -81,10 +88,15 @@
 </template>
 
 <script setup>
-import { useForm } from '@inertiajs/vue3'
-import logoNombreImg from '@/../assets/images/logo-nombre.jpeg'
+import { computed } from 'vue'
+import { useForm, usePage } from '@inertiajs/vue3'
+import defaultLogoImg from '@/../assets/images/logo-nombre.jpeg'
 
-const logoNombre = logoNombreImg
+const page       = usePage()
+const settings   = computed(() => page.props.system_settings ?? {})
+const siteName   = computed(() => settings.value.site_name ?? 'SISPANDO')
+const logoUrl    = computed(() => settings.value.logo_url ?? null)
+const defaultLogo = defaultLogoImg
 
 const form = useForm({
   email: '',
