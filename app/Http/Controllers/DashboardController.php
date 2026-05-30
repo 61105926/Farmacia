@@ -80,6 +80,7 @@ class DashboardController extends Controller
                 'salesProjection'     => $this->sanitizeData($this->getSalesProjection()),
                 'receivablesProjection'=> $this->sanitizeData($this->getReceivablesProjection()),
                 'churnedClients'      => $this->sanitizeData($this->getChurnedClients()),
+                'cobroCalendario'     => $this->sanitizeData($this->getCobroCalendario()),
             ]);
             
         } catch (\Exception $e) {
@@ -129,13 +130,19 @@ class DashboardController extends Controller
         return [
             'pending'   => Presale::where('status', 'draft')->count()
                          + Sale::where('status', 'pending')->count(),
-            'delivered' => Sale::where('status', 'completed')->count()
+            // Solo entregas físicas confirmadas, sin mezclar con estado de pago
+            'delivered' => Sale::where('status', 'completed')
+                               ->where('payment_status', 'paid')
+                               ->count()
                          + Presale::where('status', 'converted')->count(),
-            'unpaid'    => Sale::where('payment_status', '!=', 'paid')
+            // Sin pagar: payment_status pending (nunca pagaron)
+            'unpaid'    => Sale::where('payment_status', 'pending')
                                ->where('status', '!=', 'cancelled')
                                ->count(),
-            'cancelled' => Sale::where('status', 'cancelled')->count()
-                         + Presale::where('status', 'cancelled')->count(),
+            // Pagos parciales: entregado pero cobro incompleto
+            'partial'   => Sale::where('payment_status', 'partial')
+                               ->where('status', '!=', 'cancelled')
+                               ->count(),
         ];
     }
     
@@ -686,6 +693,84 @@ class DashboardController extends Controller
             'windows' => $projection,
             'monthly' => $monthly,
             'total_proyectado' => round(array_sum(array_column($projection, 'amount')), 2),
+        ];
+    }
+
+    private function getCobroCalendario(): array
+    {
+        $today = Carbon::today();
+        $end   = $today->copy()->addDays(90);
+
+        // Cuentas por cobrar con vencimiento en los próximos 90 días, agrupadas por semana
+        $receivables = Receivable::with('client:id,business_name,phone')
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->where('balance', '>', 0)
+            ->where('due_date', '>=', $today->copy()->subDays(30)) // también vencidas recientes
+            ->where('due_date', '<=', $end)
+            ->orderBy('due_date')
+            ->get();
+
+        // Agrupar por semana
+        $byWeek = [];
+        foreach ($receivables as $r) {
+            $dueDate   = Carbon::parse($r->due_date);
+            $weekStart = $dueDate->copy()->startOfWeek()->format('Y-m-d');
+            $weekLabel = 'Sem. ' . $dueDate->copy()->startOfWeek()->format('d/m')
+                       . ' - ' . $dueDate->copy()->endOfWeek()->format('d/m');
+
+            if (!isset($byWeek[$weekStart])) {
+                $byWeek[$weekStart] = [
+                    'week_label' => $weekLabel,
+                    'week_start' => $weekStart,
+                    'total'      => 0,
+                    'count'      => 0,
+                    'clientes'   => [],
+                    'overdue'    => $dueDate->lt($today),
+                ];
+            }
+
+            $byWeek[$weekStart]['total']  += $r->balance;
+            $byWeek[$weekStart]['count']  += 1;
+            $byWeek[$weekStart]['clientes'][] = [
+                'name'     => $r->client?->business_name ?? '—',
+                'phone'    => $r->client?->phone,
+                'balance'  => round($r->balance, 2),
+                'due_date' => $dueDate->format('d/m/Y'),
+                'overdue'  => $dueDate->lt($today),
+                'days'     => (int) $today->diffInDays($dueDate, false),
+            ];
+        }
+
+        // Ordenar por fecha y redondear totales
+        ksort($byWeek);
+        foreach ($byWeek as &$w) {
+            $w['total'] = round($w['total'], 2);
+            // Ordenar clientes: vencidos primero
+            usort($w['clientes'], fn($a, $b) => $a['days'] <=> $b['days']);
+        }
+
+        // También agrupar por mes para el gráfico de barras
+        $byMonth = [];
+        foreach ($receivables as $r) {
+            $dueDate    = Carbon::parse($r->due_date);
+            $monthKey   = $dueDate->format('Y-m');
+            $monthLabel = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][$dueDate->month - 1]
+                        . ' ' . $dueDate->year;
+
+            if (!isset($byMonth[$monthKey])) {
+                $byMonth[$monthKey] = ['label' => $monthLabel, 'total' => 0, 'count' => 0, 'overdue' => $dueDate->lt($today)];
+            }
+            $byMonth[$monthKey]['total'] += $r->balance;
+            $byMonth[$monthKey]['count'] += 1;
+        }
+        ksort($byMonth);
+        foreach ($byMonth as &$m) {
+            $m['total'] = round($m['total'], 2);
+        }
+
+        return [
+            'by_week'  => array_values($byWeek),
+            'by_month' => array_values($byMonth),
         ];
     }
 

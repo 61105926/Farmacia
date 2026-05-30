@@ -368,6 +368,105 @@
       </div>
 
       <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!--  CALENDARIO DE COBROS                                           -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <Card v-if="cobroCalendario && (cobroCalendario.by_week?.length || cobroCalendario.by_month?.length)">
+        <CardHeader>
+          <div class="flex items-center justify-between">
+            <CardTitle class="flex items-center gap-2">
+              <MapPin class="w-5 h-5 text-emerald-500" />
+              Calendario de Cobros
+              <span class="text-xs font-normal text-gray-500 dark:text-gray-400">próximos 90 días</span>
+            </CardTitle>
+            <div class="flex gap-2">
+              <button @click="cobroVista = 'semana'"
+                :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
+                  cobroVista === 'semana' ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                Por semana
+              </button>
+              <button @click="cobroVista = 'mes'"
+                :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
+                  cobroVista === 'mes' ? 'bg-emerald-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                Por mes
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+
+          <!-- Gráfico de barras por mes -->
+          <div v-if="cobroVista === 'mes'" class="mb-6">
+            <div style="position:relative;height:180px">
+              <canvas ref="cobroCalRef"></canvas>
+            </div>
+          </div>
+
+          <!-- Vista por semana: tarjetas con clientes -->
+          <div v-if="cobroVista === 'semana'" class="space-y-3">
+            <div v-for="(week, wi) in cobroCalendario.by_week" :key="wi"
+              :class="['rounded-lg border overflow-hidden',
+                week.overdue ? 'border-red-200 dark:border-red-800' : 'border-emerald-200 dark:border-emerald-800']">
+              <!-- Header de semana -->
+              <div :class="['flex items-center justify-between px-4 py-2',
+                week.overdue ? 'bg-red-50 dark:bg-red-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20']">
+                <div class="flex items-center gap-2">
+                  <span v-if="week.overdue" class="text-xs font-bold text-red-600">⚠ VENCIDA</span>
+                  <span class="font-semibold text-sm text-gray-900 dark:text-white">{{ week.week_label }}</span>
+                  <span class="text-xs text-gray-500">· {{ week.count }} {{ week.count === 1 ? 'cliente' : 'clientes' }}</span>
+                </div>
+                <span :class="['font-bold text-sm', week.overdue ? 'text-red-600' : 'text-emerald-600']">
+                  {{ fmtCurrency(week.total) }}
+                </span>
+              </div>
+              <!-- Lista de clientes -->
+              <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                <div v-for="(c, ci) in week.clientes" :key="ci"
+                  class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                  <div class="flex items-center gap-3">
+                    <div :class="['w-2 h-2 rounded-full flex-shrink-0',
+                      c.overdue ? 'bg-red-500' : c.days <= 7 ? 'bg-amber-500' : 'bg-emerald-500']">
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900 dark:text-white">{{ c.name }}</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400">
+                        Vence {{ c.due_date }}
+                        <span v-if="c.phone"> · {{ c.phone }}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <p :class="['text-sm font-bold', c.overdue ? 'text-red-600' : 'text-gray-900 dark:text-white']">
+                      {{ fmtCurrency(c.balance) }}
+                    </p>
+                    <p :class="['text-xs', c.overdue ? 'text-red-500' : c.days <= 7 ? 'text-amber-500' : 'text-emerald-500']">
+                      {{ c.overdue ? `${Math.abs(c.days)}d vencida` : c.days === 0 ? 'Vence hoy' : `${c.days}d restantes` }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Vista por mes: tabla resumen -->
+          <div v-if="cobroVista === 'mes'" class="mt-4 space-y-2">
+            <div v-for="(m, mi) in cobroCalendario.by_month" :key="mi"
+              class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+              <div :class="['w-2 h-2 rounded-full flex-shrink-0', m.overdue ? 'bg-red-500' : 'bg-emerald-500']"></div>
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-24">{{ m.label }}</span>
+              <div class="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div :class="['h-full rounded-full', m.overdue ? 'bg-red-400' : 'bg-emerald-400']"
+                  :style="`width:${cobroCalendario.by_month.length ? Math.min(100, Math.round(m.total / Math.max(...cobroCalendario.by_month.map(x=>x.total)) * 100)) : 0}%`">
+                </div>
+              </div>
+              <span class="text-sm font-bold text-gray-900 dark:text-white w-28 text-right">{{ fmtCurrency(m.total) }}</span>
+              <span class="text-xs text-gray-400 w-16 text-right">{{ m.count }} fact.</span>
+            </div>
+          </div>
+
+        </CardContent>
+      </Card>
+
+      <!-- ═══════════════════════════════════════════════════════════════ -->
       <!--  CLIENTES QUE DEJARON DE COMPRAR                               -->
       <!-- ═══════════════════════════════════════════════════════════════ -->
       <Card v-if="churnedClients && churnedClients.length > 0">
@@ -497,15 +596,15 @@
               </div>
               <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <div class="text-2xl font-bold text-green-600">{{ orderStats?.delivered || 0 }}</div>
-                <div class="text-xs text-green-700 dark:text-green-400 mt-1">Entregadas</div>
+                <div class="text-xs text-green-700 dark:text-green-400 mt-1">Entregadas y pagadas</div>
               </div>
-              <div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
-                <div class="text-2xl font-bold text-orange-600">{{ orderStats?.unpaid || 0 }}</div>
-                <div class="text-xs text-orange-700 dark:text-orange-400 mt-1">Sin pagar</div>
+              <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                <div class="text-2xl font-bold text-red-600">{{ orderStats?.unpaid || 0 }}</div>
+                <div class="text-xs text-red-700 dark:text-red-400 mt-1 font-semibold">Sin pagar</div>
               </div>
-              <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                <div class="text-2xl font-bold text-red-600">{{ orderStats?.cancelled || 0 }}</div>
-                <div class="text-xs text-red-700 dark:text-red-400 mt-1">Canceladas</div>
+              <div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                <div class="text-2xl font-bold text-orange-600">{{ orderStats?.partial || 0 }}</div>
+                <div class="text-xs text-orange-700 dark:text-orange-400 mt-1 font-semibold">Pago parcial</div>
               </div>
             </div>
           </CardContent>
@@ -653,7 +752,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { Chart, registerables } from 'chart.js'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
@@ -681,7 +780,7 @@ const props = defineProps({
   // Analytics
   analyticsKpis: Object, monthlyChartData: Array, periodComparison: Object,
   receivablesBreakdown: Object, salesProjection: Object, receivablesProjection: Object,
-  churnedClients: Array,
+  churnedClients: Array, cobroCalendario: Object,
 })
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -696,6 +795,41 @@ const pdfMenuOpen = ref(false)
 const today = new Date().toISOString().slice(0, 10)
 const cobrosFrom = ref(today)
 const cobrosTo   = ref(today)
+
+// Calendario de cobros
+const cobroCalRef = ref(null)
+const cobroVista  = ref('semana')
+let cobroCalChart = null
+
+const buildCobroCalChart = () => {
+  if (!cobroCalRef.value || !props.cobroCalendario?.by_month?.length) return
+  if (cobroCalChart) { cobroCalChart.destroy(); cobroCalChart = null }
+  const months = props.cobroCalendario.by_month
+  cobroCalChart = new Chart(cobroCalRef.value, {
+    type: 'bar',
+    data: {
+      labels: months.map(m => m.label),
+      datasets: [{
+        label: 'Por cobrar (Bs)',
+        data: months.map(m => m.total),
+        backgroundColor: months.map(m => m.overdue ? 'rgba(239,68,68,0.7)' : 'rgba(16,185,129,0.7)'),
+        borderColor: months.map(m => m.overdue ? '#dc2626' : '#059669'),
+        borderWidth: 1, borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` Bs ${ctx.raw.toLocaleString('es-BO', {minimumFractionDigits:2})}` } } },
+      scales: {
+        y: { beginAtZero: true, ticks: { callback: v => 'Bs ' + v.toLocaleString('es-BO') } },
+        x: { grid: { display: false } }
+      }
+    }
+  })
+}
+
+watch(cobroVista, (v) => { if (v === 'mes') nextTick(buildCobroCalChart) })
 
 const downloadRutaCobros = () => {
   if (!cobrosFrom.value || !cobrosTo.value) return
@@ -924,6 +1058,7 @@ onUnmounted(() => {
   compChart?.destroy()
   donutChart?.destroy()
   cobrosChart?.destroy()
+  cobroCalChart?.destroy()
   document.removeEventListener('click', closePdfMenu)
 })
 
