@@ -457,11 +457,26 @@ class DashboardController extends Controller
         $cobrosMes   = Payment::whereBetween('payment_date', [$curFrom, $curTo])->where('status', 'completed')->sum('amount') ?? 0;
         $cobrosAnt   = Payment::whereBetween('payment_date', [$lastFrom, $lastTo])->where('status', 'completed')->sum('amount') ?? 0;
 
-        $porCobrar   = Receivable::whereIn('status', ['pending', 'partial'])->sum('balance') ?? 0;
-        $vencido     = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-            ->where('due_date', '<', $now)->sum('balance') ?? 0;
+        $today = Carbon::today();
+
+        // Usar misma lógica que el PDF cartera para consistencia
+        $alDia     = Receivable::whereIn('status', ['pending', 'partial'])
+                        ->where('due_date', '>=', $today)->where('balance', '>', 0)->sum('balance') ?? 0;
+        $venc30    = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
+                        ->where('due_date', '<', $today)->where('due_date', '>=', $today->copy()->subDays(30))
+                        ->where('balance', '>', 0)->sum('balance') ?? 0;
+        $venc60    = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
+                        ->where('due_date', '<', $today->copy()->subDays(30))->where('due_date', '>=', $today->copy()->subDays(60))
+                        ->where('balance', '>', 0)->sum('balance') ?? 0;
+        $vencMas60 = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
+                        ->where('due_date', '<', $today->copy()->subDays(60))
+                        ->where('balance', '>', 0)->sum('balance') ?? 0;
+
+        $porCobrar    = $alDia + $venc30 + $venc60 + $vencMas60;
+        $vencido      = $venc30 + $venc60 + $vencMas60;
         $clientesVenc = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-            ->where('due_date', '<', $now)->distinct('client_id')->count('client_id');
+            ->where('due_date', '<', $today)->where('balance', '>', 0)
+            ->distinct('client_id')->count('client_id');
 
         return [
             'ventas_mes'          => round($ventasMes, 2),
