@@ -547,12 +547,13 @@ class DashboardController extends Controller
     private function getReceivablesBreakdown(): array
     {
         $today = Carbon::today();
+        $base  = Invoice::where('status', '!=', 'cancelled')->where('payment_status', '!=', 'paid')->where('balance', '>', 0);
 
         return [
-            'al_dia'         => round(Receivable::whereIn('status', ['pending', 'partial'])->where('due_date', '>=', $today)->sum('balance') ?? 0, 2),
-            'vencido_30'     => round(Receivable::whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', $today)->where('due_date', '>=', $today->copy()->subDays(30))->sum('balance') ?? 0, 2),
-            'vencido_60'     => round(Receivable::whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', $today->copy()->subDays(30))->where('due_date', '>=', $today->copy()->subDays(60))->sum('balance') ?? 0, 2),
-            'vencido_mas60'  => round(Receivable::whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', $today->copy()->subDays(60))->sum('balance') ?? 0, 2),
+            'al_dia'        => round((clone $base)->where('due_date', '>=', $today)->sum('balance'), 2),
+            'vencido_30'    => round((clone $base)->where('due_date', '<', $today)->where('due_date', '>=', $today->copy()->subDays(30))->sum('balance'), 2),
+            'vencido_60'    => round((clone $base)->where('due_date', '<', $today->copy()->subDays(30))->where('due_date', '>=', $today->copy()->subDays(60))->sum('balance'), 2),
+            'vencido_mas60' => round((clone $base)->where('due_date', '<', $today->copy()->subDays(60))->sum('balance'), 2),
         ];
     }
 
@@ -647,12 +648,9 @@ class DashboardController extends Controller
 
         $projection = [];
         foreach ($windows as $w) {
-            $amount = Receivable::whereIn('status', ['pending', 'partial'])
-                ->whereBetween('due_date', [$w['from'], $w['to']])
-                ->sum('balance') ?? 0;
-            $count = Receivable::whereIn('status', ['pending', 'partial'])
-                ->whereBetween('due_date', [$w['from'], $w['to']])
-                ->count();
+            $base   = Invoice::where('status', '!=', 'cancelled')->where('payment_status', '!=', 'paid')->where('balance', '>', 0);
+            $amount = (clone $base)->whereBetween('due_date', [$w['from'], $w['to']])->sum('balance');
+            $count  = (clone $base)->whereBetween('due_date', [$w['from'], $w['to']])->count();
             $projection[] = [
                 'label'  => $w['label'],
                 'amount' => round($amount, 2),
@@ -666,13 +664,14 @@ class DashboardController extends Controller
             $d    = Carbon::now()->addMonths($i);
             $from = $d->copy()->startOfMonth();
             $to   = $d->copy()->endOfMonth();
-            // Solo futuro
             if ($from->lt(Carbon::today())) $from = Carbon::today();
             if ($from->gt($to)) continue;
 
-            $amount = Receivable::whereIn('status', ['pending', 'partial'])
+            $amount = Invoice::where('status', '!=', 'cancelled')
+                ->where('payment_status', '!=', 'paid')
+                ->where('balance', '>', 0)
                 ->whereBetween('due_date', [$from, $to])
-                ->sum('balance') ?? 0;
+                ->sum('balance');
 
             $monthly[] = [
                 'label'  => $names[$d->month - 1] . ' ' . $d->year,
@@ -692,11 +691,12 @@ class DashboardController extends Controller
         $today = Carbon::today();
         $end   = $today->copy()->addDays(90);
 
-        // Cuentas por cobrar con vencimiento en los próximos 90 días, agrupadas por semana
-        $receivables = Receivable::with('client:id,business_name,phone')
-            ->whereIn('status', ['pending', 'partial', 'overdue'])
+        // Usar Invoice igual que el módulo de Cuentas por Cobrar
+        $receivables = Invoice::with('client:id,business_name,phone')
+            ->where('status', '!=', 'cancelled')
+            ->where('payment_status', '!=', 'paid')
             ->where('balance', '>', 0)
-            ->where('due_date', '>=', $today->copy()->subDays(30)) // también vencidas recientes
+            ->where('due_date', '>=', $today->copy()->subDays(30))
             ->where('due_date', '<=', $end)
             ->orderBy('due_date')
             ->get();
