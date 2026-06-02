@@ -466,20 +466,15 @@ class DashboardController extends Controller
 
         $today = Carbon::today();
 
-        // Total por cobrar: todos los saldos pendientes con balance > 0
-        // Equivale a: SELECT SUM(balance) FROM receivables WHERE status IN ('pending','partial','overdue') AND balance > 0
-        $porCobrar = (float) Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-                        ->where('balance', '>', 0)
-                        ->sum('balance');
+        // Usar Invoice igual que el módulo de Cuentas por Cobrar
+        $porCobrar    = (float) Invoice::where('status', '!=', 'cancelled')
+                            ->where('payment_status', '!=', 'paid')
+                            ->sum('balance');
 
-        // Vencido: solo los que tienen due_date pasada
-        $vencido   = (float) Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-                        ->where('balance', '>', 0)
-                        ->where('due_date', '<', $today)
-                        ->sum('balance');
-        $clientesVenc = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-            ->where('due_date', '<', $today)->where('balance', '>', 0)
-            ->distinct('client_id')->count('client_id');
+        $vencido      = (float) Invoice::overdue()->sum('balance');
+
+        $clientesVenc = Invoice::overdue()
+                            ->distinct('client_id')->count('client_id');
 
         return [
             'ventas_mes'          => round($ventasMes, 2),
