@@ -252,7 +252,7 @@
         <tr><td>Módulos</td><td>5 módulos analíticos</td></tr>
         <tr><td>Funcionalidades</td><td>31 en total</td></tr>
         <tr><td>Estado general</td><td>✅ Completado</td></tr>
-        <tr><td>Fecha</td><td>Mayo 2026</td></tr>
+        <tr><td>Fecha</td><td><span class="fecha-hora-bo">—</span></td></tr>
       </table>
     </div>
   </div>
@@ -344,7 +344,7 @@
 
   <div class="page-footer">
     <span>SISPANDO — Sistema de Gestión Farmacéutica</span>
-    <span>Informe de Entregables · Mayo 2026</span>
+    <span>Informe de Entregables · <span class="fecha-bo">—</span></span>
   </div>
 </div>
 
@@ -406,7 +406,7 @@
 
   <div class="page-footer">
     <span>SISPANDO — Módulo 1: Dashboard Analítico</span>
-    <span>Mayo 2026</span>
+    <span><span class="fecha-bo">—</span></span>
   </div>
 </div>
 
@@ -468,7 +468,7 @@
 
   <div class="page-footer">
     <span>SISPANDO — Módulo 2: Gráficos Dinámicos</span>
-    <span>Mayo 2026</span>
+    <span><span class="fecha-bo">—</span></span>
   </div>
 </div>
 
@@ -520,7 +520,7 @@
 
   <div class="page-footer">
     <span>SISPANDO — Módulo 3: Comparativa de Ventas</span>
-    <span>Mayo 2026</span>
+    <span><span class="fecha-bo">—</span></span>
   </div>
 </div>
 
@@ -597,7 +597,7 @@
 
   <div class="page-footer">
     <span>SISPANDO — Módulo 4: Proyección de Cuentas por Cobrar</span>
-    <span>Mayo 2026</span>
+    <span><span class="fecha-bo">—</span></span>
   </div>
 </div>
 
@@ -679,7 +679,7 @@
 
   <div class="page-footer">
     <span>SISPANDO — Módulo 5: Proyección de Ventas Futuras</span>
-    <span>Mayo 2026</span>
+    <span><span class="fecha-bo">—</span></span>
   </div>
 </div>
 
@@ -757,7 +757,7 @@
 
   <div class="page-footer">
     <span>SISPANDO — Sistema de Gestión Farmacéutica</span>
-    <span>Informe de Entregables · Mayo 2026 · Confidencial</span>
+    <span>Informe de Entregables · <span class="fecha-bo">—</span> · Confidencial</span>
   </div>
 </div>
 
@@ -765,6 +765,33 @@
 <button class="print-btn no-print" onclick="window.print()">
   🖨️ Imprimir / Guardar PDF
 </button>
+
+<script>
+  // Fecha y hora en Bolivia (America/La_Paz — UTC-4)
+  const ahora = new Date();
+  const optsLargo = { timeZone: 'America/La_Paz', year: 'numeric', month: 'long' };
+  const optsCompleto = {
+    timeZone: 'America/La_Paz',
+    day: '2-digit', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  };
+  const optsCorto = { timeZone: 'America/La_Paz', month: 'long', year: 'numeric' };
+
+  const mesAnio   = ahora.toLocaleDateString('es-BO', optsCorto);   // "mayo 2026"
+  const fechaHora = ahora.toLocaleString('es-BO', optsCompleto);    // "28 de mayo de 2026, 17:35"
+
+  // Capitalizar primera letra
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const mesAnioFmt = cap(mesAnio);   // "<span class="fecha-bo">—</span>"
+
+  // Reemplazar todos los elementos con clase .fecha-bo
+  document.querySelectorAll('.fecha-bo').forEach(el => {
+    el.textContent = mesAnioFmt;
+  });
+  document.querySelectorAll('.fecha-hora-bo').forEach(el => {
+    el.textContent = fechaHora + ' (Bolivia)';
+  });
+</script>
 
 </body>
 </html>
