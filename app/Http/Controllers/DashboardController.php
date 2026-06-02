@@ -466,21 +466,17 @@ class DashboardController extends Controller
 
         $today = Carbon::today();
 
-        // Usar misma lógica que el PDF cartera para consistencia
-        $alDia     = Receivable::whereIn('status', ['pending', 'partial'])
-                        ->where('due_date', '>=', $today)->where('balance', '>', 0)->sum('balance') ?? 0;
-        $venc30    = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-                        ->where('due_date', '<', $today)->where('due_date', '>=', $today->copy()->subDays(30))
-                        ->where('balance', '>', 0)->sum('balance') ?? 0;
-        $venc60    = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-                        ->where('due_date', '<', $today->copy()->subDays(30))->where('due_date', '>=', $today->copy()->subDays(60))
-                        ->where('balance', '>', 0)->sum('balance') ?? 0;
-        $vencMas60 = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
-                        ->where('due_date', '<', $today->copy()->subDays(60))
-                        ->where('balance', '>', 0)->sum('balance') ?? 0;
+        // Total por cobrar: todos los saldos pendientes con balance > 0
+        // Equivale a: SELECT SUM(balance) FROM receivables WHERE status IN ('pending','partial','overdue') AND balance > 0
+        $porCobrar = (float) Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
+                        ->where('balance', '>', 0)
+                        ->sum('balance');
 
-        $porCobrar    = $alDia + $venc30 + $venc60 + $vencMas60;
-        $vencido      = $venc30 + $venc60 + $vencMas60;
+        // Vencido: solo los que tienen due_date pasada
+        $vencido   = (float) Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
+                        ->where('balance', '>', 0)
+                        ->where('due_date', '<', $today)
+                        ->sum('balance');
         $clientesVenc = Receivable::whereIn('status', ['pending', 'partial', 'overdue'])
             ->where('due_date', '<', $today)->where('balance', '>', 0)
             ->distinct('client_id')->count('client_id');
