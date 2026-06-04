@@ -368,8 +368,11 @@
       </div>
 
       <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!--  CALENDARIO DE COBROS                                           -->
+      <!--  CALENDARIOS: COBROS + VENTAS                                   -->
       <!-- ═══════════════════════════════════════════════════════════════ -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+      <!-- ── Calendario de Cobros ── -->
       <Card v-if="cobroCalendario && (cobroCalendario.by_week?.length || cobroCalendario.by_month?.length)">
         <CardHeader>
           <div class="flex items-center justify-between">
@@ -590,22 +593,28 @@
           <CardHeader><CardTitle class="text-base">Estado de Órdenes</CardTitle></CardHeader>
           <CardContent>
             <div class="grid grid-cols-2 gap-3">
-              <div class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                <div class="text-2xl font-bold text-yellow-600">{{ orderStats?.pending || 0 }}</div>
+              <Link href="/preventas"
+                class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors cursor-pointer group">
+                <div class="text-2xl font-bold text-yellow-600 group-hover:scale-105 transition-transform">{{ orderStats?.pending || 0 }}</div>
                 <div class="text-xs text-yellow-700 dark:text-yellow-400 mt-1">Pendientes</div>
-              </div>
+                <div class="text-xs text-yellow-500 dark:text-yellow-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver preventas →</div>
+              </Link>
               <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <div class="text-2xl font-bold text-green-600">{{ orderStats?.delivered || 0 }}</div>
                 <div class="text-xs text-green-700 dark:text-green-400 mt-1">Entregadas y pagadas</div>
               </div>
-              <div class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                <div class="text-2xl font-bold text-red-600">{{ orderStats?.unpaid || 0 }}</div>
+              <Link href="/cuentas-por-cobrar"
+                class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer group">
+                <div class="text-2xl font-bold text-red-600 group-hover:scale-105 transition-transform">{{ orderStats?.unpaid || 0 }}</div>
                 <div class="text-xs text-red-700 dark:text-red-400 mt-1 font-semibold">Sin pagar</div>
-              </div>
-              <div class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                <div class="text-2xl font-bold text-orange-600">{{ orderStats?.partial || 0 }}</div>
+                <div class="text-xs text-red-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver cobranzas →</div>
+              </Link>
+              <Link href="/cuentas-por-cobrar"
+                class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors cursor-pointer group">
+                <div class="text-2xl font-bold text-orange-600 group-hover:scale-105 transition-transform">{{ orderStats?.partial || 0 }}</div>
                 <div class="text-xs text-orange-700 dark:text-orange-400 mt-1 font-semibold">Pago parcial</div>
-              </div>
+                <div class="text-xs text-orange-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver cobranzas →</div>
+              </Link>
             </div>
           </CardContent>
         </Card>

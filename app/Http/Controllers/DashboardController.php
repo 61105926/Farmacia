@@ -81,6 +81,7 @@ class DashboardController extends Controller
                 'receivablesProjection'=> $this->sanitizeData($this->getReceivablesProjection()),
                 'churnedClients'      => $this->sanitizeData($this->getChurnedClients()),
                 'cobroCalendario'     => $this->sanitizeData($this->getCobroCalendario()),
+                'ventaCalendario'     => $this->sanitizeData($this->getVentaCalendario()),
             ]);
             
         } catch (\Exception $e) {
@@ -683,6 +684,83 @@ class DashboardController extends Controller
             'windows' => $projection,
             'monthly' => $monthly,
             'total_proyectado' => round(array_sum(array_column($projection, 'amount')), 2),
+        ];
+    }
+
+    private function getVentaCalendario(): array
+    {
+        $names = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+        $today = Carbon::today();
+        $start = $today->copy()->subDays(30);
+        $end   = $today->copy()->addDays(60);
+
+        // Ventas recientes + próximas (presales confirmadas)
+        $sales = Sale::with('client:id,business_name,phone')
+            ->where('status', '!=', 'cancelled')
+            ->whereBetween('created_at', [$start, $end])
+            ->orderBy('created_at')
+            ->get();
+
+        // Agrupar por semana
+        $byWeek = [];
+        foreach ($sales as $s) {
+            $date      = Carbon::parse($s->created_at);
+            $weekStart = $date->copy()->startOfWeek()->format('Y-m-d');
+            $weekLabel = 'Sem. ' . $date->copy()->startOfWeek()->format('d/m')
+                       . ' - ' . $date->copy()->endOfWeek()->format('d/m');
+            $isPast    = $date->lt($today);
+
+            if (!isset($byWeek[$weekStart])) {
+                $byWeek[$weekStart] = [
+                    'week_label' => $weekLabel,
+                    'week_start' => $weekStart,
+                    'total'      => 0,
+                    'count'      => 0,
+                    'is_current' => $date->isSameWeek($today),
+                    'is_past'    => $isPast,
+                    'clientes'   => [],
+                ];
+            }
+
+            $byWeek[$weekStart]['total']  += $s->total;
+            $byWeek[$weekStart]['count']  += 1;
+            $byWeek[$weekStart]['clientes'][] = [
+                'name'         => $s->client?->business_name ?? '—',
+                'phone'        => $s->client?->phone,
+                'total'        => round($s->total, 2),
+                'date'         => $date->format('d/m/Y'),
+                'payment_status' => $s->payment_status,
+                'is_past'      => $isPast,
+            ];
+        }
+
+        ksort($byWeek);
+        foreach ($byWeek as &$w) {
+            $w['total'] = round($w['total'], 2);
+            usort($w['clientes'], fn($a, $b) => $b['total'] <=> $a['total']);
+        }
+
+        // Agrupar por mes para el gráfico
+        $byMonth = [];
+        foreach ($sales as $s) {
+            $date       = Carbon::parse($s->created_at);
+            $monthKey   = $date->format('Y-m');
+            $monthLabel = $names[$date->month - 1] . ' ' . $date->year;
+
+            if (!isset($byMonth[$monthKey])) {
+                $byMonth[$monthKey] = ['label' => $monthLabel, 'total' => 0, 'count' => 0, 'is_past' => $date->lt($today->copy()->startOfMonth())];
+            }
+            $byMonth[$monthKey]['total'] += $s->total;
+            $byMonth[$monthKey]['count'] += 1;
+        }
+        ksort($byMonth);
+        foreach ($byMonth as &$m) {
+            $m['total'] = round($m['total'], 2);
+        }
+
+        return [
+            'by_week'  => array_values($byWeek),
+            'by_month' => array_values($byMonth),
         ];
     }
 
