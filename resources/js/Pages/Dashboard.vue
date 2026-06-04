@@ -599,10 +599,12 @@
                 <div class="text-xs text-yellow-700 dark:text-yellow-400 mt-1">Pendientes</div>
                 <div class="text-xs text-yellow-500 dark:text-yellow-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver preventas →</div>
               </Link>
-              <div class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <div class="text-2xl font-bold text-green-600">{{ orderStats?.delivered || 0 }}</div>
+              <Link href="/ventas"
+                class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors cursor-pointer group">
+                <div class="text-2xl font-bold text-green-600 group-hover:scale-105 transition-transform">{{ orderStats?.delivered || 0 }}</div>
                 <div class="text-xs text-green-700 dark:text-green-400 mt-1">Entregadas y pagadas</div>
-              </div>
+                <div class="text-xs text-green-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver ventas →</div>
+              </Link>
               <Link href="/cuentas-por-cobrar"
                 class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer group">
                 <div class="text-2xl font-bold text-red-600 group-hover:scale-105 transition-transform">{{ orderStats?.unpaid || 0 }}</div>
