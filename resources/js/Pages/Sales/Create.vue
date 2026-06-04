@@ -139,6 +139,35 @@
           </CardContent>
         </Card>
 
+        <!-- Resumen (arriba de productos) -->
+        <Card v-if="form.items.length > 0">
+          <CardHeader>
+            <CardTitle>Resumen</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Subtotal</label>
+                <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-lg font-medium">
+                  {{ formatCurrency(form.subtotal) }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Total Descuentos</label>
+                <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-lg font-medium">
+                  {{ formatCurrency(form.total_discount) }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                <div class="px-3 py-2 bg-primary-50 border border-primary-300 rounded-md text-xl font-bold text-primary-900">
+                  {{ formatCurrency(form.total) }}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <!-- Products -->
         <Card>
           <CardHeader>
@@ -163,10 +192,10 @@
               <div
                 v-for="(item, index) in form.items"
                 :key="index"
-                class="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 border border-gray-200 rounded-lg"
+                class="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 border border-gray-200 rounded-lg"
               >
-                <!-- Product -->
-                <div>
+                <!-- Product — col-span-4 para que no se solape con cantidad -->
+                <div class="md:col-span-4">
                   <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
                   <ProductSelect
                     v-model="item.product_id"
@@ -188,8 +217,8 @@
                   </div>
                 </div>
 
-                <!-- Quantity -->
-                <div>
+                <!-- Quantity — col-span-2 -->
+                <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
                   <input
                     v-model.number="item.quantity"
@@ -203,12 +232,12 @@
                     :class="{ 'border-red-500': hasQuantityError(index) }"
                   />
                   <p v-if="hasQuantityError(index)" class="text-xs text-red-600 mt-1">
-                    No hay suficiente stock. Disponible: {{ getMaxQuantity(index) }} {{ getUnitType(index) }}
+                    Máx: {{ getMaxQuantity(index) }} {{ getUnitType(index) }}
                   </p>
                 </div>
 
-                <!-- Unit Price -->
-                <div>
+                <!-- Unit Price — col-span-2 -->
+                <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-1">Precio Unit.</label>
                   <input
                     v-model.number="item.unit_price"
@@ -221,9 +250,9 @@
                   />
                 </div>
 
-                <!-- Discount -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Descuento %</label>
+                <!-- Discount — col-span-1 -->
+                <div class="md:col-span-1">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Desc. %</label>
                   <input
                     v-model.number="item.discount"
                     @input="calculateItemTotal(index)"
@@ -236,52 +265,23 @@
                   />
                 </div>
 
-                <!-- Total -->
-                <div>
+                <!-- Total — col-span-2 -->
+                <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-1">Total</label>
                   <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm font-medium">
                     {{ formatCurrency(item.total) }}
                   </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="flex items-end">
+                <!-- Actions — col-span-1 -->
+                <div class="md:col-span-1 flex items-end">
                   <button
                     type="button"
                     @click="removeProduct(index)"
-                    class="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                    class="w-full px-2 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
                   >
-                    Eliminar
+                    ✕
                   </button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <!-- Totals -->
-        <Card v-if="form.items.length > 0">
-          <CardHeader>
-            <CardTitle>Resumen</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Subtotal</label>
-                <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-lg font-medium">
-                  {{ formatCurrency(form.subtotal) }}
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Total Descuentos</label>
-                <div class="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-lg font-medium">
-                  {{ formatCurrency(form.total_discount) }}
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Total</label>
-                <div class="px-3 py-2 bg-primary-50 border border-primary-300 rounded-md text-xl font-bold text-primary-900">
-                  {{ formatCurrency(form.total) }}
                 </div>
               </div>
             </div>
@@ -417,7 +417,7 @@ const onlyIntegers = (event) => {
 }
 
 const addProduct = () => {
-  form.items.push({
+  form.items.unshift({
     product_id: '',
     quantity: 1,
     unit_price: 0,
