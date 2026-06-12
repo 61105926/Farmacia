@@ -264,20 +264,22 @@ class SaleController extends Controller
                     ]);
                 }
 
-                // Validar que haya stock disponible
-                $availableStock = $product->stock_quantity ?? 0;
-                $requestedQuantity = $item['quantity'];
+                // Validar stock solo si NO viene de preventa (ya fue reservado/descontado)
+                if (empty($validated['presale_id'])) {
+                    $availableStock = $product->stock_quantity ?? 0;
+                    $requestedQuantity = $item['quantity'];
 
-                if ($availableStock <= 0) {
-                    throw ValidationException::withMessages([
-                        "items.{$index}.product_id" => "El producto '{$productLabel}' no tiene stock disponible."
-                    ]);
-                }
+                    if ($availableStock <= 0) {
+                        throw ValidationException::withMessages([
+                            "items.{$index}.product_id" => "El producto '{$productLabel}' no tiene stock disponible."
+                        ]);
+                    }
 
-                if ($requestedQuantity > $availableStock) {
-                    throw ValidationException::withMessages([
-                        "items.{$index}.quantity" => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
-                    ]);
+                    if ($requestedQuantity > $availableStock) {
+                        throw ValidationException::withMessages([
+                            "items.{$index}.quantity" => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
+                        ]);
+                    }
                 }
             }
 
@@ -366,10 +368,12 @@ class SaleController extends Controller
                     'total'           => $itemTotal - $itemDiscount,
                 ]);
 
-                // Actualizar stock general del producto
-                $product = \App\Models\Product::find($item['product_id']);
-                if ($product) {
-                    $product->updateStock($item['quantity'], 'subtract', "Venta #{$sale->code}");
+                // Solo descontar stock si NO viene de preventa (ya fue descontado al crear la preventa)
+                if (empty($validated['presale_id'])) {
+                    $product = \App\Models\Product::find($item['product_id']);
+                    if ($product) {
+                        $product->updateStock($item['quantity'], 'subtract', "Venta #{$sale->code}");
+                    }
                 }
             }
 
@@ -573,23 +577,25 @@ class SaleController extends Controller
 
         DB::beginTransaction();
         try {
-            // Validar stock disponible para cada item
-            foreach ($validated['items'] as $index => $item) {
-                $product = \App\Models\Product::find($item['product_id']);
-                if (!$product) {
-                    return back()->withErrors(['items.' . $index . '.product_id' => 'El producto seleccionado no existe.'])->withInput();
-                }
-                
-                $availableStock = $product->stock_quantity ?? 0;
-                $requestedQuantity = $item['quantity'];
-                
-                if ($requestedQuantity > $availableStock) {
-                    return back()->withErrors([
-                        'items.' . $index . '.quantity' => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
-                    ])->withInput();
+            // Validar stock solo si la venta NO viene de preventa
+            if (!$sale->presale_id) {
+                foreach ($validated['items'] as $index => $item) {
+                    $product = \App\Models\Product::find($item['product_id']);
+                    if (!$product) {
+                        return back()->withErrors(['items.' . $index . '.product_id' => 'El producto seleccionado no existe.'])->withInput();
+                    }
+
+                    $availableStock = $product->stock_quantity ?? 0;
+                    $requestedQuantity = $item['quantity'];
+
+                    if ($requestedQuantity > $availableStock) {
+                        return back()->withErrors([
+                            'items.' . $index . '.quantity' => "No hay suficiente stock. Disponible: {$availableStock} " . ($product->unit_type ?? 'unidades')
+                        ])->withInput();
+                    }
                 }
             }
-            
+
             // Calcular totales
             $subtotal = 0;
             $totalDiscount = 0;
@@ -893,19 +899,22 @@ class SaleController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Verificar stock de productos
-            foreach ($sale->items as $item) {
-                $product = $item->product;
-                if ($product->stock_quantity < $item->quantity) {
-                    DB::rollBack();
-                    return back()->with('error', "Stock insuficiente para el producto: {$product->name}. Disponible: {$product->stock_quantity}, Requerido: {$item->quantity}");
+            // Si NO viene de preventa, verificar y descontar stock (preventa ya lo hizo al crearse)
+            if (!$sale->presale_id) {
+                // 1. Verificar stock de productos
+                foreach ($sale->items as $item) {
+                    $product = $item->product;
+                    if ($product->stock_quantity < $item->quantity) {
+                        DB::rollBack();
+                        return back()->with('error', "Stock insuficiente para el producto: {$product->name}. Disponible: {$product->stock_quantity}, Requerido: {$item->quantity}");
+                    }
                 }
-            }
 
-            // 2. Descontar stock de productos
-            foreach ($sale->items as $item) {
-                $product = $item->product;
-                $product->updateStock($item->quantity, 'subtract', "Venta #{$sale->code}");
+                // 2. Descontar stock de productos
+                foreach ($sale->items as $item) {
+                    $product = $item->product;
+                    $product->updateStock($item->quantity, 'subtract', "Venta #{$sale->code}");
+                }
             }
 
             // 3. Actualizar estado de la venta

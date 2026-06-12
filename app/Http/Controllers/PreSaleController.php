@@ -516,12 +516,11 @@ class PresaleController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            // 7. Crear items de la preventa (asigna lote FIFO informativo, sin descontar stock)
+            // 7. Crear items de la preventa y descontar stock (reserva)
             foreach ($validated['items'] as $item) {
                 $itemTotal = $item['quantity'] * $item['unit_price'];
                 $itemDiscount = $itemTotal * ($item['discount'] ?? 0) / 100;
 
-                // Buscar primer lote disponible FIFO (solo para referencia, no descuenta)
                 $batch = Batch::activeFifo($item['product_id'])->first();
 
                 PresaleItem::create([
@@ -535,6 +534,12 @@ class PresaleController extends Controller
                     'discount_amount' => $itemDiscount,
                     'total'           => $itemTotal - $itemDiscount,
                 ]);
+
+                // Descontar stock al reservar en preventa
+                $product = $products->get($item['product_id']);
+                if ($product) {
+                    $product->updateStock($item['quantity'], 'subtract', "Reserva preventa #{$presale->code}");
+                }
             }
 
             DB::commit();
@@ -794,6 +799,14 @@ class PresaleController extends Controller
                 $total += $itemSubtotal;
             }
 
+            // Restaurar stock de los items anteriores antes de reemplazarlos
+            $oldItems = $presale->items()->with('product')->get();
+            foreach ($oldItems as $oldItem) {
+                if ($oldItem->product) {
+                    $oldItem->product->updateStock($oldItem->quantity, 'add', "Actualización preventa #{$presale->code} - restaurando");
+                }
+            }
+
             // Actualizar preventa
             $presale->update([
                 'client_id' => $validated['client_id'],
@@ -807,6 +820,9 @@ class PresaleController extends Controller
 
             // Eliminar items existentes y crear nuevos
             $presale->items()->delete();
+
+            $newProductIds = collect($validated['items'])->pluck('product_id')->unique();
+            $newProducts = Product::whereIn('id', $newProductIds)->get()->keyBy('id');
 
             foreach ($validated['items'] as $item) {
                 $itemTotal = $item['quantity'] * $item['unit_price'];
@@ -822,6 +838,12 @@ class PresaleController extends Controller
                     'discount_amount' => $itemDiscount,
                     'total' => $itemTotal - $itemDiscount,
                 ]);
+
+                // Descontar stock del nuevo item reservado
+                $product = $newProducts->get($item['product_id']);
+                if ($product) {
+                    $product->updateStock($item['quantity'], 'subtract', "Actualización preventa #{$presale->code}");
+                }
             }
 
             DB::commit();
@@ -1044,6 +1066,16 @@ class PresaleController extends Controller
     {
         if ($presale->status === 'cancelled') {
             return back()->with('error', 'La preventa ya está cancelada.');
+        }
+
+        // Restaurar stock reservado solo si aún no fue convertida a venta
+        if ($presale->status !== 'converted') {
+            $presale->load('items.product');
+            foreach ($presale->items as $item) {
+                if ($item->product) {
+                    $item->product->updateStock($item->quantity, 'add', "Cancelación preventa #{$presale->code}");
+                }
+            }
         }
 
         $presale->update([
@@ -1319,6 +1351,13 @@ class PresaleController extends Controller
 
                     case 'cancel':
                         if ($presale->status !== 'converted') {
+                            // Restaurar stock reservado
+                            $presale->load('items.product');
+                            foreach ($presale->items as $item) {
+                                if ($item->product) {
+                                    $item->product->updateStock($item->quantity, 'add', "Cancelación masiva preventa #{$presale->code}");
+                                }
+                            }
                             $presale->update([
                                 'status' => 'cancelled',
                             ]);
@@ -1328,6 +1367,13 @@ class PresaleController extends Controller
 
                     case 'delete':
                         if ($presale->status === 'draft') {
+                            // Restaurar stock reservado
+                            $presale->load('items.product');
+                            foreach ($presale->items as $item) {
+                                if ($item->product) {
+                                    $item->product->updateStock($item->quantity, 'add', "Eliminación masiva preventa #{$presale->code}");
+                                }
+                            }
                             $presale->items()->delete();
                             $presale->delete();
                             $count++;
@@ -1396,6 +1442,16 @@ class PresaleController extends Controller
 
         DB::beginTransaction();
         try {
+            // Restaurar stock reservado antes de eliminar
+            if ($presale->status !== 'converted') {
+                $presale->load('items.product');
+                foreach ($presale->items as $item) {
+                    if ($item->product) {
+                        $item->product->updateStock($item->quantity, 'add', "Eliminación preventa #{$presale->code}");
+                    }
+                }
+            }
+
             // Eliminar items primero - usar eliminación directa en la base de datos
             PresaleItem::where('presale_id', $presale->id)->delete();
 
