@@ -105,7 +105,7 @@ class QueryOptimizer
     public static function optimizeStats(Builder $query): Builder
     {
         return $query->selectRaw('COUNT(*) as total')
-                    ->selectRaw('SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as last_30_days')
-                    ->selectRaw('SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as last_7_days');
+                    ->selectRaw("SUM(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 ELSE 0 END) as last_30_days")
+                    ->selectRaw("SUM(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as last_7_days");
     }
 }
