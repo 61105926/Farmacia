@@ -1,74 +1,35 @@
 #!/bin/bash
 
-# Initialize MariaDB
-echo "Initializing MariaDB..."
-
-# Configure MariaDB to bind to all interfaces
-echo "[mysqld]
-bind-address = 0.0.0.0
-socket = /var/run/mysqld/mysqld.sock
-port = 3306
-skip-grant-tables" >> /etc/mysql/mariadb.conf.d/50-server.cnf
-
-# Create socket directory
-mkdir -p /var/run/mysqld
-chown mysql:mysql /var/run/mysqld
-
-# Start MariaDB with skip-grant-tables
-service mariadb start
-
-# Wait for MariaDB to be ready
-until mysqladmin ping -h "127.0.0.1" --silent; do
-    echo "Waiting for MariaDB to be ready..."
-    sleep 2
-done
-
-# Create database and user without authentication
-mysql -h 127.0.0.1 << EOF
-FLUSH PRIVILEGES;
-CREATE DATABASE IF NOT EXISTS farmacia;
-CREATE USER IF NOT EXISTS 'farmacia'@'%' IDENTIFIED BY 'farmacia';
-CREATE USER IF NOT EXISTS 'farmacia'@'localhost' IDENTIFIED BY 'farmacia';
-CREATE USER IF NOT EXISTS 'farmacia'@'127.0.0.1' IDENTIFIED BY 'farmacia';
-GRANT ALL PRIVILEGES ON farmacia.* TO 'farmacia'@'%';
-GRANT ALL PRIVILEGES ON farmacia.* TO 'farmacia'@'localhost';
-GRANT ALL PRIVILEGES ON farmacia.* TO 'farmacia'@'127.0.0.1';
-FLUSH PRIVILEGES;
-EOF
-
-# Restart MariaDB without skip-grant-tables
-echo "Restarting MariaDB with authentication..."
-sed -i '/skip-grant-tables/d' /etc/mysql/mariadb.conf.d/50-server.cnf
-service mariadb restart
-
-# Wait for restart
-until mysqladmin ping -h "127.0.0.1" --silent; do
-    echo "Waiting for MariaDB restart..."
-    sleep 2
-done
-
-echo "MariaDB initialized successfully"
-
-# Run Laravel setup
 echo "Running Laravel setup..."
 
-# Generate app key first
+# Generate app key if not set
 php artisan key:generate --force
-echo "App key generated successfully"
+echo "App key generated"
 
-# Test database connection before migrations
+# Test database connection
 echo "Testing database connection..."
 php artisan tinker --execute="DB::connection()->getPdo(); echo 'Database connected successfully';"
 
-# Ejecutar solo migraciones pendientes (NO borra datos existentes)
+# Run pending migrations only (does NOT delete existing data)
 echo "Running migrations..."
 php artisan migrate --force
 
-# Crear symlink de storage para archivos subidos (logos, etc.)
+# Storage symlink
 echo "Creating storage link..."
 php artisan storage:link --force
 
-# Set proper permissions
+# Run seeders only if no users exist (first deploy)
+USER_COUNT=$(php artisan tinker --execute="echo App\Models\User::count();" 2>/dev/null | tail -1)
+if [ "$USER_COUNT" = "0" ] || [ -z "$USER_COUNT" ]; then
+    echo "No users found, running initial seeders..."
+    php artisan db:seed --class=RolePermissionSeeder --force
+    php artisan db:seed --class=AdminUserSeeder --force
+    echo "Seeders completed"
+else
+    echo "Users already exist ($USER_COUNT), skipping seeders"
+fi
+
+# Set permissions
 chown -R www-data:www-data /var/www/html/storage
 chown -R www-data:www-data /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/storage
@@ -76,6 +37,6 @@ chmod -R 775 /var/www/html/bootstrap/cache
 
 echo "Laravel setup completed"
 
-# Start Apache in foreground
+# Start Apache
 echo "Starting Apache..."
 apache2-foreground
