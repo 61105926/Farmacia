@@ -72,6 +72,7 @@ class DashboardController extends Controller
                 'alerts' => $this->sanitizeData($alerts),
                 'performanceMetrics' => $this->sanitizeData($performanceMetrics),
                 'expiringProducts' => $this->sanitizeData($expiringProducts),
+                'topProducts' => $this->sanitizeData($this->getTopProducts()),
                 // Analytics
                 'analyticsKpis'       => $this->sanitizeData($this->getAnalyticsKpis()),
                 'monthlyChartData'    => $this->sanitizeData($this->getMonthlyChartData()),
@@ -434,6 +435,44 @@ class DashboardController extends Controller
             });
     }
     
+    private function getTopProducts()
+    {
+        $topQuery = function ($from = null) {
+            return DB::table('sale_items')
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->join('products', 'sale_items.product_id', '=', 'products.id')
+                ->whereNotIn('sales.status', ['cancelled', 'canceled'])
+                ->when($from, fn($q) => $q->where('sales.created_at', '>=', $from))
+                ->groupBy('products.id', 'products.name', 'products.code', 'products.description')
+                ->select(
+                    'products.id',
+                    'products.name',
+                    'products.code',
+                    'products.description',
+                    DB::raw('SUM(sale_items.quantity) as total_quantity'),
+                    DB::raw('SUM(sale_items.total) as total_amount'),
+                    DB::raw('COUNT(DISTINCT sales.id) as sales_count')
+                )
+                ->orderByDesc('total_quantity')
+                ->limit(5)
+                ->get()
+                ->map(fn($p) => [
+                    'id'             => $p->id,
+                    'name'           => $p->name,
+                    'code'           => $p->code,
+                    'description'    => $p->description,
+                    'total_quantity' => (float) $p->total_quantity,
+                    'total_amount'   => round((float) $p->total_amount, 2),
+                    'sales_count'    => (int) $p->sales_count,
+                ]);
+        };
+
+        return [
+            'month' => $topQuery(Carbon::now()->startOfMonth()),
+            'all'   => $topQuery(),
+        ];
+    }
+
     private function getDefaultStats()
     {
         return [

@@ -787,6 +787,59 @@
       </div>
 
       <!-- ═══════════════════════════════════════════════════════════════ -->
+      <!--  PRODUCTOS MÁS VENDIDOS                                         -->
+      <!-- ═══════════════════════════════════════════════════════════════ -->
+      <Card v-if="topProducts">
+        <CardHeader>
+          <div class="flex items-center justify-between">
+            <CardTitle class="flex items-center gap-2">
+              <Package class="w-5 h-5 text-purple-500" />
+              Productos Más Vendidos
+            </CardTitle>
+            <div class="flex gap-2">
+              <button @click="topVista = 'month'"
+                :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
+                  topVista === 'month' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                Este mes
+              </button>
+              <button @click="topVista = 'all'"
+                :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
+                  topVista === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                Histórico
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div v-if="topProductsList.length" class="space-y-2">
+            <div v-for="(p, i) in topProductsList" :key="p.id"
+              class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <span :class="['w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+                i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-gray-300 text-gray-700' : i === 2 ? 'bg-orange-400 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400']">
+                {{ i + 1 }}
+              </span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ p.description || p.name }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ p.code }} · {{ p.sales_count }} {{ p.sales_count === 1 ? 'venta' : 'ventas' }}</p>
+                <div class="mt-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full bg-purple-400"
+                    :style="`width:${topProductsList[0].total_quantity > 0 ? Math.min(100, Math.round(p.total_quantity / topProductsList[0].total_quantity * 100)) : 0}%`">
+                  </div>
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="text-sm font-bold text-gray-900 dark:text-white">{{ Number(p.total_quantity).toLocaleString('es-BO') }} uds.</p>
+                <p class="text-xs text-purple-600 dark:text-purple-400 font-medium">{{ fmtCurrency(p.total_amount) }}</p>
+              </div>
+            </div>
+          </div>
+          <div v-else class="text-center text-gray-400 dark:text-gray-500 py-8 text-sm">
+            {{ topVista === 'month' ? 'Sin ventas este mes' : 'Sin ventas registradas' }}
+          </div>
+        </CardContent>
+      </Card>
+
+      <!-- ═══════════════════════════════════════════════════════════════ -->
       <!--  PRODUCTOS POR VENCER                                           -->
       <!-- ═══════════════════════════════════════════════════════════════ -->
       <Card v-if="expiringProducts?.length">
@@ -882,7 +935,7 @@ const props = defineProps({
   user: Object, stats: Object, monthlyStats: Object, orderStats: Object,
   clientStats: Object, salesChart: Array, recentOrders: Array, topClients: Array,
   productStats: Object, userStats: Object, alerts: Array, performanceMetrics: Object,
-  expiringProducts: Array, error: String,
+  expiringProducts: Array, topProducts: Object, error: String,
   // Analytics
   analyticsKpis: Object, monthlyChartData: Array, periodComparison: Object,
   receivablesBreakdown: Object, salesProjection: Object, receivablesProjection: Object,
@@ -911,6 +964,13 @@ let cobroCalChart = null
 const ventaCalRef = ref(null)
 const ventaVista  = ref('semana')
 let ventaCalChart = null
+
+// Productos más vendidos
+const topVista = ref('month')
+const topProductsList = computed(() => {
+  const list = props.topProducts?.[topVista.value]
+  return Array.isArray(list) ? list : Object.values(list || {})
+})
 
 const buildCobroCalChart = () => {
   if (!cobroCalRef.value || !props.cobroCalendario?.by_month?.length) return
