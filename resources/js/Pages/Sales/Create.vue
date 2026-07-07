@@ -15,6 +15,18 @@
         </Link>
       </div>
 
+      <!-- Error Message -->
+      <div v-if="error" class="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+        <div class="flex">
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Error al cargar datos</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <p>{{ error }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <form @submit.prevent="submitForm" class="space-y-6">
         <!-- Client Selection -->
         <Card>
@@ -341,6 +353,7 @@ const props = defineProps({
   salespeople: Array,
   presales: Array,
   errors: Object,
+  error: String,
   nextInvoiceNumber: {
     type: String,
     default: '',

@@ -123,16 +123,13 @@ class Pharmacy extends Model
     public static function generateCodigoCliente()
     {
         $currentYear = date('Y');
-        $lastPharmacy = static::where('codigo_cliente', 'like', "CLI-%-{$currentYear}")
-            ->orderByRaw('CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(codigo_cliente, "-", 2), "-", -1) AS UNSIGNED) DESC')
-            ->first();
+        // Calcular el máximo en PHP: SUBSTRING_INDEX es función MySQL y no existe en PostgreSQL
+        $lastNumber = static::where('codigo_cliente', 'like', "CLI-%-{$currentYear}")
+            ->pluck('codigo_cliente')
+            ->map(fn ($codigo) => (int) (explode('-', $codigo)[1] ?? 0))
+            ->max();
 
-        if ($lastPharmacy) {
-            $lastNumber = (int) explode('-', $lastPharmacy->codigo_cliente)[1];
-            $nextNumber = $lastNumber + 1;
-        } else {
-            $nextNumber = 1;
-        }
+        $nextNumber = ($lastNumber ?? 0) + 1;
 
         return "CLI-{$nextNumber}-{$currentYear}";
     }

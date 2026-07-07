@@ -218,16 +218,14 @@ class Sale extends Model
     public static function generateNextInvoiceNumber(): string
     {
         $prefix = 'FAC-';
-        $lastSale = static::whereNotNull('invoice_number')
+        // Calcular el máximo en PHP: CAST(... AS UNSIGNED) es sintaxis MySQL y falla en PostgreSQL
+        $lastNumber = static::whereNotNull('invoice_number')
             ->where('invoice_number', 'like', $prefix . '%')
-            ->orderByRaw('CAST(SUBSTRING(invoice_number, ' . (strlen($prefix) + 1) . ') AS UNSIGNED) DESC')
-            ->first();
+            ->pluck('invoice_number')
+            ->map(fn ($number) => intval(substr($number, strlen($prefix))))
+            ->max();
 
-        $nextNumber = 1;
-        if ($lastSale) {
-            $num = intval(substr($lastSale->invoice_number, strlen($prefix)));
-            $nextNumber = $num + 1;
-        }
+        $nextNumber = ($lastNumber ?? 0) + 1;
 
         // Asegurarse de que el número generado sea único
         do {
