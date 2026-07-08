@@ -2,9 +2,14 @@
 
 echo "Running Laravel setup..."
 
-# Generate app key if not set
-php artisan key:generate --force
-echo "App key generated"
+# Generate app key ONLY if not set: regenerating in each deploy invalida
+# todas las sesiones y cookies (expulsa a los usuarios logueados)
+if [ -z "$APP_KEY" ] && ! grep -q "^APP_KEY=base64:" /var/www/html/.env 2>/dev/null; then
+    php artisan key:generate --force
+    echo "App key generated"
+else
+    echo "App key already set, skipping generation"
+fi
 
 # Test database connection
 echo "Testing database connection..."
