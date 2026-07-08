@@ -41,14 +41,14 @@ class SaleController extends Controller
                 ->with(['client:id,business_name', 'salesperson:id,name'])
                 ->when($request->search, function ($query, $search) {
                     $query->where(function ($q) use ($search) {
-                        $q->where('code', 'like', "%{$search}%")
-                          ->orWhere('invoice_number', 'like', "%{$search}%")
+                        $q->where('code', 'ilike', "%{$search}%")
+                          ->orWhere('invoice_number', 'ilike', "%{$search}%")
                           ->orWhereHas('client', function ($clientQuery) use ($search) {
-                              $clientQuery->where('business_name', 'like', "%{$search}%");
+                              $clientQuery->where('business_name', 'ilike', "%{$search}%");
                           })
                           ->orWhereHas('items.product', function ($pq) use ($search) {
-                              $pq->where('description', 'like', "%{$search}%")
-                                 ->orWhere('name', 'like', "%{$search}%");
+                              $pq->where('description', 'ilike', "%{$search}%")
+                                 ->orWhere('name', 'ilike', "%{$search}%");
                           });
                     });
                 })

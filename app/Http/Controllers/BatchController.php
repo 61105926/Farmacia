@@ -16,10 +16,10 @@ class BatchController extends Controller
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('batch_number', 'like', "%{$search}%")
-                  ->orWhereHas('product', fn($p) => $p->where('description', 'like', "%{$search}%")
-                                                       ->orWhere('name', 'like', "%{$search}%")
-                                                       ->orWhere('code', 'like', "%{$search}%"));
+                $q->where('batch_number', 'ilike', "%{$search}%")
+                  ->orWhereHas('product', fn($p) => $p->where('description', 'ilike', "%{$search}%")
+                                                       ->orWhere('name', 'ilike', "%{$search}%")
+                                                       ->orWhere('code', 'ilike', "%{$search}%"));
             });
         }
 

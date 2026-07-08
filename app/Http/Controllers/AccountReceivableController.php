@@ -23,10 +23,10 @@ class AccountReceivableController extends Controller
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('invoice_number', 'like', "%{$search}%")
-                  ->orWhere('client_name', 'like', "%{$search}%")
-                  ->orWhereHas('client', fn($c) => $c->where('business_name', 'like', "%{$search}%")
-                      ->orWhere('trade_name', 'like', "%{$search}%"));
+                $q->where('invoice_number', 'ilike', "%{$search}%")
+                  ->orWhere('client_name', 'ilike', "%{$search}%")
+                  ->orWhereHas('client', fn($c) => $c->where('business_name', 'ilike', "%{$search}%")
+                      ->orWhere('trade_name', 'ilike', "%{$search}%"));
             });
         }
 
@@ -160,13 +160,13 @@ class AccountReceivableController extends Controller
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('payment_number', 'like', "%{$search}%")
+                $q->where('payment_number', 'ilike', "%{$search}%")
                   ->orWhereHas('client', function ($q) use ($search) {
-                      $q->where('business_name', 'like', "%{$search}%")
-                        ->orWhere('trade_name', 'like', "%{$search}%");
+                      $q->where('business_name', 'ilike', "%{$search}%")
+                        ->orWhere('trade_name', 'ilike', "%{$search}%");
                   })
                   ->orWhereHas('invoice', function ($q) use ($search) {
-                      $q->where('invoice_number', 'like', "%{$search}%");
+                      $q->where('invoice_number', 'ilike', "%{$search}%");
                   });
             });
         }
@@ -213,13 +213,13 @@ class AccountReceivableController extends Controller
             if ($request->filled('search')) {
                 $search = $request->get('search');
                 $query->where(function ($q) use ($search) {
-                    $q->where('payment_number', 'like', "%{$search}%")
+                    $q->where('payment_number', 'ilike', "%{$search}%")
                       ->orWhereHas('client', function ($q) use ($search) {
-                          $q->where('business_name', 'like', "%{$search}%")
-                            ->orWhere('trade_name', 'like', "%{$search}%");
+                          $q->where('business_name', 'ilike', "%{$search}%")
+                            ->orWhere('trade_name', 'ilike', "%{$search}%");
                       })
                       ->orWhereHas('invoice', function ($q) use ($search) {
-                          $q->where('invoice_number', 'like', "%{$search}%");
+                          $q->where('invoice_number', 'ilike', "%{$search}%");
                       });
                 });
             }
@@ -775,8 +775,8 @@ class AccountReceivableController extends Controller
             if ($request->filled('search')) {
                 $search = $request->get('search');
                 $query->where(function ($q) use ($search) {
-                    $q->where('invoice_number', 'like', "%{$search}%")
-                      ->orWhere('client_name', 'like', "%{$search}%");
+                    $q->where('invoice_number', 'ilike', "%{$search}%")
+                      ->orWhere('client_name', 'ilike', "%{$search}%");
                 });
             }
 

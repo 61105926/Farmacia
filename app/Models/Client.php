@@ -276,10 +276,10 @@ class Client extends Model
     public function scopeSearch($query, string $search)
     {
         return $query->where(function ($q) use ($search) {
-            $q->where('business_name', 'like', "%{$search}%")
-              ->orWhere('trade_name', 'like', "%{$search}%")
-              ->orWhere('tax_id', 'like', "%{$search}%")
-              ->orWhere('code', 'like', "%{$search}%");
+            $q->where('business_name', 'ilike', "%{$search}%")
+              ->orWhere('trade_name', 'ilike', "%{$search}%")
+              ->orWhere('tax_id', 'ilike', "%{$search}%")
+              ->orWhere('code', 'ilike', "%{$search}%");
         });
     }
 }

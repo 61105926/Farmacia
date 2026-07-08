@@ -43,15 +43,15 @@ class PresaleController extends Controller
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
-                    $q->where('code', 'like', "%{$search}%")
-                      ->orWhere('notes', 'like', "%{$search}%")
+                    $q->where('code', 'ilike', "%{$search}%")
+                      ->orWhere('notes', 'ilike', "%{$search}%")
                       ->orWhereHas('client', function ($clientQuery) use ($search) {
-                          $clientQuery->where('business_name', 'like', "%{$search}%")
-                                    ->orWhere('trade_name', 'like', "%{$search}%");
+                          $clientQuery->where('business_name', 'ilike', "%{$search}%")
+                                    ->orWhere('trade_name', 'ilike', "%{$search}%");
                       })
                       ->orWhereHas('items.product', function ($pq) use ($search) {
-                          $pq->where('description', 'like', "%{$search}%")
-                             ->orWhere('name', 'like', "%{$search}%");
+                          $pq->where('description', 'ilike', "%{$search}%")
+                             ->orWhere('name', 'ilike', "%{$search}%");
                       });
                 });
             }

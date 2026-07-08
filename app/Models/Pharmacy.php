@@ -124,7 +124,7 @@ class Pharmacy extends Model
     {
         $currentYear = date('Y');
         // Calcular el máximo en PHP: SUBSTRING_INDEX es función MySQL y no existe en PostgreSQL
-        $lastNumber = static::where('codigo_cliente', 'like', "CLI-%-{$currentYear}")
+        $lastNumber = static::where('codigo_cliente', 'ilike', "CLI-%-{$currentYear}")
             ->pluck('codigo_cliente')
             ->map(fn ($codigo) => (int) (explode('-', $codigo)[1] ?? 0))
             ->max();

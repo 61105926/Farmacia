@@ -214,8 +214,8 @@ class ReportController extends Controller
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                $q->where('name', 'ilike', "%{$search}%")
+                  ->orWhere('code', 'ilike', "%{$search}%");
             });
         }
 
@@ -372,9 +372,9 @@ class ReportController extends Controller
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('business_name', 'like', "%{$search}%")
-                  ->orWhere('trade_name', 'like', "%{$search}%")
-                  ->orWhere('tax_id', 'like', "%{$search}%");
+                $q->where('business_name', 'ilike', "%{$search}%")
+                  ->orWhere('trade_name', 'ilike', "%{$search}%")
+                  ->orWhere('tax_id', 'ilike', "%{$search}%");
             });
         }
 

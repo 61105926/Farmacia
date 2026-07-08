@@ -47,9 +47,9 @@ class ProductController extends Controller
             // Filtros
             if ($request->filled('search')) {
                 $query->where(function ($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->search . '%')
-                      ->orWhere('code', 'like', '%' . $request->search . '%')
-                      ->orWhere('description', 'like', '%' . $request->search . '%');
+                    $q->where('name', 'ilike', '%' . $request->search . '%')
+                      ->orWhere('code', 'ilike', '%' . $request->search . '%')
+                      ->orWhere('description', 'ilike', '%' . $request->search . '%');
                 });
             }
 
@@ -228,7 +228,7 @@ class ProductController extends Controller
             }
 
             $slug = \Str::slug($validated['name']);
-            $slugCount = DB::table('products')->where('slug', 'like', $slug . '%')->count();
+            $slugCount = DB::table('products')->where('slug', 'ilike', $slug . '%')->count();
             if ($slugCount > 0) {
                 $slug = $slug . '-' . ($slugCount + 1);
             }
@@ -446,7 +446,7 @@ class ProductController extends Controller
             if ($product->name !== $validated['name']) {
                 $slug = \Str::slug($validated['name']);
                 $slugCount = DB::table('products')
-                    ->where('slug', 'like', $slug . '%')
+                    ->where('slug', 'ilike', $slug . '%')
                     ->where('id', '!=', $product->id)
                     ->count();
                 if ($slugCount > 0) {
@@ -679,8 +679,8 @@ class ProductController extends Controller
             // Filtros
             if ($request->filled('search')) {
                 $query->where(function ($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->search . '%')
-                      ->orWhere('code', 'like', '%' . $request->search . '%');
+                    $q->where('name', 'ilike', '%' . $request->search . '%')
+                      ->orWhere('code', 'ilike', '%' . $request->search . '%');
                 });
             }
 
@@ -1161,7 +1161,7 @@ class ProductController extends Controller
                     $categoryId = null;
                     if (!empty($data['category_name'])) {
                         $category = DB::table('product_categories')
-                            ->where('name', 'like', trim($data['category_name']))
+                            ->where('name', 'ilike', trim($data['category_name']))
                             ->first();
                         if ($category) {
                             $categoryId = $category->id;
@@ -1251,7 +1251,7 @@ class ProductController extends Controller
                     } else {
                         // CREAR nuevo producto
                         $slug = \Str::slug($data['name']);
-                        $slugCount = DB::table('products')->where('slug', 'like', $slug . '%')->count();
+                        $slugCount = DB::table('products')->where('slug', 'ilike', $slug . '%')->count();
                         if ($slugCount > 0) {
                             $slug = $slug . '-' . ($slugCount + 1);
                         }

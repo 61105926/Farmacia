@@ -21,10 +21,10 @@ class PharmacyController extends Controller
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('nombre_comercial', 'like', "%{$search}%")
-                  ->orWhere('razon_social', 'like', "%{$search}%")
-                  ->orWhere('codigo_cliente', 'like', "%{$search}%")
-                  ->orWhere('numero_documento', 'like', "%{$search}%");
+                $q->where('nombre_comercial', 'ilike', "%{$search}%")
+                  ->orWhere('razon_social', 'ilike', "%{$search}%")
+                  ->orWhere('codigo_cliente', 'ilike', "%{$search}%")
+                  ->orWhere('numero_documento', 'ilike', "%{$search}%");
             });
         }
 
@@ -215,10 +215,10 @@ class PharmacyController extends Controller
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
-                $q->where('nombre_comercial', 'like', "%{$search}%")
-                  ->orWhere('razon_social', 'like', "%{$search}%")
-                  ->orWhere('codigo_cliente', 'like', "%{$search}%")
-                  ->orWhere('numero_documento', 'like', "%{$search}%");
+                $q->where('nombre_comercial', 'ilike', "%{$search}%")
+                  ->orWhere('razon_social', 'ilike', "%{$search}%")
+                  ->orWhere('codigo_cliente', 'ilike', "%{$search}%")
+                  ->orWhere('numero_documento', 'ilike', "%{$search}%");
             });
         }
 

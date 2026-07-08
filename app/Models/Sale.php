@@ -220,7 +220,7 @@ class Sale extends Model
         $prefix = 'FAC-';
         // Calcular el máximo en PHP: CAST(... AS UNSIGNED) es sintaxis MySQL y falla en PostgreSQL
         $lastNumber = static::whereNotNull('invoice_number')
-            ->where('invoice_number', 'like', $prefix . '%')
+            ->where('invoice_number', 'ilike', $prefix . '%')
             ->pluck('invoice_number')
             ->map(fn ($number) => intval(substr($number, strlen($prefix))))
             ->max();

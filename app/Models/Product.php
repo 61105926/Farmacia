@@ -205,7 +205,7 @@ class Product extends Model
             // Generar slug SIEMPRE si no existe (obligatorio en la base de datos)
             if (empty($product->slug) && !empty($product->name)) {
                 $slug = Str::slug($product->name);
-                $slugCount = static::where('slug', 'like', $slug . '%')->count();
+                $slugCount = static::where('slug', 'ilike', $slug . '%')->count();
                 if ($slugCount > 0) {
                     $slug = $slug . '-' . ($slugCount + 1);
                 }
@@ -221,7 +221,7 @@ class Product extends Model
             // Actualizar slug si cambió el nombre
             if ($product->isDirty('name') && empty($product->slug)) {
                 $slug = Str::slug($product->name);
-                $slugCount = static::where('slug', 'like', $slug . '%')
+                $slugCount = static::where('slug', 'ilike', $slug . '%')
                     ->where('id', '!=', $product->id)
                     ->count();
                 if ($slugCount > 0) {

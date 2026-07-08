@@ -80,7 +80,7 @@ class QueryOptimizer
                 if (is_array($value)) {
                     $query->whereIn($field, $value);
                 } else {
-                    $query->where($field, 'like', "%{$value}%");
+                    $query->where($field, 'ilike', "%{$value}%");
                 }
             }
         }

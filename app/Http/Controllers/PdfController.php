@@ -182,7 +182,8 @@ class PdfController extends Controller
         // Top 10 clientes
         $topClients = Client::withCount('sales')
             ->withSum(['sales' => fn($q) => $q->where('status','!=','cancelled')], 'total')
-            ->having('sales_count', '>', 0)
+            // has() en lugar de having sobre alias: PostgreSQL no lo permite
+            ->has('sales')
             ->orderByDesc('sales_sum_total')
             ->limit(10)
             ->get()
