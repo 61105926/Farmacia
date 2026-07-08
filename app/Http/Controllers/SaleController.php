@@ -392,27 +392,28 @@ class SaleController extends Controller
                 ]);
             }
 
-            // 10. Generar factura para todas las ventas (necesario para reportes)
-            if (true) {
-                try {
-                    $this->generateInvoiceForSale($sale);
-                    Log::info('SaleController store - Factura generada automáticamente', [
-                        'sale_id' => $sale->id,
-                        'sale_code' => $sale->code,
-                        'payment_method' => $sale->payment_method,
-                        'payment_status' => $sale->payment_status,
-                    ]);
-                } catch (\Exception $e) {
-                    // Log el error pero no fallar la creación de la venta
-                    Log::error('SaleController store - Error al generar factura automática', [
-                        'sale_id' => $sale->id,
-                        'message' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString(),
-                    ]);
-                }
-            }
-
             DB::commit();
+
+            // 10. Generar factura DESPUÉS del commit, en su propia transacción.
+            // En PostgreSQL un error dentro de una transacción la aborta entera:
+            // si esto fallara dentro de la transacción de la venta, el commit
+            // haría rollback silencioso y la venta se perdería mostrando éxito.
+            try {
+                DB::transaction(fn () => $this->generateInvoiceForSale($sale));
+                Log::info('SaleController store - Factura generada automáticamente', [
+                    'sale_id' => $sale->id,
+                    'sale_code' => $sale->code,
+                    'payment_method' => $sale->payment_method,
+                    'payment_status' => $sale->payment_status,
+                ]);
+            } catch (\Throwable $e) {
+                // Log el error pero no fallar la creación de la venta
+                Log::error('SaleController store - Error al generar factura automática', [
+                    'sale_id' => $sale->id,
+                    'message' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
 
             // Crear notificación para el usuario que creó la venta
             try {
@@ -420,7 +421,7 @@ class SaleController extends Controller
                 \App\Helpers\NotificationHelper::success(
                     auth()->user(),
                     'Venta Creada Exitosamente',
-                    "Venta {$sale->code} creada por $" . number_format($sale->total, 2) . " - Cliente: " . ($sale->client->name ?? 'N/A'),
+                    "Venta {$sale->code} creada por $" . number_format($sale->total, 2) . " - Cliente: " . ($sale->client->business_name ?? 'N/A'),
                     route('sales.show', $sale)
                 );
 
@@ -821,7 +822,9 @@ class SaleController extends Controller
                 'product_code'       => $item->product->code ?? $item->product_id,
                 'product_name'       => $item->product->name ?? $item->product->description ?? 'N/A',
                 'product_description'=> $item->product->description ?? null,
-                'quantity'           => $item->quantity,
+                // Cast explícito: el decimal llega como string "1.000" y PostgreSQL
+                // no lo acepta en columnas enteras (MySQL sí lo toleraba)
+                'quantity'           => (float) $item->quantity,
                 'unit_price'         => $item->unit_price,
                 'discount_percentage'=> $item->discount ?? 0,
                 'discount_amount'    => $item->discount_amount ?? 0,
@@ -969,14 +972,14 @@ class SaleController extends Controller
      */
     public function cancel(Sale $sale): RedirectResponse
     {
-        if ($sale->status === 'canceled') {
+        if ($sale->status === 'cancelled') {
             return back()->with('error', 'La venta ya está cancelada.');
         }
 
         $sale->update([
-            'status' => 'canceled',
-            'canceled_at' => now(),
-            'canceled_by' => auth()->id(),
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+            'cancelled_by' => auth()->id(),
         ]);
 
         \Log::info('SaleController cancel - Venta cancelada:', ['sale_id' => $sale->id]);

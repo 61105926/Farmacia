@@ -29,8 +29,8 @@ class ReportController extends Controller
 
         // Ventas por mes (últimos 12 meses)
         $monthlySales = Invoice::selectRaw('
-                YEAR(invoice_date) as year,
-                MONTH(invoice_date) as month,
+                EXTRACT(YEAR FROM invoice_date) as year,
+                EXTRACT(MONTH FROM invoice_date) as month,
                 SUM(total) as total,
                 COUNT(*) as count
             ')
@@ -307,8 +307,8 @@ class ReportController extends Controller
 
         // Flujo de caja por mes
         $cashFlow = Payment::selectRaw('
-                YEAR(payment_date) as year,
-                MONTH(payment_date) as month,
+                EXTRACT(YEAR FROM payment_date) as year,
+                EXTRACT(MONTH FROM payment_date) as month,
                 SUM(amount) as total_amount,
                 COUNT(*) as payment_count
             ')
@@ -429,7 +429,8 @@ class ReportController extends Controller
             ')
             ->leftJoin('invoices', 'clients.id', '=', 'invoices.client_id')
             ->groupBy('clients.id', 'clients.business_name', 'clients.trade_name')
-            ->having('total_balance', '>', 0)
+            // PostgreSQL no permite alias en HAVING; repetir la expresión completa
+            ->havingRaw("COALESCE(SUM(CASE WHEN invoices.status != 'cancelled' AND invoices.balance > 0 THEN invoices.balance ELSE 0 END), 0) > 0")
             ->orderBy('total_balance', 'desc')
             ->limit(10)
             ->get();
@@ -483,8 +484,8 @@ class ReportController extends Controller
 
         // Ventas por mes (últimos 12 meses)
         $monthlySales = Invoice::selectRaw('
-                YEAR(invoice_date) as year,
-                MONTH(invoice_date) as month,
+                EXTRACT(YEAR FROM invoice_date) as year,
+                EXTRACT(MONTH FROM invoice_date) as month,
                 SUM(total) as total,
                 COUNT(*) as count
             ')

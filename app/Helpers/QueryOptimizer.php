@@ -37,6 +37,11 @@ class QueryOptimizer
      */
     public static function addIndexHints(Builder $query, string $table, string $index): Builder
     {
+        // USE INDEX es sintaxis exclusiva de MySQL; en PostgreSQL el planificador decide
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            return $query;
+        }
+
         return $query->from(DB::raw("`{$table}` USE INDEX (`{$index}`)"));
     }
 
