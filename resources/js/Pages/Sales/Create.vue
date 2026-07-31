@@ -468,6 +468,9 @@ const updateProductInfo = (index) => {
 }
 
 const getStockText = (index) => {
+  if (form.presale_id) {
+    return `Reservado: ${form.items[index].quantity || 0}`
+  }
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return 'N/A'
   return product.stock_quantity || 0
@@ -507,6 +510,7 @@ const getSupplier = (index) => {
 }
 
 const getStockClass = (index) => {
+  if (form.presale_id) return 'text-green-600'
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return 'text-gray-500'
   const stock = product.stock_quantity || 0
@@ -516,6 +520,10 @@ const getStockClass = (index) => {
 }
 
 const getMaxQuantity = (index) => {
+  // Viene de preventa: el stock ya fue reservado al crearla
+  if (form.presale_id) {
+    return parseFloat(form.items[index].quantity) || 0
+  }
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return 0
   return product.stock_quantity || 0
@@ -530,7 +538,7 @@ const getUnitType = (index) => {
 const hasQuantityError = (index) => {
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return false
-  const maxQuantity = product.stock_quantity || 0
+  const maxQuantity = getMaxQuantity(index)
   const requestedQuantity = parseFloat(form.items[index].quantity) || 0
   return requestedQuantity > maxQuantity
 }
@@ -539,7 +547,7 @@ const validateQuantity = (index) => {
   const product = props.products.find(p => p.id == form.items[index].product_id)
   if (!product) return
   
-  const maxQuantity = product.stock_quantity || 0
+  const maxQuantity = getMaxQuantity(index)
   const requestedQuantity = parseFloat(form.items[index].quantity) || 0
   
   if (requestedQuantity > maxQuantity) {
@@ -590,7 +598,9 @@ const submitForm = () => {
         return
       }
     }
-    if ((product.stock_quantity || 0) <= 0) {
+    // Si viene de preventa, el stock ya fue reservado/descontado al crearla:
+    // no validar stock aquí (el backend tampoco lo valida, SaleController).
+    if (!form.presale_id && (product.stock_quantity || 0) <= 0) {
       alert(`El producto "${product.description || product.name}" no tiene stock disponible.`)
       return
     }
