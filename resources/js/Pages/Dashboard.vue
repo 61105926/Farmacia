@@ -697,7 +697,7 @@
               <Link href="/ventas"
                 class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors cursor-pointer group">
                 <div class="text-2xl font-bold text-green-600 group-hover:scale-105 transition-transform">{{ orderStats?.delivered || 0 }}</div>
-                <div class="text-xs text-green-700 dark:text-green-400 mt-1">Entregadas y pagadas</div>
+                <div class="text-xs text-green-700 dark:text-green-400 mt-1">Entregadas</div>
                 <div class="text-xs text-green-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver ventas →</div>
               </Link>
               <Link href="/cuentas-por-cobrar"

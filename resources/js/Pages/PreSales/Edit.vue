@@ -78,7 +78,7 @@
               <CardTitle>Productos</CardTitle>
               <button
                 type="button"
-                @click="addProduct"
+                @click="openProductModal"
                 class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors"
               >
                 Agregar Producto
@@ -101,8 +101,8 @@
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
                   <select
-                    v-model="item.product_id"
-                    @change="updateProductInfo(index)"
+                    :value="item.product_id"
+                    @change="handleRowProductSelect(index, $event.target.value)"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
                   >
                     <option value="">Seleccionar</option>
@@ -257,17 +257,73 @@
         </div>
       </form>
     </div>
+
+    <!-- Modal para buscar y agregar producto -->
+    <Modal v-model="showProductModal" title="Agregar Producto" size="lg">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+          <ProductSelect
+            v-model="pendingProductId"
+            :products="products || []"
+            placeholder="Buscar producto..."
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
+          <input
+            v-model.number="pendingQty"
+            type="number"
+            step="1"
+            min="1"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+          />
+        </div>
+        <div class="flex justify-end gap-3">
+          <button
+            type="button"
+            @click="closeProductModal"
+            class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            @click="addProductFromModal"
+            :disabled="!pendingProductId"
+            class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Agregar
+          </button>
+        </div>
+      </div>
+    </Modal>
+
+    <ConfirmModal
+      :show="showDuplicateConfirm"
+      title="Producto ya añadido"
+      message="El producto ya está en la lista. ¿Desea sumarlo al existente?"
+      type="warning"
+      confirm-text="Sí, sumar"
+      cancel-text="No"
+      @confirm="confirmDuplicateSum"
+      @cancel="cancelDuplicateSum"
+      @close="cancelDuplicateSum"
+    />
   </AdminLayout>
 </template>
 
 <script setup>
-import { reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardHeader from '@/Components/ui/CardHeader.vue'
 import CardTitle from '@/Components/ui/CardTitle.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
+import ProductSelect from '@/Components/ui/ProductSelect.vue'
+import Modal from '@/Components/ui/Modal.vue'
+import ConfirmModal from '@/Components/ui/ConfirmModal.vue'
 
 const props = defineProps({
   presale: Object,
@@ -327,16 +383,95 @@ const onlyIntegers = (event) => {
   }
 }
 
-const addProduct = () => {
+const showProductModal = ref(false)
+const pendingProductId = ref('')
+const pendingQty = ref(1)
+const showDuplicateConfirm = ref(false)
+const pendingDuplicate = ref(null)
+
+const openProductModal = () => {
+  pendingProductId.value = ''
+  pendingQty.value = 1
+  showProductModal.value = true
+}
+
+const closeProductModal = () => {
+  showProductModal.value = false
+  pendingProductId.value = ''
+  pendingQty.value = 1
+}
+
+const addProductFromModal = () => {
+  const selectedId = pendingProductId.value
+  if (!selectedId) return
+
+  const existingIndex = form.items.findIndex(item => item.product_id == selectedId)
+  if (existingIndex !== -1) {
+    pendingDuplicate.value = { mode: 'modal', existingIndex, qty: pendingQty.value || 1 }
+    showDuplicateConfirm.value = true
+    return
+  }
+
+  const product = props.products.find(p => p.id == selectedId)
+  if (!product) return
+
   form.items.push({
-    product_id: '',
-    quantity: 1,
-    unit_price: 0,
+    product_id: selectedId,
+    quantity: pendingQty.value || 1,
+    unit_price: product.sale_price || 0,
     discount: 0,
     subtotal: 0,
     discount_amount: 0,
     total: 0,
   })
+  calculateItemTotal(form.items.length - 1)
+  closeProductModal()
+}
+
+const handleRowProductSelect = (index, val) => {
+  if (!val) {
+    form.items[index].product_id = val
+    return
+  }
+
+  const existingIndex = form.items.findIndex((item, i) => i !== index && item.product_id == val)
+  if (existingIndex !== -1) {
+    pendingDuplicate.value = {
+      mode: 'row',
+      index,
+      existingIndex,
+      qty: form.items[index].quantity || 1,
+      prev: form.items[index].product_id,
+    }
+    showDuplicateConfirm.value = true
+    return
+  }
+
+  form.items[index].product_id = val
+  updateProductInfo(index)
+}
+
+const confirmDuplicateSum = () => {
+  const d = pendingDuplicate.value
+  if (!d) return
+  form.items[d.existingIndex].quantity += d.qty
+  if (d.mode === 'row') {
+    form.items.splice(d.index, 1)
+  }
+  calculateItemTotal(d.existingIndex)
+  pendingDuplicate.value = null
+  showDuplicateConfirm.value = false
+  showProductModal.value = false
+}
+
+const cancelDuplicateSum = () => {
+  const d = pendingDuplicate.value
+  if (d && d.mode === 'row' && d.prev !== undefined) {
+    form.items[d.index].product_id = d.prev
+  }
+  pendingDuplicate.value = null
+  showDuplicateConfirm.value = false
+  showProductModal.value = false
 }
 
 const removeProduct = (index) => {
@@ -347,15 +482,6 @@ const removeProduct = (index) => {
 const updateProductInfo = (index) => {
   const selectedId = form.items[index].product_id
   if (!selectedId) return
-
-  const existingIndex = form.items.findIndex((item, i) => i !== index && item.product_id == selectedId)
-  if (existingIndex !== -1) {
-    const addedQty = form.items[index].quantity || 1
-    form.items[existingIndex].quantity += addedQty
-    form.items.splice(index, 1)
-    calculateItemTotal(existingIndex)
-    return
-  }
 
   const product = props.products.find(p => p.id == selectedId)
   if (product) {

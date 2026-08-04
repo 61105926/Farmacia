@@ -132,11 +132,10 @@ class DashboardController extends Controller
         return [
             'pending'   => Presale::where('status', 'draft')->count()
                          + Sale::where('status', 'pending')->count(),
-            // Solo entregas físicas confirmadas, sin mezclar con estado de pago
-            'delivered' => Sale::where('status', 'completed')
-                               ->where('payment_status', 'paid')
-                               ->count()
-                         + Presale::where('status', 'converted')->count(),
+            // Entregadas = ventas no canceladas sin pago completo (sin pagar + pago parcial)
+            'delivered' => Sale::where('payment_status', '!=', 'paid')
+                               ->where('status', '!=', 'cancelled')
+                               ->count(),
             // Sin pagar: payment_status pending (nunca pagaron)
             'unpaid'    => Sale::where('payment_status', 'pending')
                                ->where('status', '!=', 'cancelled')
@@ -302,7 +301,7 @@ class DashboardController extends Controller
                 'type' => 'warning',
                 'title' => 'Stock Bajo',
                 'message' => "{$lowStockProducts} productos tienen stock bajo",
-                'action' => '/productos?filter=low_stock'
+                'action' => '/productos?stock_status=low_stock'
             ];
         }
         
@@ -313,7 +312,7 @@ class DashboardController extends Controller
                 'type' => 'error',
                 'title' => 'Sin Stock',
                 'message' => "{$outOfStockProducts} productos están sin stock",
-                'action' => '/productos?filter=out_of_stock'
+                'action' => '/productos?stock_status=out_of_stock'
             ];
         }
         
@@ -733,9 +732,10 @@ class DashboardController extends Controller
         $start = $today->copy()->subDays(30);
         $end   = $today->copy()->addDays(60);
 
-        // Ventas recientes + próximas (presales confirmadas)
+        // Ventas recientes + próximas (presales confirmadas), sin las ya pagadas
         $sales = Sale::with('client:id,business_name,phone')
             ->where('status', '!=', 'cancelled')
+            ->where('payment_status', '!=', 'paid')
             ->whereBetween('created_at', [$start, $end])
             ->orderBy('created_at')
             ->get();
