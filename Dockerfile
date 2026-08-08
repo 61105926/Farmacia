@@ -75,5 +75,10 @@ RUN echo "Listen 8001" >> /etc/apache2/ports.conf
 # Expose port 8001
 EXPOSE 8001
 
+# Healthcheck sobre /up (no toca la BD) para evitar reinicios en bucle
+# cuando el Postgres remoto está saturado
+HEALTHCHECK --interval=30s --timeout=3s --start-period=120s --retries=5 \
+  CMD curl -fsS http://127.0.0.1:8001/up || exit 1
+
 # Start services
 CMD ["/usr/local/bin/start-services.sh"]

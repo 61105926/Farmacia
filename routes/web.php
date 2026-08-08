@@ -10,6 +10,12 @@ Route::get('/', function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
 });
 
+// Healthcheck sin tocar la BD: si la BD remota está saturada el contenedor
+// no debe marcarse como no saludable y reiniciarse en bucle.
+Route::get('/up', function () {
+    return response()->json(['status' => 'ok']);
+});
+
 // Rutas de autenticación
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
