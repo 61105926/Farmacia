@@ -10,11 +10,11 @@ Route::get('/', function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
 });
 
-// Healthcheck sin tocar la BD: si la BD remota está saturada el contenedor
-// no debe marcarse como no saludable y reiniciarse en bucle.
+// Healthcheck sin tocar la BD: evita reinicios en bucle cuando el Postgres
+// remoto está saturado. Sin inicio de sesión (SESSION_DRIVER=database no se usa).
 Route::get('/up', function () {
     return response()->json(['status' => 'ok']);
-});
+})->withoutMiddleware([\Illuminate\Session\Middleware\StartSession::class]);
 
 // Rutas de autenticación
 Route::middleware('guest')->group(function () {
