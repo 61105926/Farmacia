@@ -95,7 +95,7 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => 'require',
+            'sslmode' => 'prefer',
             'options' => extension_loaded('pdo_pgsql') ? [
                 // No persistir conexiones: cada worker cierra su conexión al final
                 // de la petición para no agotar el límite del Postgres remoto.
