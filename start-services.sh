@@ -11,13 +11,32 @@ else
     echo "App key already set, skipping generation"
 fi
 
-# Test database connection
+# Test database connection (con reintentos: el Postgres remoto limita las
+# conexiones concurrentes y puede estar saturado en el arranque)
 echo "Testing database connection..."
-php artisan tinker --execute="DB::connection()->getPdo(); echo 'Database connected successfully';"
+CONNECTED=0
+for i in 1 2 3 4 5; do
+    if php artisan tinker --execute="DB::connection()->getPdo(); echo 'Database connected successfully';" 2>/dev/null; then
+        CONNECTED=1
+        break
+    fi
+    echo "Database connection failed (intento $i/5), reintentando en 10 segundos..."
+    sleep 10
+done
+if [ "$CONNECTED" != "1" ]; then
+    echo "ERROR: No se pudo conectar a la base de datos después de 5 intentos."
+    exit 1
+fi
 
-# Run pending migrations only (does NOT delete existing data)
+# Run pending migrations only (does NOT delete existing data), con reintentos
 echo "Running migrations..."
-php artisan migrate --force
+for i in 1 2 3 4 5; do
+    if php artisan migrate --force; then
+        break
+    fi
+    echo "Migration failed (intento $i/5), reintentando en 10 segundos..."
+    sleep 10
+done
 
 # Storage symlink
 echo "Creating storage link..."

@@ -28,6 +28,11 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
+# Limitar workers de Apache: cada petición PHP abre 1 conexión a la BD y el
+# Postgres remoto (Neon) limita las conexiones concurrentes (~10 en free).
+# Apache por defecto permite 150 workers -> agota el límite de la BD.
+RUN printf 'StartServers 2\nMinSpareServers 2\nMaxSpareServers 4\nMaxRequestWorkers 8\nMaxConnectionsPerChild 500\n' > /etc/apache2/mods-available/mpm_prefork.conf
+
 # Copy Apache configuration
 RUN echo '<VirtualHost *:8001>\n\
     DocumentRoot /var/www/html/public\n\

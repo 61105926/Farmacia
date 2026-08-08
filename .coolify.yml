@@ -4,7 +4,7 @@ version: '1.0'
 # Este archivo define los comandos que se ejecutarán después del despliegue
 
 post_deploy:
-  - php artisan migrate:fresh --seed --force
+  - php artisan migrate --force
   - php artisan config:cache
   - php artisan route:cache
   - php artisan view:cache
