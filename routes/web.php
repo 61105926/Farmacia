@@ -10,12 +10,6 @@ Route::get('/', function () {
     return auth()->check() ? redirect('/dashboard') : redirect('/login');
 });
 
-// Healthcheck sin tocar la BD: evita reinicios en bucle cuando el Postgres
-// remoto está saturado. Sin inicio de sesión (SESSION_DRIVER=database no se usa).
-Route::get('/up', function () {
-    return response()->json(['status' => 'ok']);
-})->withoutMiddleware([\Illuminate\Session\Middleware\StartSession::class]);
-
 // Rutas de autenticación
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
