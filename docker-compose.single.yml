@@ -16,6 +16,7 @@ services:
       - APP_URL=http://localhost:8001
     networks:
       - farmacia-network
+      - coolify
 
 volumes:
   storage-data:
@@ -24,3 +25,6 @@ volumes:
 networks:
   farmacia-network:
     driver: bridge
+  # Red interna de Coolify: para alcanzar la BD gestionada por Coolify
+  coolify:
+    external: true

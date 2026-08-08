@@ -25,6 +25,7 @@ services:
       - storage:/var/www/html/storage
     networks:
       - farmacia-network
+      - coolify
 
   mysql:
     image: mysql:8.0
@@ -53,3 +54,6 @@ volumes:
 networks:
   farmacia-network:
     driver: bridge
+  # Red de Coolify: permite conectar la app a la base de datos gestionada por Coolify
+  coolify:
+    external: true
