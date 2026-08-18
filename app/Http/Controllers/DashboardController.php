@@ -436,7 +436,7 @@ class DashboardController extends Controller
     
     private function getTopProducts()
     {
-        $topQuery = function ($from = null) {
+        $topQuery = function ($from = null, $direction = 'desc') {
             return DB::table('sale_items')
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
                 ->join('products', 'sale_items.product_id', '=', 'products.id')
@@ -452,7 +452,7 @@ class DashboardController extends Controller
                     DB::raw('SUM(sale_items.total) as total_amount'),
                     DB::raw('COUNT(DISTINCT sales.id) as sales_count')
                 )
-                ->orderByDesc('total_quantity')
+                ->orderBy('total_quantity', $direction)
                 ->limit(5)
                 ->get()
                 ->map(fn($p) => [
@@ -467,8 +467,10 @@ class DashboardController extends Controller
         };
 
         return [
-            'month' => $topQuery(Carbon::now()->startOfMonth()),
-            'all'   => $topQuery(),
+            'month'       => $topQuery(Carbon::now()->startOfMonth()),
+            'all'         => $topQuery(),
+            'least_month' => $topQuery(Carbon::now()->startOfMonth(), 'asc'),
+            'least_all'   => $topQuery(null, 'asc'),
         ];
     }
 
@@ -840,6 +842,7 @@ class DashboardController extends Controller
             $byWeek[$weekStart]['total']  += $r->balance;
             $byWeek[$weekStart]['count']  += 1;
             $byWeek[$weekStart]['clientes'][] = [
+                'client_id' => $r->client?->id,
                 'name'     => $r->client?->business_name ?? '—',
                 'phone'    => $r->client?->phone,
                 'balance'  => round($r->balance, 2),

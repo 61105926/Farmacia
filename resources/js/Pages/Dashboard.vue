@@ -423,14 +423,20 @@
               </div>
               <!-- Lista de clientes -->
               <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                <div v-for="(c, ci) in week.clientes" :key="ci"
-                  class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                <component v-for="(c, ci) in week.clientes" :key="ci"
+                  :is="c.client_id ? Link : 'div'"
+                  :href="c.client_id ? `/clientes/${c.client_id}` : undefined"
+                  :class="['flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group',
+                    c.client_id ? 'cursor-pointer' : '']">
                   <div class="flex items-center gap-3">
                     <div :class="['w-2 h-2 rounded-full flex-shrink-0',
                       c.overdue ? 'bg-red-500' : c.days <= 7 ? 'bg-amber-500' : 'bg-emerald-500']">
                     </div>
                     <div>
-                      <p class="text-sm font-medium text-gray-900 dark:text-white">{{ c.name }}</p>
+                      <p class="text-sm font-medium text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                        {{ c.name }}
+                        <ChevronRight v-if="c.client_id" class="w-3.5 h-3.5 inline-block opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">
                         Vence {{ c.due_date }}
                         <span v-if="c.phone"> · {{ c.phone }}</span>
@@ -445,7 +451,7 @@
                       {{ c.overdue ? `${Math.abs(c.days)}d vencida` : c.days === 0 ? 'Vence hoy' : `${c.days}d restantes` }}
                     </p>
                   </div>
-                </div>
+                </component>
               </div>
             </div>
           </div>
@@ -688,29 +694,29 @@
           <CardHeader><CardTitle class="text-base">Estado de Órdenes</CardTitle></CardHeader>
           <CardContent>
             <div class="grid grid-cols-2 gap-3">
-              <Link href="/preventas"
+              <Link href="/preventas?status=draft"
                 class="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors cursor-pointer group">
                 <div class="text-2xl font-bold text-yellow-600 group-hover:scale-105 transition-transform">{{ orderStats?.pending || 0 }}</div>
                 <div class="text-xs text-yellow-700 dark:text-yellow-400 mt-1">Pendientes</div>
                 <div class="text-xs text-yellow-500 dark:text-yellow-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver preventas →</div>
               </Link>
-              <Link href="/ventas"
+              <Link href="/ventas?payment_status=unpaid"
                 class="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors cursor-pointer group">
                 <div class="text-2xl font-bold text-green-600 group-hover:scale-105 transition-transform">{{ orderStats?.delivered || 0 }}</div>
                 <div class="text-xs text-green-700 dark:text-green-400 mt-1">Entregadas</div>
                 <div class="text-xs text-green-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver ventas →</div>
               </Link>
-              <Link href="/cuentas-por-cobrar"
+              <Link href="/ventas?payment_status=pending"
                 class="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer group">
                 <div class="text-2xl font-bold text-red-600 group-hover:scale-105 transition-transform">{{ orderStats?.unpaid || 0 }}</div>
                 <div class="text-xs text-red-700 dark:text-red-400 mt-1 font-semibold">Sin pagar</div>
-                <div class="text-xs text-red-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver cobranzas →</div>
+                <div class="text-xs text-red-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver ventas sin pagar →</div>
               </Link>
-              <Link href="/cuentas-por-cobrar"
+              <Link href="/ventas?payment_status=partial"
                 class="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors cursor-pointer group">
                 <div class="text-2xl font-bold text-orange-600 group-hover:scale-105 transition-transform">{{ orderStats?.partial || 0 }}</div>
                 <div class="text-xs text-orange-700 dark:text-orange-400 mt-1 font-semibold">Pago parcial</div>
-                <div class="text-xs text-orange-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver cobranzas →</div>
+                <div class="text-xs text-orange-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Ver ventas parciales →</div>
               </Link>
             </div>
           </CardContent>
@@ -787,57 +793,111 @@
       </div>
 
       <!-- ═══════════════════════════════════════════════════════════════ -->
-      <!--  PRODUCTOS MÁS VENDIDOS                                         -->
+      <!--  PRODUCTOS MÁS VENDIDOS + MENOS VENDIDOS                        -->
       <!-- ═══════════════════════════════════════════════════════════════ -->
-      <Card v-if="topProducts">
-        <CardHeader>
-          <div class="flex items-center justify-between">
-            <CardTitle class="flex items-center gap-2">
-              <Package class="w-5 h-5 text-purple-500" />
-              Productos Más Vendidos
-            </CardTitle>
-            <div class="flex gap-2">
-              <button @click="topVista = 'month'"
-                :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
-                  topVista === 'month' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
-                Este mes
-              </button>
-              <button @click="topVista = 'all'"
-                :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
-                  topVista === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
-                Histórico
-              </button>
+      <div v-if="topProducts" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+        <!-- ── Más vendidos ── -->
+        <Card>
+          <CardHeader>
+            <div class="flex items-center justify-between">
+              <CardTitle class="flex items-center gap-2">
+                <Package class="w-5 h-5 text-purple-500" />
+                Productos Más Vendidos
+              </CardTitle>
+              <div class="flex gap-2">
+                <button @click="topVista = 'month'"
+                  :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
+                    topVista === 'month' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                  Este mes
+                </button>
+                <button @click="topVista = 'all'"
+                  :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
+                    topVista === 'all' ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                  Histórico
+                </button>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div v-if="topProductsList.length" class="space-y-2">
-            <div v-for="(p, i) in topProductsList" :key="p.id"
-              class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-              <span :class="['w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
-                i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-gray-300 text-gray-700' : i === 2 ? 'bg-orange-400 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400']">
-                {{ i + 1 }}
-              </span>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ p.description || p.name }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ p.code }} · {{ p.sales_count }} {{ p.sales_count === 1 ? 'venta' : 'ventas' }}</p>
-                <div class="mt-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div class="h-full rounded-full bg-purple-400"
-                    :style="`width:${topProductsList[0].total_quantity > 0 ? Math.min(100, Math.round(p.total_quantity / topProductsList[0].total_quantity * 100)) : 0}%`">
+          </CardHeader>
+          <CardContent>
+            <div v-if="topProductsList.length" class="space-y-2">
+              <div v-for="(p, i) in topProductsList" :key="p.id"
+                class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <span :class="['w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+                  i === 0 ? 'bg-amber-400 text-white' : i === 1 ? 'bg-gray-300 text-gray-700' : i === 2 ? 'bg-orange-400 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400']">
+                  {{ i + 1 }}
+                </span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ p.description || p.name }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ p.code }} · {{ p.sales_count }} {{ p.sales_count === 1 ? 'venta' : 'ventas' }}</p>
+                  <div class="mt-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full bg-purple-400"
+                      :style="`width:${topProductsList[0].total_quantity > 0 ? Math.min(100, Math.round(p.total_quantity / topProductsList[0].total_quantity * 100)) : 0}%`">
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="text-right flex-shrink-0">
-                <p class="text-sm font-bold text-gray-900 dark:text-white">{{ Number(p.total_quantity).toLocaleString('es-BO') }} uds.</p>
-                <p class="text-xs text-purple-600 dark:text-purple-400 font-medium">{{ fmtCurrency(p.total_amount) }}</p>
+                <div class="text-right flex-shrink-0">
+                  <p class="text-sm font-bold text-gray-900 dark:text-white">{{ Number(p.total_quantity).toLocaleString('es-BO') }} uds.</p>
+                  <p class="text-xs text-purple-600 dark:text-purple-400 font-medium">{{ fmtCurrency(p.total_amount) }}</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div v-else class="text-center text-gray-400 dark:text-gray-500 py-8 text-sm">
-            {{ topVista === 'month' ? 'Sin ventas este mes' : 'Sin ventas registradas' }}
-          </div>
-        </CardContent>
-      </Card>
+            <div v-else class="text-center text-gray-400 dark:text-gray-500 py-8 text-sm">
+              {{ topVista === 'month' ? 'Sin ventas este mes' : 'Sin ventas registradas' }}
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- ── Menos vendidos ── -->
+        <Card>
+          <CardHeader>
+            <div class="flex items-center justify-between">
+              <CardTitle class="flex items-center gap-2">
+                <TrendingDown class="w-5 h-5 text-slate-500" />
+                Productos Menos Vendidos
+              </CardTitle>
+              <div class="flex gap-2">
+                <button @click="topVista = 'month'"
+                  :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
+                    topVista === 'month' ? 'bg-slate-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                  Este mes
+                </button>
+                <button @click="topVista = 'all'"
+                  :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
+                    topVista === 'all' ? 'bg-slate-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                  Histórico
+                </button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div v-if="leastProductsList.length" class="space-y-2">
+              <div v-for="(p, i) in leastProductsList" :key="p.id"
+                class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                  {{ i + 1 }}
+                </span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ p.description || p.name }}</p>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ p.code }} · {{ p.sales_count }} {{ p.sales_count === 1 ? 'venta' : 'ventas' }}</p>
+                  <div class="mt-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full bg-slate-400"
+                      :style="`width:${leastMaxQty > 0 ? Math.max(4, Math.min(100, Math.round(p.total_quantity / leastMaxQty * 100))) : 0}%`">
+                    </div>
+                  </div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                  <p class="text-sm font-bold text-gray-900 dark:text-white">{{ Number(p.total_quantity).toLocaleString('es-BO') }} uds.</p>
+                  <p class="text-xs text-slate-600 dark:text-slate-400 font-medium">{{ fmtCurrency(p.total_amount) }}</p>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center text-gray-400 dark:text-gray-500 py-8 text-sm">
+              {{ topVista === 'month' ? 'Sin ventas este mes' : 'Sin ventas registradas' }}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <!-- ═══════════════════════════════════════════════════════════════ -->
       <!--  PRODUCTOS POR VENCER                                           -->
@@ -925,7 +985,7 @@ import {
   AlertCircle, AlertTriangle, Info,
   TrendingUp, TrendingDown, CreditCard, Receipt,
   LineChart, BarChart2, PieChart, Wallet, UserX,
-  FileDown, ChevronDown, MapPin
+  FileDown, ChevronDown, ChevronRight, MapPin
 } from 'lucide-vue-next'
 
 Chart.register(...registerables)
@@ -970,6 +1030,17 @@ const topVista = ref('month')
 const topProductsList = computed(() => {
   const list = props.topProducts?.[topVista.value]
   return Array.isArray(list) ? list : Object.values(list || {})
+})
+
+// Productos menos vendidos (mismo período que el top)
+const leastProductsList = computed(() => {
+  const list = props.topProducts?.[topVista.value === 'month' ? 'least_month' : 'least_all']
+  return Array.isArray(list) ? list : Object.values(list || {})
+})
+// El último de la lista es el que más vendió dentro de los menos vendidos
+const leastMaxQty = computed(() => {
+  const l = leastProductsList.value
+  return l.length ? Number(l[l.length - 1].total_quantity) : 0
 })
 
 const buildCobroCalChart = () => {

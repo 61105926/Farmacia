@@ -160,6 +160,22 @@
               </select>
             </div>
 
+            <!-- Payment Status -->
+            <div>
+              <Label for="payment_status">Estado de Pago</Label>
+              <select
+                id="payment_status"
+                v-model="filters.payment_status"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+              >
+                <option value="">Todos los pagos</option>
+                <option value="unpaid">Sin pago completo</option>
+                <option value="pending">Sin pagar</option>
+                <option value="partial">Pago parcial</option>
+                <option value="paid">Pagado</option>
+              </select>
+            </div>
+
             <!-- Date From -->
             <div>
               <Label for="date_from">Desde</Label>
@@ -451,6 +467,7 @@ const { alertState, showAlert, showConfirm, hideAlert, handleConfirm } = useAler
 const filters = reactive({
   search: props.filters.search || '',
   status: props.filters.status || '',
+  payment_status: props.filters.payment_status || '',
   salesperson_id: props.filters.salesperson_id || '',
   payment_method: props.filters.payment_method || '',
   date_from: props.filters.date_from || '',

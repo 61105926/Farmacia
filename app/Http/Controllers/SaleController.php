@@ -55,6 +55,16 @@ class SaleController extends Controller
                 ->when($request->status, function ($query, $status) {
                     $query->where('status', $status);
                 })
+                ->when($request->payment_status, function ($query, $paymentStatus) {
+                    // Las canceladas no cuentan para el estado de cobro (igual que el dashboard)
+                    $query->where('status', '!=', 'cancelled');
+                    // 'unpaid' agrupa pendientes + parciales (todo lo que no está pagado)
+                    if ($paymentStatus === 'unpaid') {
+                        $query->where('payment_status', '!=', 'paid');
+                    } else {
+                        $query->where('payment_status', $paymentStatus);
+                    }
+                })
                 ->when($request->salesperson_id, function ($query, $salespersonId) {
                     $query->where('salesperson_id', $salespersonId);
                 })
@@ -73,7 +83,7 @@ class SaleController extends Controller
 
             return Inertia::render('Sales/Index', [
                 'sales' => $sales,
-                'filters' => $request->only(['search', 'status', 'salesperson_id', 'payment_method', 'date_from', 'date_to']),
+                'filters' => $request->only(['search', 'status', 'payment_status', 'salesperson_id', 'payment_method', 'date_from', 'date_to']),
                 'salespeople' => User::whereHas('roles', fn($q) => $q->where('name', 'vendedor-ventas'))
                     ->select('id', 'name')
                     ->get(),
