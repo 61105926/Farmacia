@@ -331,16 +331,18 @@ class DashboardController extends Controller
         }
         
         // Facturas vencidas
-        $overdueInvoices = Invoice::where('due_date', '<', now())
-            ->where('payment_status', '!=', 'paid')
+        // Mismas condiciones que el listado de Cuentas por Cobrar con ?overdue=1,
+        // para que el número de la alerta coincida con lo que muestra la página
+        $overdueInvoices = Invoice::overdue()
             ->where('status', '!=', 'cancelled')
+            ->where('total', '>', 0)
             ->count();
         if ($overdueInvoices > 0) {
             $alerts[] = [
                 'type' => 'error',
                 'title' => 'Facturas Vencidas',
                 'message' => "{$overdueInvoices} facturas están vencidas",
-                'action' => '/cuentas-por-cobrar?filter=overdue'
+                'action' => '/cuentas-por-cobrar?overdue=1'
             ];
         }
         
@@ -351,7 +353,7 @@ class DashboardController extends Controller
                 'type' => 'info',
                 'title' => 'Clientes Bloqueados',
                 'message' => "{$blockedClients} clientes están bloqueados",
-                'action' => '/clientes?filter=blocked'
+                'action' => '/clientes?status=blocked'
             ];
         }
         
@@ -842,6 +844,7 @@ class DashboardController extends Controller
             $byWeek[$weekStart]['total']  += $r->balance;
             $byWeek[$weekStart]['count']  += 1;
             $byWeek[$weekStart]['clientes'][] = [
+                'invoice_id' => $r->id,
                 'client_id' => $r->client?->id,
                 'name'     => $r->client?->business_name ?? '—',
                 'phone'    => $r->client?->phone,

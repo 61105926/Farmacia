@@ -423,35 +423,40 @@
               </div>
               <!-- Lista de clientes -->
               <div class="divide-y divide-gray-100 dark:divide-gray-700">
-                <component v-for="(c, ci) in week.clientes" :key="ci"
-                  :is="c.client_id ? Link : 'div'"
-                  :href="c.client_id ? `/clientes/${c.client_id}` : undefined"
+                <div v-for="(c, ci) in week.clientes" :key="ci"
+                  @click="c.invoice_id && router.visit(`/cuentas-por-cobrar/${c.invoice_id}`)"
                   :class="['flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group',
-                    c.client_id ? 'cursor-pointer' : '']">
-                  <div class="flex items-center gap-3">
+                    c.invoice_id ? 'cursor-pointer' : '']">
+                  <div class="flex items-center gap-3 min-w-0">
                     <div :class="['w-2 h-2 rounded-full flex-shrink-0',
                       c.overdue ? 'bg-red-500' : c.days <= 7 ? 'bg-amber-500' : 'bg-emerald-500']">
                     </div>
-                    <div>
-                      <p class="text-sm font-medium text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                    <div class="min-w-0">
+                      <!-- El nombre lleva a la ficha del cliente; el resto de la fila al cobro -->
+                      <Link v-if="c.client_id" :href="`/clientes/${c.client_id}`" @click.stop
+                        class="text-sm font-medium text-gray-900 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline truncate block">
                         {{ c.name }}
-                        <ChevronRight v-if="c.client_id" class="w-3.5 h-3.5 inline-block opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </p>
+                      </Link>
+                      <p v-else class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ c.name }}</p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">
                         Vence {{ c.due_date }}
                         <span v-if="c.phone"> · {{ c.phone }}</span>
                       </p>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <p :class="['text-sm font-bold', c.overdue ? 'text-red-600' : 'text-gray-900 dark:text-white']">
-                      {{ fmtCurrency(c.balance) }}
-                    </p>
-                    <p :class="['text-xs', c.overdue ? 'text-red-500' : c.days <= 7 ? 'text-amber-500' : 'text-emerald-500']">
-                      {{ c.overdue ? `${Math.abs(c.days)}d vencida` : c.days === 0 ? 'Vence hoy' : `${c.days}d restantes` }}
-                    </p>
+                  <div class="text-right flex items-center gap-2 flex-shrink-0">
+                    <div>
+                      <p :class="['text-sm font-bold', c.overdue ? 'text-red-600' : 'text-gray-900 dark:text-white']">
+                        {{ fmtCurrency(c.balance) }}
+                      </p>
+                      <p :class="['text-xs', c.overdue ? 'text-red-500' : c.days <= 7 ? 'text-amber-500' : 'text-emerald-500']">
+                        {{ c.overdue ? `${Math.abs(c.days)}d vencida` : c.days === 0 ? 'Vence hoy' : `${c.days}d restantes` }}
+                      </p>
+                    </div>
+                    <ChevronRight v-if="c.invoice_id"
+                      class="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors" />
                   </div>
-                </component>
+                </div>
               </div>
             </div>
           </div>
@@ -972,7 +977,7 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import { Chart, registerables } from 'chart.js'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
