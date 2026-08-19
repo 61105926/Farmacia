@@ -424,7 +424,7 @@
               <!-- Lista de clientes -->
               <div class="divide-y divide-gray-100 dark:divide-gray-700">
                 <div v-for="(c, ci) in week.clientes" :key="ci"
-                  @click="c.invoice_id && router.visit(`/cuentas-por-cobrar/${c.invoice_id}`)"
+                  @click="c.invoice_id && router.visit(`/cuentas-por-cobrar?pagar=${c.invoice_id}`)"
                   :class="['flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group',
                     c.invoice_id ? 'cursor-pointer' : '']">
                   <div class="flex items-center gap-3 min-w-0">
@@ -453,6 +453,10 @@
                         {{ c.overdue ? `${Math.abs(c.days)}d vencida` : c.days === 0 ? 'Vence hoy' : `${c.days}d restantes` }}
                       </p>
                     </div>
+                    <span v-if="c.invoice_id"
+                      class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      Cobrar
+                    </span>
                     <ChevronRight v-if="c.invoice_id"
                       class="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 transition-colors" />
                   </div>

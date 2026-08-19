@@ -68,9 +68,39 @@ class AccountReceivableController extends Controller
             'pendingPayments' => Payment::pending()->count(),
         ];
 
+        // Cobro directo: el dashboard enlaza con ?pagar={invoice_id} para abrir
+        // el modal de pago ya cargado con ese cliente y esa factura
+        $payInvoice = null;
+        if ($request->filled('pagar')) {
+            $invoice = Invoice::where('id', $request->get('pagar'))
+                ->where('status', '!=', 'cancelled')
+                ->where('balance', '>', 0)
+                ->first(['id', 'client_id', 'balance']);
+
+            if ($invoice) {
+                $payInvoice = [
+                    'id'        => $invoice->id,
+                    'client_id' => $invoice->client_id,
+                    'balance'   => round((float) $invoice->balance, 2),
+                ];
+            }
+        }
+
+        $clients = Client::where('status', 'active')->get(['id', 'business_name', 'trade_name']);
+
+        // Si la factura a cobrar es de un cliente bloqueado/inactivo, lo sumamos
+        // igual para que el select del modal pueda mostrarlo seleccionado
+        if ($payInvoice && !$clients->contains('id', $payInvoice['client_id'])) {
+            $payClient = Client::find($payInvoice['client_id'], ['id', 'business_name', 'trade_name']);
+            if ($payClient) {
+                $clients->push($payClient);
+            }
+        }
+
         return Inertia::render('AccountReceivables/Index', [
             'invoices' => $invoices,
-            'clients' => Client::where('status', 'active')->get(['id', 'business_name', 'trade_name']),
+            'payInvoice' => $payInvoice,
+            'clients' => $clients,
             'paymentStatuses' => Invoice::getPaymentStatuses(),
             'filters' => $request->only([
                 'search', 'payment_status', 'client_id', 'date_from', 'date_to', 'overdue', 'unpaid'

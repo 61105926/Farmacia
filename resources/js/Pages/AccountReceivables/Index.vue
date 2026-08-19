@@ -502,7 +502,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui'
@@ -532,6 +532,10 @@ const createPaymentForm = useForm({
 
 const props = defineProps({
   invoices: Object,
+  payInvoice: {
+    type: Object,
+    default: null
+  },
   clients: Array,
   paymentStatuses: Object,
   filters: Object,
@@ -690,6 +694,25 @@ const openCreatePaymentModal = () => {
     console.log('Modal encontrado en DOM:', modal)
   }, 100)
 }
+
+// Cobro directo desde el dashboard: /cuentas-por-cobrar?pagar={invoice_id}
+onMounted(async () => {
+  if (!props.payInvoice) return
+
+  // Limpiamos ?pagar de la URL para que un refresh (o el back() tras cobrar)
+  // no vuelva a abrir el modal
+  const url = new URL(window.location.href)
+  url.searchParams.delete('pagar')
+  window.history.replaceState({}, '', url.pathname + url.search)
+
+  showCreatePaymentModal.value = true
+  createPaymentForm.reset()
+  createPaymentForm.payment_date = new Date().toISOString().split('T')[0]
+  createPaymentForm.client_id = props.payInvoice.client_id
+  await loadClientInvoices()
+  createPaymentForm.invoice_id = props.payInvoice.id
+  createPaymentForm.amount = props.payInvoice.balance
+})
 
 const closeCreatePaymentModal = () => {
   showCreatePaymentModal.value = false
