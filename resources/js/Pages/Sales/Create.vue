@@ -137,6 +137,7 @@
                   Número de Factura <span class="text-red-500">*</span>
                 </label>
                 <input
+                  ref="invoiceNumberInput"
                   v-model="form.invoice_number"
                   type="text"
                   required
@@ -471,6 +472,8 @@ const form = reactive({
   total: 0,
 })
 
+const invoiceNumberInput = ref(null)
+
 const filteredPresales = computed(() => {
   if (!form.client_id) return props.presales
   return props.presales.filter(p => p.client_id == form.client_id)
@@ -493,8 +496,11 @@ onMounted(async () => {
     form.presale_id = props.prefillPresaleId
     await loadPresaleItems()
     if (form.presale_id) {
-      form.payment_method = 'cash'
-      form.payment_status = 'paid'
+      // Desde preventa se vende a crédito: queda la deuda en Cuentas por Cobrar
+      form.payment_method = 'credit'
+      form.payment_status = 'pending'
+      await nextTick()
+      invoiceNumberInput.value?.focus()
     }
   }
 })

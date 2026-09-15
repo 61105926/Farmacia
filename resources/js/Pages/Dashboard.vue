@@ -490,7 +490,7 @@
           <div class="flex items-center justify-between">
             <CardTitle class="flex items-center gap-2">
               <ShoppingCart class="w-5 h-5 text-blue-500" />
-              Calendario de Preventas
+              Calendario de Ventas
               <span class="text-xs font-normal text-gray-500 dark:text-gray-400">pendientes de vender</span>
             </CardTitle>
             <div class="flex gap-2">
