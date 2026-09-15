@@ -348,10 +348,13 @@
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad</label>
           <input
+            ref="qtyInput"
             v-model.number="pendingQty"
             type="number"
             step="1"
             min="1"
+            placeholder="Cantidad"
+            @keydown.enter.prevent="addProductFromModal"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
           />
         </div>
@@ -366,7 +369,7 @@
           <button
             type="button"
             @click="addProductFromModal"
-            :disabled="!pendingProductId"
+            :disabled="!pendingProductId || !(pendingQty > 0)"
             class="px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Agregar
@@ -390,7 +393,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
@@ -407,6 +410,10 @@ const props = defineProps({
   products: Array,
   salespeople: Array,
   presales: Array,
+  prefillPresaleId: {
+    type: Number,
+    default: null,
+  },
   errors: Object,
   error: String,
   nextInvoiceNumber: {
@@ -469,11 +476,26 @@ const filteredPresales = computed(() => {
   return props.presales.filter(p => p.client_id == form.client_id)
 })
 
-onMounted(() => {
+onMounted(async () => {
   const isAdmin = currentUser?.roles?.includes('Administrador')
   if (!isAdmin && currentUser?.id) {
     const match = props.salespeople.find(s => s.id === currentUser.id)
     if (match) form.salesperson_id = match.id
+  }
+
+  // Venta directa desde el calendario de preventas: /ventas/crear?preventa={id}
+  if (props.prefillPresaleId) {
+    // Limpiamos ?preventa para que un refresh no vuelva a precargar
+    const url = new URL(window.location.href)
+    url.searchParams.delete('preventa')
+    window.history.replaceState({}, '', url.pathname + url.search)
+
+    form.presale_id = props.prefillPresaleId
+    await loadPresaleItems()
+    if (form.presale_id) {
+      form.payment_method = 'cash'
+      form.payment_status = 'paid'
+    }
   }
 })
 
@@ -486,25 +508,31 @@ const onlyIntegers = (event) => {
 
 const showProductModal = ref(false)
 const pendingProductId = ref('')
-const pendingQty = ref(1)
+// La cantidad arranca vacía: al elegir el producto el foco pasa a este campo
+const pendingQty = ref('')
+const qtyInput = ref(null)
 const showDuplicateConfirm = ref(false)
 const pendingDuplicate = ref(null)
 
+watch(pendingProductId, (id) => {
+  if (id && showProductModal.value) nextTick(() => qtyInput.value?.focus())
+})
+
 const openProductModal = () => {
   pendingProductId.value = ''
-  pendingQty.value = 1
+  pendingQty.value = ''
   showProductModal.value = true
 }
 
 const closeProductModal = () => {
   showProductModal.value = false
   pendingProductId.value = ''
-  pendingQty.value = 1
+  pendingQty.value = ''
 }
 
 const addProductFromModal = () => {
   const selectedId = pendingProductId.value
-  if (!selectedId) return
+  if (!selectedId || !(pendingQty.value > 0)) return
 
   const existingIndex = form.items.findIndex(item => item.product_id == selectedId)
   if (existingIndex !== -1) {

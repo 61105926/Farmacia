@@ -712,6 +712,7 @@ onMounted(async () => {
   await loadClientInvoices()
   createPaymentForm.invoice_id = props.payInvoice.id
   createPaymentForm.amount = props.payInvoice.balance
+  createPaymentForm.payment_method = 'cash'
 })
 
 const closeCreatePaymentModal = () => {

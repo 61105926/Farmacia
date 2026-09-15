@@ -484,24 +484,24 @@
         </CardContent>
       </Card>
 
-      <!-- ── Calendario de Ventas ── -->
-      <Card v-if="ventaCalendario && (ventaCalendario.by_week?.length || ventaCalendario.by_month?.length)">
+      <!-- ── Calendario de Preventas ── -->
+      <Card v-if="preventaCalendario && (preventaCalendario.by_week?.length || preventaCalendario.by_month?.length)">
         <CardHeader>
           <div class="flex items-center justify-between">
             <CardTitle class="flex items-center gap-2">
-              <BarChart2 class="w-5 h-5 text-blue-500" />
-              Calendario de Ventas
-              <span class="text-xs font-normal text-gray-500 dark:text-gray-400">últimos 30 + próximos 60 días</span>
+              <ShoppingCart class="w-5 h-5 text-blue-500" />
+              Calendario de Preventas
+              <span class="text-xs font-normal text-gray-500 dark:text-gray-400">pendientes de vender</span>
             </CardTitle>
             <div class="flex gap-2">
-              <button @click="ventaVista = 'semana'"
+              <button @click="preventaVista = 'semana'"
                 :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
-                  ventaVista === 'semana' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                  preventaVista === 'semana' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
                 Por semana
               </button>
-              <button @click="ventaVista = 'mes'"
+              <button @click="preventaVista = 'mes'"
                 :class="['px-3 py-1 text-xs font-medium rounded-full transition-colors',
-                  ventaVista === 'mes' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
+                  preventaVista === 'mes' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300']">
                 Por mes
               </button>
             </div>
@@ -510,48 +510,56 @@
         <CardContent>
 
           <!-- Gráfico de barras por mes -->
-          <div v-if="ventaVista === 'mes'" class="mb-4">
+          <div v-if="preventaVista === 'mes'" class="mb-4">
             <div style="position:relative;height:180px">
-              <canvas ref="ventaCalRef"></canvas>
+              <canvas ref="preventaCalRef"></canvas>
             </div>
           </div>
 
           <!-- Vista por semana -->
-          <div v-if="ventaVista === 'semana'" class="space-y-3">
-            <div v-for="(week, wi) in ventaCalendario.by_week" :key="wi"
+          <div v-if="preventaVista === 'semana'" class="space-y-3">
+            <div v-for="(week, wi) in preventaCalendario.by_week" :key="wi"
               :class="['rounded-lg border overflow-hidden',
                 week.is_current ? 'border-blue-400 dark:border-blue-600 ring-1 ring-blue-400' :
-                week.is_past ? 'border-gray-200 dark:border-gray-700 opacity-75' : 'border-blue-200 dark:border-blue-800']">
+                week.is_past ? 'border-red-200 dark:border-red-800' : 'border-blue-200 dark:border-blue-800']">
               <div :class="['flex items-center justify-between px-4 py-2',
                 week.is_current ? 'bg-blue-100 dark:bg-blue-900/40' :
-                week.is_past ? 'bg-gray-50 dark:bg-gray-800/40' : 'bg-blue-50 dark:bg-blue-900/20']">
+                week.is_past ? 'bg-red-50 dark:bg-red-900/20' : 'bg-blue-50 dark:bg-blue-900/20']">
                 <div class="flex items-center gap-2">
                   <span v-if="week.is_current" class="text-xs font-bold text-blue-600 bg-blue-100 dark:bg-blue-800 px-2 py-0.5 rounded-full">Esta semana</span>
-                  <span v-else-if="week.is_past" class="text-xs text-gray-400">Pasado</span>
+                  <span v-else-if="week.is_past" class="text-xs font-bold text-red-600">ATRASADA</span>
                   <span class="font-semibold text-sm text-gray-900 dark:text-white">{{ week.week_label }}</span>
-                  <span class="text-xs text-gray-500">· {{ week.count }} {{ week.count === 1 ? 'venta' : 'ventas' }}</span>
+                  <span class="text-xs text-gray-500">· {{ week.count }} {{ week.count === 1 ? 'preventa' : 'preventas' }}</span>
                 </div>
                 <span class="font-bold text-sm text-blue-600 dark:text-blue-400">{{ fmtCurrency(week.total) }}</span>
               </div>
               <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                <!-- Click en la fila: abre Nueva Venta con esta preventa cargada -->
                 <div v-for="(c, ci) in week.clientes" :key="ci"
-                  class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                  <div class="flex items-center gap-3">
+                  @click="router.visit(`/ventas/crear?preventa=${c.presale_id}`)"
+                  class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer group">
+                  <div class="flex items-center gap-3 min-w-0">
                     <div :class="['w-2 h-2 rounded-full flex-shrink-0',
-                      c.payment_status === 'paid' ? 'bg-green-500' : c.payment_status === 'partial' ? 'bg-amber-500' : 'bg-red-500']"></div>
-                    <div>
-                      <p class="text-sm font-medium text-gray-900 dark:text-white">{{ c.name }}</p>
+                      c.is_past ? 'bg-red-500' : c.status === 'confirmed' ? 'bg-green-500' : 'bg-amber-500']"></div>
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ c.name }}</p>
                       <p class="text-xs text-gray-500 dark:text-gray-400">
-                        {{ c.date }}
+                        {{ c.code }} · Entrega {{ c.date }}
                         <span v-if="c.phone"> · {{ c.phone }}</span>
                       </p>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <p class="text-sm font-bold text-gray-900 dark:text-white">{{ fmtCurrency(c.total) }}</p>
-                    <p :class="['text-xs', c.payment_status === 'paid' ? 'text-green-500' : c.payment_status === 'partial' ? 'text-amber-500' : 'text-red-500']">
-                      {{ c.payment_status === 'paid' ? 'Pagado' : c.payment_status === 'partial' ? 'Parcial' : 'Sin pagar' }}
-                    </p>
+                  <div class="text-right flex items-center gap-2 flex-shrink-0">
+                    <div>
+                      <p class="text-sm font-bold text-gray-900 dark:text-white">{{ fmtCurrency(c.total) }}</p>
+                      <p :class="['text-xs', c.status === 'confirmed' ? 'text-green-500' : 'text-amber-500']">
+                        {{ c.status === 'confirmed' ? 'Confirmada' : 'Borrador' }}
+                      </p>
+                    </div>
+                    <span class="text-xs font-semibold text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      Vender
+                    </span>
+                    <ChevronRight class="w-4 h-4 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 transition-colors" />
                   </div>
                 </div>
               </div>
@@ -559,18 +567,18 @@
           </div>
 
           <!-- Vista por mes: barras -->
-          <div v-if="ventaVista === 'mes'" class="mt-4 space-y-2">
-            <div v-for="(m, mi) in ventaCalendario.by_month" :key="mi"
+          <div v-if="preventaVista === 'mes'" class="mt-4 space-y-2">
+            <div v-for="(m, mi) in preventaCalendario.by_month" :key="mi"
               class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
               <div :class="['w-2 h-2 rounded-full flex-shrink-0', m.is_past ? 'bg-gray-400' : 'bg-blue-500']"></div>
               <span class="text-sm font-medium text-gray-700 dark:text-gray-300 w-24">{{ m.label }}</span>
               <div class="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div :class="['h-full rounded-full', m.is_past ? 'bg-gray-400' : 'bg-blue-400']"
-                  :style="`width:${ventaCalendario.by_month.length ? Math.min(100, Math.round(m.total / Math.max(...ventaCalendario.by_month.map(x=>x.total)) * 100)) : 0}%`">
+                  :style="`width:${preventaCalendario.by_month.length ? Math.min(100, Math.round(m.total / Math.max(...preventaCalendario.by_month.map(x=>x.total)) * 100)) : 0}%`">
                 </div>
               </div>
               <span class="text-sm font-bold text-gray-900 dark:text-white w-28 text-right">{{ fmtCurrency(m.total) }}</span>
-              <span class="text-xs text-gray-400 w-16 text-right">{{ m.count }} ventas</span>
+              <span class="text-xs text-gray-400 w-20 text-right">{{ m.count }} {{ m.count === 1 ? 'preventa' : 'preventas' }}</span>
             </div>
           </div>
 
@@ -1008,7 +1016,7 @@ const props = defineProps({
   // Analytics
   analyticsKpis: Object, monthlyChartData: Array, periodComparison: Object,
   receivablesBreakdown: Object, salesProjection: Object, receivablesProjection: Object,
-  churnedClients: Array, cobroCalendario: Object, ventaCalendario: Object,
+  churnedClients: Array, cobroCalendario: Object, preventaCalendario: Object,
 })
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -1029,10 +1037,10 @@ const cobroCalRef = ref(null)
 const cobroVista  = ref('semana')
 let cobroCalChart = null
 
-// Calendario de ventas
-const ventaCalRef = ref(null)
-const ventaVista  = ref('semana')
-let ventaCalChart = null
+// Calendario de preventas
+const preventaCalRef = ref(null)
+const preventaVista  = ref('semana')
+let preventaCalChart = null
 
 // Productos más vendidos
 const topVista = ref('month')
@@ -1082,16 +1090,16 @@ const buildCobroCalChart = () => {
 
 watch(cobroVista, (v) => { if (v === 'mes') nextTick(buildCobroCalChart) })
 
-const buildVentaCalChart = () => {
-  if (!ventaCalRef.value || !props.ventaCalendario?.by_month?.length) return
-  if (ventaCalChart) { ventaCalChart.destroy(); ventaCalChart = null }
-  const months = props.ventaCalendario.by_month
-  ventaCalChart = new Chart(ventaCalRef.value, {
+const buildPreventaCalChart = () => {
+  if (!preventaCalRef.value || !props.preventaCalendario?.by_month?.length) return
+  if (preventaCalChart) { preventaCalChart.destroy(); preventaCalChart = null }
+  const months = props.preventaCalendario.by_month
+  preventaCalChart = new Chart(preventaCalRef.value, {
     type: 'bar',
     data: {
       labels: months.map(m => m.label),
       datasets: [{
-        label: 'Ventas (Bs)',
+        label: 'Preventas (Bs)',
         data: months.map(m => m.total),
         backgroundColor: months.map(m => m.is_past ? 'rgba(148,163,184,0.6)' : 'rgba(59,130,246,0.7)'),
         borderColor: months.map(m => m.is_past ? '#94a3b8' : '#2563eb'),
@@ -1110,7 +1118,7 @@ const buildVentaCalChart = () => {
   })
 }
 
-watch(ventaVista, (v) => { if (v === 'mes') nextTick(buildVentaCalChart) })
+watch(preventaVista, (v) => { if (v === 'mes') nextTick(buildPreventaCalChart) })
 
 const downloadRutaCobros = () => {
   if (!cobrosFrom.value || !cobrosTo.value) return
@@ -1340,7 +1348,7 @@ onUnmounted(() => {
   donutChart?.destroy()
   cobrosChart?.destroy()
   cobroCalChart?.destroy()
-  ventaCalChart?.destroy()
+  preventaCalChart?.destroy()
   document.removeEventListener('click', closePdfMenu)
 })
 

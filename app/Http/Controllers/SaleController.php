@@ -103,7 +103,7 @@ class SaleController extends Controller
     /**
      * Show the form for creating a new sale
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         try {
             // Verificar si las tablas existen
@@ -171,11 +171,21 @@ class SaleController extends Controller
                 // Si falla, usar array vacío
             }
 
+            // Venta directa desde el dashboard: ?preventa={id} abre el formulario
+            // con esa preventa cargada, siempre que siga pendiente de vender
+            $prefillPresaleId = null;
+            if ($request->filled('preventa')) {
+                $prefillPresaleId = collect($presales)
+                    ->firstWhere('id', (int) $request->get('preventa'))
+                    ?->id;
+            }
+
             return Inertia::render('Sales/Create', [
                 'clients' => $clients,
                 'products' => $products,
                 'salespeople' => $salespeople,
                 'presales' => $presales,
+                'prefillPresaleId' => $prefillPresaleId,
                 'nextInvoiceNumber' => \App\Models\Sale::generateNextInvoiceNumber(),
             ]);
 
