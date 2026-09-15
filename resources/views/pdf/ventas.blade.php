@@ -5,10 +5,11 @@
 <title>Reporte de Ventas – {{ $period }}</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { margin: 22px 26px; }
     body { font-family: sans-serif; font-size: 11px; color: #1e293b; background: #fff; }
 
     /* ── Header ── */
-    .header { background: linear-gradient(135deg, #1e40af 0%, #0f766e 100%); color: #fff; padding: 20px 28px; }
+    .header { background: #1e40af; color: #fff; padding: 20px 28px; }
     .header-table { width: 100%; border-collapse: collapse; }
     .header-logo { width: 70px; text-align: left; vertical-align: middle; }
     .header-logo img { max-height: 54px; max-width: 64px; }

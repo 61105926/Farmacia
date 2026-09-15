@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\Invoice;
 use App\Models\Payment;
-use App\Models\Receivable;
 use App\Models\Sale;
 use App\Models\Presale;
 use App\Models\SystemSetting;
@@ -30,6 +30,23 @@ class PdfController extends Controller
         } catch (\Exception $e) {
             return ['name' => 'SISPANDO', 'logo_url' => null, 'logo_path' => null];
         }
+    }
+
+    /**
+     * Facturas con saldo pendiente. Es la misma base que usan el dashboard y el
+     * módulo de Cuentas por Cobrar: los pagos actualizan invoices, no receivables.
+     */
+    private function pendingInvoices()
+    {
+        return Invoice::where('status', '!=', 'cancelled')
+            ->where('payment_status', '!=', 'paid')
+            ->where('balance', '>', 0);
+    }
+
+    /** Número de factura tal como lo muestra el módulo de Cuentas por Cobrar */
+    private function invoiceLabel(Invoice $invoice): string
+    {
+        return $invoice->sale?->invoice_number ?: ($invoice->invoice_number ?? '—');
     }
 
     private function monthName(int $month): string
@@ -60,8 +77,8 @@ class PdfController extends Controller
         $ventasAnt  = Sale::whereBetween('created_at', [$lastFrom, $lastTo])->where('status','!=','cancelled')->sum('total') ?? 0;
         $cobrosMes  = Payment::whereBetween('payment_date', [$curFrom, $curTo])->where('status','completed')->sum('amount') ?? 0;
         $cobrosAnt  = Payment::whereBetween('payment_date', [$lastFrom, $lastTo])->where('status','completed')->sum('amount') ?? 0;
-        $porCobrar  = Receivable::whereIn('status',['pending','partial'])->sum('balance') ?? 0;
-        $vencido    = Receivable::whereIn('status',['pending','partial','overdue'])->where('due_date','<',$now)->sum('balance') ?? 0;
+        $porCobrar  = $this->pendingInvoices()->sum('balance') ?? 0;
+        $vencido    = $this->pendingInvoices()->where('due_date', '<', Carbon::today())->sum('balance') ?? 0;
 
         // Proyección de ventas (promedio últimos 3 meses)
         $history = [];
@@ -92,8 +109,8 @@ class PdfController extends Controller
             ['label' => 'Próximos 61-90 días', 'from' => Carbon::today()->addDays(61), 'to' => Carbon::today()->addDays(90)],
         ];
         foreach ($cobrosProjection as &$w) {
-            $w['amount'] = round(Receivable::whereIn('status',['pending','partial'])->whereBetween('due_date',[$w['from'],$w['to']])->sum('balance') ?? 0, 2);
-            $w['count']  = Receivable::whereIn('status',['pending','partial'])->whereBetween('due_date',[$w['from'],$w['to']])->count();
+            $w['amount'] = round($this->pendingInvoices()->whereBetween('due_date', [$w['from'], $w['to']])->sum('balance') ?? 0, 2);
+            $w['count']  = $this->pendingInvoices()->whereBetween('due_date', [$w['from'], $w['to']])->count();
             unset($w['from'], $w['to']);
         }
 
@@ -234,54 +251,51 @@ class PdfController extends Controller
         $now   = Carbon::now();
         $today = Carbon::today();
 
-        // Cuentas con vencimiento en el rango seleccionado
-        $receivables = Receivable::with(['client:id,business_name,trade_name,phone,address,city,tax_id'])
-            ->whereIn('status', ['pending', 'partial', 'overdue'])
-            ->where(function ($q) use ($from, $to) {
-                // Incluye vencidas dentro del rango Y también las ya vencidas si el rango empieza hoy o antes
-                $q->whereBetween('due_date', [$from->toDateString(), $to->toDateString()]);
-            })
+        $with = ['client:id,business_name,trade_name,phone,address,city,tax_id', 'sale:id,invoice_number'];
+
+        // Facturas que vencen en el rango seleccionado
+        $invoices = $this->pendingInvoices()->with($with)
+            ->whereBetween('due_date', [$from->toDateString(), $to->toDateString()])
             ->orderBy('due_date')
             ->get();
 
-        // También incluir las ya vencidas si el from <= hoy
+        // Si el rango arranca hoy o antes, sumar también todas las ya vencidas
         $overdueExtra = collect();
         if ($from->lte($today)) {
-            $overdueExtra = Receivable::with(['client:id,business_name,trade_name,phone,address,city,tax_id'])
-                ->whereIn('status', ['pending', 'partial', 'overdue'])
+            $overdueExtra = $this->pendingInvoices()->with($with)
                 ->where('due_date', '<', $today->toDateString())
                 ->orderBy('due_date')
                 ->get();
         }
 
         // Merge y deduplicar por id
-        $all = $receivables->merge($overdueExtra)->unique('id')->sortBy('due_date');
+        $all = $invoices->merge($overdueExtra)->unique('id')->sortBy('due_date');
 
         // Agrupar por cliente
         $byClient = $all->groupBy('client_id')->map(function ($rows) use ($today) {
             $client = $rows->first()->client;
             return [
-                'name'      => $client?->business_name ?? '—',
+                'name'      => $client?->business_name ?? $rows->first()->client_name ?? '—',
                 'trade'     => $client?->trade_name,
                 'phone'     => $client?->phone,
                 'address'   => $client?->address,
                 'city'      => $client?->city,
                 'tax_id'    => $client?->tax_id,
-                'facturas'  => $rows->map(function ($r) use ($today) {
-                    $days = $today->diffInDays($r->due_date, false);
+                'facturas'  => $rows->map(function ($inv) use ($today) {
+                    $days = $today->diffInDays($inv->due_date, false);
                     return [
-                        'id'       => $r->id,
-                        'due_date' => $r->due_date?->format('d/m/Y'),
-                        'amount'   => round($r->amount, 2),
-                        'balance'  => round($r->balance, 2),
-                        'status'   => $r->status,
-                        'notes'    => $r->notes,
+                        'id'       => $inv->id,
+                        'invoice'  => $this->invoiceLabel($inv),
+                        'due_date' => $inv->due_date?->format('d/m/Y'),
+                        'amount'   => round($inv->total, 2),
+                        'balance'  => round($inv->balance, 2),
+                        'status'   => $inv->payment_status,
                         'overdue'  => $days < 0,
                         'days'     => (int) abs($days),
                     ];
                 })->values()->toArray(),
                 'total_balance' => round($rows->sum('balance'), 2),
-                'has_overdue'   => $rows->filter(fn($r) => $today->gt($r->due_date))->count() > 0,
+                'has_overdue'   => $rows->filter(fn($inv) => $today->gt($inv->due_date))->count() > 0,
             ];
         })->values()->sortByDesc('has_overdue')->values();
 
@@ -319,30 +333,31 @@ class PdfController extends Controller
         $now   = Carbon::now();
         $today = Carbon::today();
 
-        // Resumen por antigüedad
+        // Resumen por antigüedad (mismos tramos que la dona del dashboard)
         $aging = [
-            'al_dia'       => round(Receivable::whereIn('status',['pending','partial'])->where('due_date','>=',$today)->sum('balance') ?? 0, 2),
-            'venc_30'      => round(Receivable::whereIn('status',['pending','partial','overdue'])->where('due_date','<',$today)->where('due_date','>=',$today->copy()->subDays(30))->sum('balance') ?? 0, 2),
-            'venc_60'      => round(Receivable::whereIn('status',['pending','partial','overdue'])->where('due_date','<',$today->copy()->subDays(30))->where('due_date','>=',$today->copy()->subDays(60))->sum('balance') ?? 0, 2),
-            'venc_mas60'   => round(Receivable::whereIn('status',['pending','partial','overdue'])->where('due_date','<',$today->copy()->subDays(60))->sum('balance') ?? 0, 2),
+            'al_dia'     => round($this->pendingInvoices()->where('due_date', '>=', $today)->sum('balance') ?? 0, 2),
+            'venc_30'    => round($this->pendingInvoices()->where('due_date', '<', $today)->where('due_date', '>=', $today->copy()->subDays(30))->sum('balance') ?? 0, 2),
+            'venc_60'    => round($this->pendingInvoices()->where('due_date', '<', $today->copy()->subDays(30))->where('due_date', '>=', $today->copy()->subDays(60))->sum('balance') ?? 0, 2),
+            'venc_mas60' => round($this->pendingInvoices()->where('due_date', '<', $today->copy()->subDays(60))->sum('balance') ?? 0, 2),
         ];
         $aging['total'] = $aging['al_dia'] + $aging['venc_30'] + $aging['venc_60'] + $aging['venc_mas60'];
 
-        // Detalle por cliente
-        $detail = Receivable::with('client:id,business_name')
-            ->whereIn('status',['pending','partial','overdue'])
+        // Detalle por factura: vencidas primero
+        $detail = $this->pendingInvoices()
+            ->with(['client:id,business_name', 'sale:id,invoice_number'])
             ->orderByRaw("CASE WHEN due_date < ? THEN 0 ELSE 1 END", [$today])
             ->orderBy('due_date')
             ->get()
-            ->map(function($r) use ($today) {
-                $days = $today->diffInDays($r->due_date, false);
+            ->map(function ($inv) use ($today) {
+                $days = $today->diffInDays($inv->due_date, false);
                 return [
-                    'client'   => $r->client?->business_name ?? '—',
-                    'due_date' => $r->due_date?->format('d/m/Y'),
-                    'amount'   => round($r->amount, 2),
-                    'balance'  => round($r->balance, 2),
-                    'status'   => $r->status,
-                    'days'     => (int)$days,
+                    'client'   => $inv->client?->business_name ?? $inv->client_name ?? '—',
+                    'invoice'  => $this->invoiceLabel($inv),
+                    'due_date' => $inv->due_date?->format('d/m/Y'),
+                    'amount'   => round($inv->total, 2),
+                    'balance'  => round($inv->balance, 2),
+                    'status'   => $inv->payment_status,
+                    'days'     => (int) $days,
                     'overdue'  => $days < 0,
                 ];
             })->toArray();

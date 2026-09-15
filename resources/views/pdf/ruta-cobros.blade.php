@@ -5,10 +5,11 @@
 <title>Ruta de Cobros – {{ $periodLabel }}</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { margin: 22px 26px; }
     body { font-family: sans-serif; font-size: 11px; color: #1e293b; background: #fff; }
 
     /* ── Header ── */
-    .header { background: linear-gradient(135deg, #0f766e 0%, #065f46 100%); color: #fff; padding: 18px 24px; }
+    .header { background: #0f766e; color: #fff; padding: 18px 24px; }
     .header-table { width: 100%; border-collapse: collapse; }
     .header-logo  { width: 64px; text-align: left; vertical-align: middle; }
     .header-logo img { max-height: 50px; max-width: 58px; }
@@ -135,7 +136,7 @@
                 <div class="s-lbl">Total a cobrar (Bs)</div>
             </td>
             <td class="summary-item">
-                <div class="s-val" style="color:#0f766e;">{{ $periodLabel }}</div>
+                <div class="s-val" style="color:#0f766e;font-size:12px;">{{ $periodLabel }}</div>
                 <div class="s-lbl">Período de cobro</div>
             </td>
         </tr>
@@ -151,7 +152,6 @@
 
 @if($byClient->isEmpty())
 <div class="no-data">
-    <div class="no-data-icon">✓</div>
     <p>No hay cuentas por cobrar en el período seleccionado.</p>
 </div>
 @else
@@ -170,11 +170,16 @@
                     @if($c['trade'] && $c['trade'] !== $c['name'])
                         <div class="client-trade" style="margin-left:28px;">{{ $c['trade'] }}</div>
                     @endif
-                    <div class="client-contact" style="margin-left:28px;">
-                        @if($c['phone']) 📞 {{ $c['phone'] }}  @endif
-                        @if($c['address']) · 📍 {{ $c['address'] }}{{ $c['city'] ? ', ' . $c['city'] : '' }} @endif
-                        @if($c['tax_id']) · NIT: {{ $c['tax_id'] }} @endif
-                    </div>
+                    @php
+                        $contact = array_filter([
+                            $c['phone'] ? 'Tel: ' . $c['phone'] : null,
+                            $c['address'] ? 'Dir: ' . $c['address'] . ($c['city'] ? ', ' . $c['city'] : '') : null,
+                            $c['tax_id'] ? 'NIT: ' . $c['tax_id'] : null,
+                        ]);
+                    @endphp
+                    @if($contact)
+                    <div class="client-contact" style="margin-left:28px;">{{ implode(' · ', $contact) }}</div>
+                    @endif
                 </td>
                 <td class="client-total-cell" style="width:140px;">
                     <div class="client-total-lbl">Total a cobrar</div>
@@ -183,7 +188,7 @@
                     </div>
                     @if($c['has_overdue'])
                         <div style="margin-top:3px;">
-                            <span class="badge badge-overdue">⚠ VENCIDO</span>
+                            <span class="badge badge-overdue">VENCIDO</span>
                         </div>
                     @endif
                 </td>
@@ -196,18 +201,19 @@
         <thead>
             <tr>
                 <th>#</th>
+                <th>Factura</th>
                 <th>Vencimiento</th>
                 <th class="right">Monto original</th>
                 <th class="right">Saldo pendiente</th>
                 <th class="center">Estado</th>
                 <th class="center">Días</th>
-                @if($c['facturas'][0]['notes'] ?? false)<th>Notas</th>@endif
             </tr>
         </thead>
         <tbody>
             @foreach($c['facturas'] as $fi => $f)
             <tr>
                 <td class="center" style="color:#94a3b8;">{{ $fi + 1 }}</td>
+                <td>{{ $f['invoice'] }}</td>
                 <td><strong>{{ $f['due_date'] ?? '—' }}</strong></td>
                 <td class="right">{{ number_format($f['amount'],2,',','.') }}</td>
                 <td class="right"><strong style="color:{{ $f['overdue'] ? '#dc2626' : '#0f766e' }};">{{ number_format($f['balance'],2,',','.') }}</strong></td>
@@ -229,13 +235,12 @@
                         <span class="days-ok">{{ $f['days'] }}d restantes</span>
                     @endif
                 </td>
-                @if($f['notes'] ?? false)<td style="font-size:9px;color:#64748b;">{{ $f['notes'] }}</td>@endif
             </tr>
             @endforeach
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="3" style="padding-left:10px;font-size:10px;">Total del cliente</td>
+                <td colspan="4" style="padding-left:10px;font-size:10px;">Total del cliente</td>
                 <td class="right"><strong>Bs {{ number_format($c['total_balance'],2,',','.') }}</strong></td>
                 <td colspan="2"></td>
             </tr>

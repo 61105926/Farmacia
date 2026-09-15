@@ -5,10 +5,11 @@
 <title>Cartera de Cobranzas</title>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { margin: 22px 26px; }
     body { font-family: sans-serif; font-size: 11px; color: #1e293b; background: #fff; }
 
     /* ── Header ── */
-    .header { background: linear-gradient(135deg, #0f766e 0%, #1e40af 100%); color: #fff; padding: 20px 28px; }
+    .header { background: #0f766e; color: #fff; padding: 20px 28px; }
     .header-table { width: 100%; border-collapse: collapse; }
     .header-logo { width: 70px; text-align: left; vertical-align: middle; }
     .header-logo img { max-height: 54px; max-width: 64px; }
@@ -62,10 +63,10 @@
     .badge-overdue  { background: #fee2e2; color: #991b1b; }
 
     /* ── Days indicator ── */
-    .days-ok  { color: #16a34a; font-weight: 700; }
-    .days-w1  { color: #b45309; font-weight: 700; }
-    .days-w2  { color: #ea580c; font-weight: 700; }
-    .days-bad { color: #dc2626; font-weight: 700; }
+    .days-ok  { color: #16a34a; font-weight: 700; white-space: nowrap; }
+    .days-w1  { color: #b45309; font-weight: 700; white-space: nowrap; }
+    .days-w2  { color: #ea580c; font-weight: 700; white-space: nowrap; }
+    .days-bad { color: #dc2626; font-weight: 700; white-space: nowrap; }
 
     /* ── Mini progress bar for aging ── */
     .aging-bar-bg   { background: #e2e8f0; height: 6px; border-radius: 3px; margin-top: 4px; }
@@ -115,7 +116,7 @@
         <td class="aging-cell">
             <div class="aging-card card-green">
                 <div class="a-label">Al Día</div>
-                <div class="a-value">{{ number_format($aging['al_dia'],2,',',' ') }}</div>
+                <div class="a-value">Bs {{ number_format($aging['al_dia'],2,',','.') }}</div>
                 <div class="a-pct">{{ $total > 0 ? round($aging['al_dia']/$total*100,1) : 0 }}% del total</div>
                 <div class="aging-bar-bg"><div class="aging-bar-fill" style="background:#16a34a;width:{{ $total > 0 ? min(100,round($aging['al_dia']/$total*100)) : 0 }}%;"></div></div>
             </div>
@@ -123,7 +124,7 @@
         <td class="aging-cell">
             <div class="aging-card card-yellow">
                 <div class="a-label">Vencido 1-30 días</div>
-                <div class="a-value">{{ number_format($aging['venc_30'],2,',',' ') }}</div>
+                <div class="a-value">Bs {{ number_format($aging['venc_30'],2,',','.') }}</div>
                 <div class="a-pct">{{ $total > 0 ? round($aging['venc_30']/$total*100,1) : 0 }}% del total</div>
                 <div class="aging-bar-bg"><div class="aging-bar-fill" style="background:#ca8a04;width:{{ $total > 0 ? min(100,round($aging['venc_30']/$total*100)) : 0 }}%;"></div></div>
             </div>
@@ -131,7 +132,7 @@
         <td class="aging-cell">
             <div class="aging-card card-orange">
                 <div class="a-label">Vencido 31-60 días</div>
-                <div class="a-value">{{ number_format($aging['venc_60'],2,',',' ') }}</div>
+                <div class="a-value">Bs {{ number_format($aging['venc_60'],2,',','.') }}</div>
                 <div class="a-pct">{{ $total > 0 ? round($aging['venc_60']/$total*100,1) : 0 }}% del total</div>
                 <div class="aging-bar-bg"><div class="aging-bar-fill" style="background:#ea580c;width:{{ $total > 0 ? min(100,round($aging['venc_60']/$total*100)) : 0 }}%;"></div></div>
             </div>
@@ -139,7 +140,7 @@
         <td class="aging-cell">
             <div class="aging-card card-red">
                 <div class="a-label">Vencido +60 días</div>
-                <div class="a-value">{{ number_format($aging['venc_mas60'],2,',',' ') }}</div>
+                <div class="a-value">Bs {{ number_format($aging['venc_mas60'],2,',','.') }}</div>
                 <div class="a-pct">{{ $total > 0 ? round($aging['venc_mas60']/$total*100,1) : 0 }}% del total</div>
                 <div class="aging-bar-bg"><div class="aging-bar-fill" style="background:#dc2626;width:{{ $total > 0 ? min(100,round($aging['venc_mas60']/$total*100)) : 0 }}%;"></div></div>
             </div>
@@ -154,9 +155,9 @@
             <table style="width:100%;border-collapse:collapse;">
                 <tr>
                     <td style="font-size:12px;font-weight:600;">TOTAL CARTERA ACTIVA</td>
-                    <td style="text-align:right;font-size:18px;font-weight:800;">{{ number_format($aging['total'],2,',',' ') }}</td>
+                    <td style="text-align:right;font-size:18px;font-weight:800;">Bs {{ number_format($aging['total'],2,',','.') }}</td>
                     <td style="text-align:right;padding-left:20px;font-size:10px;opacity:0.7;">
-                        Vencido total: {{ number_format($aging['venc_30']+$aging['venc_60']+$aging['venc_mas60'],2,',',' ') }}
+                        Vencido total: Bs {{ number_format($aging['venc_30']+$aging['venc_60']+$aging['venc_mas60'],2,',','.') }}
                         ({{ $total > 0 ? round(($aging['venc_30']+$aging['venc_60']+$aging['venc_mas60'])/$total*100,1) : 0 }}%)
                     </td>
                 </tr>
@@ -167,7 +168,7 @@
 
 @if($aging['venc_mas60'] > 0)
 <div class="alert-box">
-    ⚠ Existen <strong>{{ number_format($aging['venc_mas60'],2,',',' ') }}</strong> en cartera vencida superior a 60 días.
+    <strong>Atención:</strong> existen <strong>Bs {{ number_format($aging['venc_mas60'],2,',','.') }}</strong> en cartera vencida superior a 60 días.
     Se recomienda acción de cobranza inmediata.
 </div>
 @endif
@@ -181,9 +182,10 @@
         <tr>
             <th>#</th>
             <th>Cliente</th>
+            <th>Factura</th>
             <th class="right">Vencimiento</th>
-            <th class="right">Monto Total</th>
-            <th class="right">Saldo Pendiente</th>
+            <th class="right">Monto Total (Bs)</th>
+            <th class="right">Saldo Pendiente (Bs)</th>
             <th class="center">Estado</th>
             <th class="center">Días</th>
         </tr>
@@ -197,17 +199,18 @@
         {{-- Vencidas primero --}}
         @if($overduePart->count() > 0)
         <tr>
-            <td colspan="7" style="background:#dc2626;color:#fff;font-size:9.5px;font-weight:700;padding:5px 10px;text-transform:uppercase;letter-spacing:0.4px;">
-                ⚠ Cuentas Vencidas ({{ $overduePart->count() }})
+            <td colspan="8" style="background:#dc2626;color:#fff;font-size:9.5px;font-weight:700;padding:5px 10px;text-transform:uppercase;letter-spacing:0.4px;">
+                Cuentas Vencidas ({{ $overduePart->count() }})
             </td>
         </tr>
         @foreach($overduePart as $i => $row)
         <tr class="overdue-row">
-            <td class="center" style="color:#dc2626;font-weight:700;font-size:9px;">{{ $i+1 }}</td>
+            <td class="center" style="color:#dc2626;font-weight:700;font-size:9px;">{{ $loop->iteration }}</td>
             <td><strong>{{ $row['client'] }}</strong></td>
+            <td>{{ $row['invoice'] }}</td>
             <td class="right">{{ $row['due_date'] ?? '—' }}</td>
-            <td class="right">{{ number_format($row['amount'],2,',',' ') }}</td>
-            <td class="right"><strong style="color:#dc2626;">{{ number_format($row['balance'],2,',',' ') }}</strong></td>
+            <td class="right">{{ number_format($row['amount'],2,',','.') }}</td>
+            <td class="right"><strong style="color:#dc2626;">{{ number_format($row['balance'],2,',','.') }}</strong></td>
             <td class="center">
                 <span class="badge badge-overdue">Vencido</span>
             </td>
@@ -224,17 +227,18 @@
         {{-- Al día --}}
         @if($currentPart->count() > 0)
         <tr>
-            <td colspan="7" style="background:#0f766e;color:#fff;font-size:9.5px;font-weight:700;padding:5px 10px;text-transform:uppercase;letter-spacing:0.4px;">
-                ✓ Cuentas al Día / Pendientes ({{ $currentPart->count() }})
+            <td colspan="8" style="background:#0f766e;color:#fff;font-size:9.5px;font-weight:700;padding:5px 10px;text-transform:uppercase;letter-spacing:0.4px;">
+                Cuentas al Día / Pendientes ({{ $currentPart->count() }})
             </td>
         </tr>
         @foreach($currentPart as $i => $row)
         <tr>
-            <td class="center" style="color:#94a3b8;font-size:9px;">{{ $i+1 }}</td>
+            <td class="center" style="color:#94a3b8;font-size:9px;">{{ $loop->iteration }}</td>
             <td>{{ $row['client'] }}</td>
+            <td>{{ $row['invoice'] }}</td>
             <td class="right">{{ $row['due_date'] ?? '—' }}</td>
-            <td class="right">{{ number_format($row['amount'],2,',',' ') }}</td>
-            <td class="right"><strong style="color:#0f766e;">{{ number_format($row['balance'],2,',',' ') }}</strong></td>
+            <td class="right">{{ number_format($row['amount'],2,',','.') }}</td>
+            <td class="right"><strong style="color:#0f766e;">{{ number_format($row['balance'],2,',','.') }}</strong></td>
             <td class="center">
                 @if($row['status'] === 'partial')
                     <span class="badge badge-partial">Parcial</span>
@@ -251,9 +255,9 @@
     </tbody>
     <tfoot>
         <tr>
-            <td colspan="3"><strong>TOTALES</strong></td>
-            <td class="right"><strong>{{ number_format(collect($detail)->sum('amount'),2,',',' ') }}</strong></td>
-            <td class="right"><strong>{{ number_format(collect($detail)->sum('balance'),2,',',' ') }}</strong></td>
+            <td colspan="4"><strong>TOTALES</strong></td>
+            <td class="right"><strong>{{ number_format(collect($detail)->sum('amount'),2,',','.') }}</strong></td>
+            <td class="right"><strong>{{ number_format(collect($detail)->sum('balance'),2,',','.') }}</strong></td>
             <td colspan="2" class="center" style="font-size:9.5px;opacity:0.8;">
                 {{ count($detail) }} cuentas activas
             </td>
