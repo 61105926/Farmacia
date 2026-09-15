@@ -44,35 +44,32 @@ class ProductController extends Controller
                 'batches' => fn($q) => $q->where('status', 'active')->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')->limit(1),
             ]);
 
-            // Filtros
-            if ($request->filled('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('name', 'ilike', '%' . $request->search . '%')
-                      ->orWhere('code', 'ilike', '%' . $request->search . '%')
-                      ->orWhere('description', 'ilike', '%' . $request->search . '%');
-                });
-            }
+            // Filtros: se aplican igual a la tabla y a las tarjetas de estadísticas,
+            // para que los totales reflejen lo que se está viendo
+            $applyFilters = function ($query) use ($request) {
+                if ($request->filled('search')) {
+                    $query->where(function ($q) use ($request) {
+                        $q->where('name', 'ilike', '%' . $request->search . '%')
+                          ->orWhere('code', 'ilike', '%' . $request->search . '%')
+                          ->orWhere('description', 'ilike', '%' . $request->search . '%');
+                    });
+                }
 
-            // Filtro de presentación
-            $presentation = $request->input('presentation');
-            if ($presentation && $presentation !== '' && $presentation !== null) {
-                $query->where('presentation', $presentation);
-            }
+                // Filtro de presentación
+                if ($request->filled('presentation')) {
+                    $query->where('presentation', $request->input('presentation'));
+                }
 
-            // Filtro de estado
-            $status = $request->input('status');
-            if ($status && $status !== '' && $status !== null) {
+                // Filtro de estado
+                $status = $request->input('status');
                 if ($status === 'active') {
                     $query->where('is_active', true);
                 } elseif ($status === 'inactive') {
                     $query->where('is_active', false);
                 }
-            }
 
-            // Filtro de stock
-            $stockStatus = $request->input('stock_status');
-            if ($stockStatus && $stockStatus !== '' && $stockStatus !== null) {
-                switch ($stockStatus) {
+                // Filtro de stock
+                switch ($request->input('stock_status')) {
                     case 'low_stock':
                         $query->whereColumn('stock_quantity', '<=', 'min_stock')->where('stock_quantity', '>', 0);
                         break;
@@ -83,7 +80,11 @@ class ProductController extends Controller
                         $query->whereColumn('stock_quantity', '>', 'min_stock');
                         break;
                 }
-            }
+
+                return $query;
+            };
+
+            $applyFilters($query);
 
             // Ordenamiento
             $sortBy    = in_array($request->input('sort_by'), ['name', 'description', 'stock_quantity', 'sale_price', 'created_at'])
@@ -127,13 +128,16 @@ class ProductController extends Controller
                 ->filter()
                 ->values();
 
-            // Estadísticas de productos
+            // Estadísticas sobre los productos filtrados. Cada conteo de stock usa la
+            // misma condición que su opción del filtro, así tarjeta y tabla coinciden
+            $filtered = fn () => $applyFilters(Product::query());
             $stats = [
-                'total_products' => Product::count(),
-                'active_products' => Product::where('is_active', true)->count(),
-                'low_stock_products' => Product::whereColumn('stock_quantity', '<=', 'min_stock')->where('stock_quantity', '>', 0)->count(),
-                'out_of_stock_products' => Product::where('stock_quantity', '<=', 0)->count(),
-                'total_value' => Product::sum(DB::raw('stock_quantity * cost_price')),
+                'total_products' => $filtered()->count(),
+                'active_products' => $filtered()->where('is_active', true)->count(),
+                'in_stock_products' => $filtered()->whereColumn('stock_quantity', '>', 'min_stock')->count(),
+                'low_stock_products' => $filtered()->whereColumn('stock_quantity', '<=', 'min_stock')->where('stock_quantity', '>', 0)->count(),
+                'out_of_stock_products' => $filtered()->where('stock_quantity', '<=', 0)->count(),
+                'total_value' => $filtered()->sum(DB::raw('stock_quantity * cost_price')),
             ];
 
             // Ensure filters are always passed, even if empty
