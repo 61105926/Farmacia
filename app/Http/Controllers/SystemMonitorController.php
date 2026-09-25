@@ -111,8 +111,9 @@ class SystemMonitorController extends Controller
     {
         try {
             return DB::table('users')
-                ->select('id', 'name', 'email', 'last_login_at', 'created_at')
-                ->orderBy('last_login_at', 'desc')
+                ->select('id', 'name', 'email', 'created_at')
+                ->selectRaw('COALESCE(last_login_at, ultimo_acceso) as last_login_at')
+                ->orderByRaw('COALESCE(last_login_at, ultimo_acceso) IS NULL, COALESCE(last_login_at, ultimo_acceso) DESC')
                 ->limit(10)
                 ->get()
                 ->toArray();

@@ -42,7 +42,7 @@ class UserController extends Controller
                 });
             })
             ->latest()
-            ->paginate(15)
+            ->paginate(auth()->user()->perPage(15))
             ->withQueryString();
 
         return Inertia::render('Users/Index', [
@@ -223,7 +223,6 @@ class UserController extends Controller
 
         $user->update([
             'password' => Hash::make($request->password),
-            'password_changed_at' => now(),
         ]);
 
         return back()->with('success', 'Contraseña actualizada exitosamente.');

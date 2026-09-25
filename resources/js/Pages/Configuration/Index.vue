@@ -65,21 +65,6 @@
                 </button>
               </div>
             </div>
-
-            <!-- Idioma -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Idioma
-              </label>
-              <select
-                v-model="form.language"
-                @change="saveSettings"
-                class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary-500 focus:ring-primary-500"
-              >
-                <option value="es">Español</option>
-                <option value="en">English</option>
-              </select>
-            </div>
           </div>
 
           <!-- Notificaciones -->
@@ -155,8 +140,8 @@
                   <input
                     type="checkbox"
                     v-model="form.notification_settings.push"
-                    @change="saveSettings"
-                    :disabled="!pushPermissionGranted"
+                    @change="onPushToggle"
+                    :disabled="!pushPermissionGranted || pushBusy"
                     class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
                   />
                 </label>
@@ -196,9 +181,10 @@
               <div v-if="pushPermissionGranted && form.notification_settings.push" class="pt-4">
                 <button
                   @click="testNotification"
-                  class="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm rounded-md transition-colors"
+                  :disabled="pushBusy"
+                  class="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-sm rounded-md transition-colors"
                 >
-                  Probar Notificación
+                  {{ pushBusy ? 'Enviando...' : 'Probar Notificación' }}
                 </button>
               </div>
             </div>
@@ -207,7 +193,7 @@
           <!-- Sistema (solo admin) -->
           <div v-if="activeSection === 'system' && isAdmin" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">Configuración del Sistema</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Personaliza el nombre y los logos que aparecen en la interfaz</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Personaliza el nombre, los datos de contacto y los logos que aparecen en la interfaz</p>
 
             <div class="space-y-6">
               <!-- Nombre del sistema -->
@@ -225,6 +211,34 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Se muestra en el pie del menú lateral
                 </p>
+              </div>
+
+              <!-- Dirección y teléfono -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Dirección
+                  </label>
+                  <input
+                    type="text"
+                    v-model="systemForm.address"
+                    maxlength="255"
+                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary-500 focus:ring-primary-500"
+                    placeholder="Av. Principal #123, La Paz"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Teléfono
+                  </label>
+                  <input
+                    type="text"
+                    v-model="systemForm.phone"
+                    maxlength="50"
+                    class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-primary-500 focus:ring-primary-500"
+                    placeholder="70000000"
+                  />
+                </div>
               </div>
 
               <!-- Logo principal -->
@@ -358,22 +372,6 @@
                   placeholder="Bs"
                 />
               </div>
-
-              <!-- Mostrar tooltips -->
-              <div>
-                <label class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer">
-                  <div>
-                    <div class="text-sm font-medium text-gray-900 dark:text-white">Mostrar tooltips</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">Mostrar información adicional al pasar el mouse</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    v-model="form.preferences.show_tooltips"
-                    @change="saveSettings"
-                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                </label>
-              </div>
             </div>
           </div>
         </div>
@@ -405,6 +403,7 @@ import {
   ImageIcon
 } from 'lucide-vue-next'
 import { useAlert } from '@/composables/useAlert'
+import { isPushSupported, subscribeToPush, unsubscribeFromPush, sendTestPush } from '@/utils/push'
 
 const { showAlert } = useAlert()
 
@@ -461,7 +460,6 @@ const themes = [
 
 const form = useForm({
   theme: props.settings.theme || 'light',
-  language: props.settings.language || 'es',
   notification_settings: {
     push: props.settings.notification_settings?.push ?? false,
     modules: props.settings.notification_settings?.modules ?? [],
@@ -471,7 +469,6 @@ const form = useForm({
     date_format: props.settings.preferences?.date_format ?? 'd/m/Y',
     time_format: props.settings.preferences?.time_format ?? 'H:i',
     currency_symbol: props.settings.preferences?.currency_symbol ?? 'Bs',
-    show_tooltips: props.settings.preferences?.show_tooltips ?? true,
   }
 })
 
@@ -521,6 +518,8 @@ const logoIconPreview = ref(systemSettings.value.logo_icon_url ?? null)
 
 const systemForm = useForm({
   site_name: systemSettings.value.site_name ?? 'SISPANDO',
+  address: systemSettings.value.address ?? '',
+  phone: systemSettings.value.phone ?? '',
   logo: null,
   logo_icon: null,
 })
@@ -559,6 +558,7 @@ const saveSystemSettings = () => {
 const pushPermissionGranted = ref(false)
 const pushPermissionDenied = ref(false)
 const requestingPermission = ref(false)
+const pushBusy = ref(false)
 
 const checkPushPermission = () => {
   if (!('Notification' in window)) {
@@ -577,13 +577,22 @@ const checkPushPermission = () => {
   }
 }
 
+const pushErrorMessage = (error) =>
+  error?.response?.data?.message || error?.message || 'No se pudo activar la notificación push'
+
+const showUnsupported = () => {
+  showAlert({
+    type: 'error',
+    title: 'No compatible',
+    message: window.isSecureContext
+      ? 'Tu navegador no soporta notificaciones push'
+      : 'Las notificaciones push requieren que el sistema se abra con HTTPS'
+  })
+}
+
 const requestPushPermission = async () => {
-  if (!('Notification' in window)) {
-    showAlert({
-      type: 'error',
-      title: 'No compatible',
-      message: 'Tu navegador no soporta notificaciones push'
-    })
+  if (!isPushSupported()) {
+    showUnsupported()
     return
   }
 
@@ -591,13 +600,15 @@ const requestPushPermission = async () => {
 
   try {
     const permission = await Notification.requestPermission()
-    
+
     if (permission === 'granted') {
       pushPermissionGranted.value = true
       pushPermissionDenied.value = false
+
+      await subscribeToPush()
       form.notification_settings.push = true
       saveSettings()
-      
+
       showAlert({
         type: 'success',
         title: 'Permisos concedidos',
@@ -605,8 +616,8 @@ const requestPushPermission = async () => {
       })
     } else {
       pushPermissionGranted.value = false
-      pushPermissionDenied.value = true
-      
+      pushPermissionDenied.value = permission === 'denied'
+
       showAlert({
         type: 'error',
         title: 'Permisos denegados',
@@ -614,30 +625,71 @@ const requestPushPermission = async () => {
       })
     }
   } catch (error) {
-    console.error('Error al solicitar permisos:', error)
+    console.error('Error al activar notificaciones push:', error)
     showAlert({
       type: 'error',
       title: 'Error',
-      message: 'No se pudieron solicitar los permisos'
+      message: pushErrorMessage(error)
     })
   } finally {
     requestingPermission.value = false
   }
 }
 
-const testNotification = () => {
+const onPushToggle = async () => {
+  const enabled = form.notification_settings.push
+
+  if (enabled && !isPushSupported()) {
+    form.notification_settings.push = false
+    showUnsupported()
+    return
+  }
+
+  pushBusy.value = true
+  try {
+    if (enabled) {
+      await subscribeToPush()
+    } else if (isPushSupported()) {
+      await unsubscribeFromPush()
+    }
+    saveSettings()
+  } catch (error) {
+    console.error('Error al cambiar notificaciones push:', error)
+    form.notification_settings.push = !enabled
+    showAlert({
+      type: 'error',
+      title: 'Error',
+      message: pushErrorMessage(error)
+    })
+  } finally {
+    pushBusy.value = false
+  }
+}
+
+const testNotification = async () => {
   if (!pushPermissionGranted.value || !form.notification_settings.push) {
     return
   }
 
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification('Notificación de Prueba', {
-      body: '¡Las notificaciones push están funcionando correctamente!',
-      icon: '/assets/images/logo.jpeg',
-      badge: '/assets/images/logo.jpeg',
-      tag: 'test-notification',
-      requireInteraction: false,
+  pushBusy.value = true
+  try {
+    // Asegura que este navegador esté suscrito antes de probar
+    await subscribeToPush()
+    await sendTestPush()
+    showAlert({
+      type: 'success',
+      title: 'Notificación enviada',
+      message: 'Deberías recibir la notificación de prueba en unos segundos'
     })
+  } catch (error) {
+    console.error('Error al enviar notificación de prueba:', error)
+    showAlert({
+      type: 'error',
+      title: 'Error',
+      message: pushErrorMessage(error)
+    })
+  } finally {
+    pushBusy.value = false
   }
 }
 
@@ -733,6 +785,11 @@ onMounted(() => {
   
   // Verificar permisos de notificación
   checkPushPermission()
+
+  // Mantener la suscripción de este navegador registrada en el servidor
+  if (pushPermissionGranted.value && form.notification_settings.push && isPushSupported()) {
+    subscribeToPush().catch((error) => console.warn('No se pudo sincronizar la suscripción push:', error))
+  }
 })
 </script>
 

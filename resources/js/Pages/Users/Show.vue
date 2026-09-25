@@ -32,7 +32,7 @@
                   :key="role.id"
                   class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full"
                 >
-                  {{ role.name }}
+                  {{ roleLabel(role.name) }}
                 </span>
               </div>
             </div>
@@ -58,12 +58,12 @@
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Card>
           <CardContent class="p-4">
             <p class="text-sm text-gray-600">Último Acceso</p>
             <p class="text-lg font-semibold text-gray-900">
-              {{ user.last_login_at ? formatDate(user.last_login_at) : 'Nunca' }}
+              {{ lastLogin ? formatDate(lastLogin) : 'Nunca' }}
             </p>
           </CardContent>
         </Card>
@@ -73,15 +73,6 @@
             <p class="text-sm text-gray-600">Intentos Fallidos</p>
             <p class="text-2xl font-bold" :class="user.failed_login_attempts > 0 ? 'text-red-600' : 'text-gray-900'">
               {{ user.failed_login_attempts || 0 }}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent class="p-4">
-            <p class="text-sm text-gray-600">Clientes Asignados</p>
-            <p class="text-2xl font-bold text-primary-700">
-              {{ user.assigned_clients_count || 0 }}
             </p>
           </CardContent>
         </Card>
@@ -140,10 +131,6 @@
                   <p class="text-sm text-gray-600">Documento de Identidad</p>
                   <p class="font-medium">{{ user.document_number || 'No registrado' }}</p>
                 </div>
-                <div>
-                  <p class="text-sm text-gray-600">Sucursal</p>
-                  <p class="font-medium">{{ user.branch?.name || 'Sin asignar' }}</p>
-                </div>
               </CardContent>
             </Card>
 
@@ -160,7 +147,7 @@
                       :key="role.id"
                       class="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full"
                     >
-                      {{ role.name }}
+                      {{ roleLabel(role.name) }}
                     </span>
                     <span v-if="user.roles.length === 0" class="text-gray-500">Sin roles asignados</span>
                   </div>
@@ -186,103 +173,42 @@
 
         <!-- Security Tab -->
         <div v-show="activeTab === 'security'">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Información de Acceso</CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-3">
-                <div>
-                  <p class="text-sm text-gray-600">Último Acceso</p>
-                  <p class="font-medium">{{ user.last_login_at ? formatDateTime(user.last_login_at) : 'Nunca' }}</p>
-                </div>
-                <div v-if="user.last_login_ip">
-                  <p class="text-sm text-gray-600">IP del Último Acceso</p>
-                  <p class="font-medium">{{ user.last_login_ip }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-600">Intentos Fallidos de Inicio de Sesión</p>
-                  <p class="font-medium" :class="user.failed_login_attempts > 0 ? 'text-red-600' : ''">
-                    {{ user.failed_login_attempts || 0 }}
-                  </p>
-                </div>
-                <div v-if="user.blocked_at">
-                  <p class="text-sm text-gray-600">Bloqueado Desde</p>
-                  <p class="font-medium text-red-600">{{ formatDateTime(user.blocked_at) }}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Acciones de Seguridad</CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-3">
-                <button
-                  v-if="can('users.update')"
-                  @click="resetPassword"
-                  class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  Restablecer Contraseña
-                </button>
-                <button
-                  v-if="can('users.update') && user.status === 'blocked'"
-                  @click="unblockUser"
-                  class="w-full px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-                >
-                  Desbloquear Usuario
-                </button>
-                <button
-                  v-if="can('users.update') && user.failed_login_attempts > 0"
-                  @click="clearFailedAttempts"
-                  class="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-                >
-                  Limpiar Intentos Fallidos
-                </button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <!-- Assigned Clients Tab -->
-        <div v-show="activeTab === 'clients'">
-          <Card>
+          <Card class="max-w-xl">
             <CardHeader>
-              <CardTitle>Clientes Asignados</CardTitle>
+              <CardTitle>Cambiar Contraseña</CardTitle>
             </CardHeader>
             <CardContent>
-              <div v-if="user.assigned_clients && user.assigned_clients.length > 0" class="space-y-3">
-                <div
-                  v-for="client in user.assigned_clients"
-                  :key="client.id"
-                  class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center justify-between"
-                >
-                  <div>
-                    <Link
-                      :href="`/clientes/${client.id}`"
-                      class="font-medium text-gray-900 hover:text-primary-700"
-                    >
-                      {{ client.business_name }}
-                    </Link>
-                    <p class="text-sm text-gray-600">{{ client.trade_name || 'Sin nombre comercial' }}</p>
-                    <div class="flex items-center gap-2 mt-1">
-                      <span class="text-xs text-gray-500">{{ client.city || 'Sin ciudad' }}</span>
-                      <span class="text-xs px-2 py-0.5 bg-primary-100 text-primary-800 rounded">
-                        Categoría {{ client.category }}
-                      </span>
-                    </div>
-                  </div>
-                  <Link
-                    :href="`/clientes/${client.id}`"
-                    class="text-primary-700 hover:text-primary-900 text-sm"
-                  >
-                    Ver detalles →
-                  </Link>
+              <form v-if="can('users.update')" @submit.prevent="changePassword" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nueva contraseña</label>
+                  <input
+                    v-model="passwordForm.password"
+                    type="password"
+                    autocomplete="new-password"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                    :class="{ 'border-red-500': passwordForm.errors.password }"
+                  />
+                  <p v-if="passwordForm.errors.password" class="text-sm text-red-600 mt-1">{{ passwordForm.errors.password }}</p>
+                  <p v-else class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
                 </div>
-              </div>
-              <p v-else class="text-gray-500 text-center py-8">
-                No hay clientes asignados a este usuario
-              </p>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar contraseña</label>
+                  <input
+                    v-model="passwordForm.password_confirmation"
+                    type="password"
+                    autocomplete="new-password"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  :disabled="passwordForm.processing"
+                  class="w-full px-4 py-2 bg-primary-700 text-white rounded-md hover:bg-primary-800 disabled:opacity-50 transition-colors"
+                >
+                  {{ passwordForm.processing ? 'Guardando...' : 'Cambiar Contraseña' }}
+                </button>
+              </form>
+              <p v-else class="text-sm text-gray-500">No tienes permiso para cambiar la contraseña de este usuario.</p>
             </CardContent>
           </Card>
         </div>
@@ -309,11 +235,11 @@
                     <p class="text-xs text-gray-500">{{ formatDateTime(user.updated_at) }}</p>
                   </div>
                 </div>
-                <div v-if="user.last_login_at" class="flex items-start gap-3">
+                <div v-if="lastLogin" class="flex items-start gap-3">
                   <div class="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
                   <div>
                     <p class="text-sm font-medium">Último inicio de sesión</p>
-                    <p class="text-xs text-gray-500">{{ formatDateTime(user.last_login_at) }}</p>
+                    <p class="text-xs text-gray-500">{{ formatDateTime(lastLogin) }}</p>
                   </div>
                 </div>
               </div>
@@ -326,14 +252,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { roleLabel } from '@/utils/roles'
+import { ref, computed } from 'vue'
+import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardHeader, CardTitle, CardContent } from '@/Components/ui'
 import { usePermissions } from '@/composables/usePermissions'
+import { useAlert } from '@/composables/useAlert'
 
 
 const { can } = usePermissions()
+const { showAlert } = useAlert()
 
 const props = defineProps({
   user: Object,
@@ -344,7 +273,6 @@ const activeTab = ref('general')
 const tabs = [
   { id: 'general', label: 'Información General' },
   { id: 'security', label: 'Seguridad' },
-  { id: 'clients', label: 'Clientes Asignados' },
   { id: 'activity', label: 'Actividad' },
 ]
 
@@ -354,8 +282,19 @@ const statusLabels = {
   blocked: 'Bloqueado',
 }
 
+// Convierte la fecha del servidor; devuelve null si falta o no es válida
+const parseDate = (date) => {
+  if (!date) return null
+  const parsed = date instanceof Date ? date : new Date(String(date).replace(' ', 'T'))
+  return isNaN(parsed) ? null : parsed
+}
+
+const lastLogin = computed(() => parseDate(props.user.last_login_at) ?? parseDate(props.user.ultimo_acceso))
+
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('es-CO', {
+  const parsed = parseDate(date)
+  if (!parsed) return 'Nunca'
+  return parsed.toLocaleDateString('es-CO', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -363,7 +302,9 @@ const formatDate = (date) => {
 }
 
 const formatDateTime = (date) => {
-  return new Date(date).toLocaleDateString('es-CO', {
+  const parsed = parseDate(date)
+  if (!parsed) return 'Nunca'
+  return parsed.toLocaleDateString('es-CO', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -378,21 +319,18 @@ const deleteUser = () => {
   }
 }
 
-const resetPassword = () => {
-  if (confirm('¿Está seguro de restablecer la contraseña de este usuario? Se enviará un email con las instrucciones.')) {
-    router.post(`/usuarios/${props.user.id}/restablecer-password`)
-  }
-}
+const passwordForm = useForm({
+  password: '',
+  password_confirmation: '',
+})
 
-const unblockUser = () => {
-  if (confirm('¿Está seguro de desbloquear este usuario?')) {
-    router.post(`/usuarios/${props.user.id}/desbloquear`)
-  }
-}
-
-const clearFailedAttempts = () => {
-  if (confirm('¿Está seguro de limpiar los intentos fallidos de inicio de sesión?')) {
-    router.post(`/usuarios/${props.user.id}/desbloquear`)
-  }
+const changePassword = () => {
+  passwordForm.post(`/usuarios/${props.user.id}/reset-password`, {
+    preserveScroll: true,
+    onSuccess: () => {
+      passwordForm.reset()
+      showAlert({ type: 'success', title: 'Contraseña actualizada', message: 'La contraseña del usuario se cambió correctamente' })
+    },
+  })
 }
 </script>

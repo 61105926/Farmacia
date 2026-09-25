@@ -54,7 +54,7 @@ class AccountReceivableController extends Controller
             $query->unpaid();
         }
 
-        $invoices = $query->with('sale:id,invoice_number')->latest('invoice_date')->paginate(15)->withQueryString();
+        $invoices = $query->with('sale:id,invoice_number')->latest('invoice_date')->paginate(auth()->user()->perPage(15))->withQueryString();
 
         // Calcular estadísticas
         $stats = [
@@ -221,7 +221,7 @@ class AccountReceivableController extends Controller
             $query->where('payment_date', '<=', $request->get('date_to'));
         }
 
-        $payments = $query->latest('payment_date')->paginate(15)->withQueryString();
+        $payments = $query->latest('payment_date')->paginate(auth()->user()->perPage(15))->withQueryString();
 
         return Inertia::render('AccountReceivables/Payments', [
             'payments' => $payments,
@@ -710,7 +710,7 @@ class AccountReceivableController extends Controller
         $invoices = Invoice::overdue()
             ->with(['client', 'creator'])
             ->latest('due_date')
-            ->paginate(20);
+            ->paginate(auth()->user()->perPage(20));
 
         return Inertia::render('AccountReceivables/Overdue', [
             'invoices' => $invoices,

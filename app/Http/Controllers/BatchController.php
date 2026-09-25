@@ -39,7 +39,7 @@ class BatchController extends Controller
 
         $batches = $query->orderBy('entry_date', 'asc')
                          ->orderBy('id', 'asc')
-                         ->paginate(25)
+                         ->paginate(auth()->user()->perPage(25))
                          ->withQueryString();
 
         $stats = [

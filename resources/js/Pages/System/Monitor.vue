@@ -1,31 +1,15 @@
 <template>
   <AdminLayout>
     <template #header>
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">Monitor del Sistema</h1>
-          <p class="text-sm text-gray-600 mt-1">Monitoreo y optimización del sistema</p>
-        </div>
-        <div class="flex gap-2">
-          <button
-            @click="clearCache"
-            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Limpiar Caché
-          </button>
-          <button
-            @click="optimizeDatabase"
-            class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-          >
-            Optimizar BD
-          </button>
-        </div>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Monitor del Sistema</h1>
+        <p class="text-sm text-gray-600 mt-1">Monitoreo y optimización del sistema</p>
       </div>
     </template>
 
     <div class="space-y-6">
       <!-- Estadísticas del Sistema -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardContent class="p-6">
             <div class="flex items-center">
@@ -64,53 +48,7 @@
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardContent class="p-6">
-            <div class="flex items-center">
-              <Database class="h-8 w-8 text-orange-600" />
-              <div class="ml-4">
-                <p class="text-sm font-medium text-gray-600">Base de Datos</p>
-                <p class="text-2xl font-bold text-gray-900">{{ stats.database_size || 'N/A' }}</p>
-                <p class="text-xs text-gray-500">Tamaño total</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
-
-      <!-- Métricas de Rendimiento -->
-      <Card>
-        <CardHeader>
-          <CardTitle>Métricas de Rendimiento</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="text-center">
-              <p class="text-sm text-gray-600">Memoria en Uso</p>
-              <p class="text-2xl font-bold text-blue-600">{{ performance.memory_usage?.toFixed(2) || 0 }} MB</p>
-            </div>
-            <div class="text-center">
-              <p class="text-sm text-gray-600">Memoria Pico</p>
-              <p class="text-2xl font-bold text-red-600">{{ performance.memory_peak?.toFixed(2) || 0 }} MB</p>
-            </div>
-            <div class="text-center">
-              <p class="text-sm text-gray-600">Tiempo de Ejecución</p>
-              <p class="text-2xl font-bold text-green-600">{{ performance.execution_time?.toFixed(3) || 0 }}s</p>
-            </div>
-          </div>
-          <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p class="text-sm text-gray-600">PHP Version</p>
-              <p class="text-lg font-semibold">{{ performance.php_version || 'N/A' }}</p>
-            </div>
-            <div>
-              <p class="text-sm text-gray-600">Laravel Version</p>
-              <p class="text-lg font-semibold">{{ performance.laravel_version || 'N/A' }}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <!-- Actividad de Usuarios -->
       <Card>
@@ -166,7 +104,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Card from '@/Components/ui/Card.vue'
 import CardContent from '@/Components/ui/CardContent.vue'
@@ -176,32 +113,19 @@ import {
   Users, 
   Building2, 
   Package, 
-  Database, 
   CheckCircle, 
   AlertCircle 
 } from 'lucide-vue-next'
 
 const props = defineProps({
   stats: Object,
-  performance: Object,
   errors: Array,
   users: Array
 })
 
 const formatDate = (date) => {
   if (!date) return 'Nunca'
-  return new Date(date).toLocaleDateString('es-BO')
-}
-
-const clearCache = () => {
-  if (confirm('¿Estás seguro de que quieres limpiar el caché del sistema?')) {
-    router.post('/sistema/limpiar-cache')
-  }
-}
-
-const optimizeDatabase = () => {
-  if (confirm('¿Estás seguro de que quieres optimizar la base de datos? Esto puede tomar varios minutos.')) {
-    router.post('/sistema/optimizar-bd')
-  }
+  const parsed = new Date(String(date).replace(' ', 'T'))
+  return isNaN(parsed) ? 'Nunca' : parsed.toLocaleDateString('es-BO')
 }
 </script>

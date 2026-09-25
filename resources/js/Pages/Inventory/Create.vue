@@ -28,6 +28,7 @@
                     <ProductSelect
                       v-model="form.product_id"
                       :products="products || []"
+                      allow-unavailable
                       :disabled="!products || products.length === 0"
                       :error="!!form.errors.product_id"
                       placeholder="Buscar producto..."

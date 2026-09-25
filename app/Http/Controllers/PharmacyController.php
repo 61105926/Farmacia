@@ -45,7 +45,7 @@ class PharmacyController extends Controller
         $sortDirection = $request->get('direction', 'asc');
         $query->orderBy($sortField, $sortDirection);
 
-        $pharmacies = $query->paginate(15)->withQueryString();
+        $pharmacies = $query->paginate(auth()->user()->perPage(15))->withQueryString();
 
         // Estadísticas
         $stats = [

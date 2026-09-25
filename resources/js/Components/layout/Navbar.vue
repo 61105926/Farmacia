@@ -130,7 +130,7 @@
             <Avatar :user="user" size="sm" />
             <div class="hidden md:block text-left">
               <p class="text-sm font-medium text-gray-900">{{ user.name }}</p>
-              <p class="text-xs text-gray-500">{{ user.roles?.[0]?.name }}</p>
+              <p class="text-xs text-gray-500">{{ roleLabel(user.roles?.[0]?.name) }}</p>
             </div>
             <ChevronDown class="w-4 h-4 text-gray-400" />
           </button>
@@ -240,6 +240,7 @@
 </template>
 
 <script setup>
+import { roleLabel } from '@/utils/roles'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Link, usePage, router } from '@inertiajs/vue3'
 import axios from 'axios'

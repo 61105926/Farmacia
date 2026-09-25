@@ -86,6 +86,8 @@ const props = defineProps({
   placeholder:{ type: String, default: 'Buscar producto...' },
   disabled:   { type: Boolean, default: false },
   error:      { type: Boolean, default: false },
+  // Permite elegir productos sin stock o vencidos (ej. entradas de inventario)
+  allowUnavailable: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -99,6 +101,7 @@ const isExpired = (product) => {
 }
 
 const isBlocked = (product) => {
+  if (props.allowUnavailable) return false
   return isExpired(product) || (product.stock_quantity !== undefined && product.stock_quantity <= 0)
 }
 

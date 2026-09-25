@@ -29,7 +29,11 @@ class LoginController extends Controller
             $request->session()->regenerate();
 
             // Actualizar último acceso
-            Auth::user()->update(['ultimo_acceso' => now()]);
+            Auth::user()->update([
+                'ultimo_acceso' => now(),
+                'last_login_at' => now(),
+                'last_login_ip' => $request->ip(),
+            ]);
 
             return redirect()->intended('/dashboard');
         }

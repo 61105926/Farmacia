@@ -75,7 +75,7 @@ class SaleController extends Controller
                     $query->whereDate('created_at', '<=', $date);
                 })
                 ->latest()
-                ->paginate(15)
+                ->paginate(auth()->user()->perPage(15))
                 ->withQueryString();
 
             // Obtener estadísticas

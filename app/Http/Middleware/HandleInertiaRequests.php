@@ -108,6 +108,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'message' => fn () => $request->session()->get('message'),
                 'error' => fn () => $request->session()->get('error'),
+                'permission_denied' => fn () => $request->session()->get('permission_denied'),
             ],
             'csrf_token' => csrf_token(),
             'system_settings' => fn () => (function () {
@@ -115,6 +116,8 @@ class HandleInertiaRequests extends Middleware
                     $s = SystemSetting::current();
                     return [
                         'site_name'     => $s->site_name,
+                        'address'       => $s->address,
+                        'phone'         => $s->phone,
                         'logo_url'      => $s->logo_path
                             ? \Storage::disk('public')->url($s->logo_path)
                             : null,
@@ -123,7 +126,7 @@ class HandleInertiaRequests extends Middleware
                             : null,
                     ];
                 } catch (\Exception $e) {
-                    return ['site_name' => 'SISPANDO', 'logo_url' => null, 'logo_icon_url' => null];
+                    return ['site_name' => 'SISPANDO', 'address' => null, 'phone' => null, 'logo_url' => null, 'logo_icon_url' => null];
                 }
             })(),
         ];

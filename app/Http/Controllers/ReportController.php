@@ -107,7 +107,7 @@ class ReportController extends Controller
             $query->where('payment_status', $request->get('payment_status'));
         }
 
-        $invoices = $query->latest('invoice_date')->paginate(20)->withQueryString();
+        $invoices = $query->latest('invoice_date')->paginate(auth()->user()->perPage(20))->withQueryString();
 
         // Estadísticas del período (usar query clonado para no afectar el paginado)
         $statsQuery = clone $query;
@@ -237,7 +237,7 @@ class ReportController extends Controller
             }
         }
 
-        $products = $query->paginate(20)->withQueryString();
+        $products = $query->paginate(auth()->user()->perPage(20))->withQueryString();
 
         // Estadísticas de inventario
         $inventoryStats = [
@@ -388,7 +388,7 @@ class ReportController extends Controller
             });
         }
 
-        $clients = $query->paginate(20)->withQueryString();
+        $clients = $query->paginate(auth()->user()->perPage(20))->withQueryString();
 
         // Estadísticas de clientes
         $clientStats = [

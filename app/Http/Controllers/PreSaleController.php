@@ -102,8 +102,9 @@ class PresaleController extends Controller
             }
 
             // PAGINACIÓN
-            $perPage = $request->get('per_page', 15);
-            $perPage = in_array($perPage, [10, 15, 25, 50, 100]) ? $perPage : 15;
+            $defaultPerPage = auth()->user()->perPage();
+            $perPage = (int) $request->get('per_page', $defaultPerPage);
+            $perPage = in_array($perPage, [10, 15, 25, 50, 100]) ? $perPage : $defaultPerPage;
 
             $presales = $query->paginate($perPage)->withQueryString();
 

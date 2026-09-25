@@ -53,7 +53,7 @@ class InventoryController extends Controller
         // Ordenar por fecha y ID para evitar duplicados en la paginación
         $movements = $query->orderBy('movement_date', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate(20)
+            ->paginate(auth()->user()->perPage(20))
             ->withQueryString();
 
         // Estadísticas
@@ -104,7 +104,7 @@ class InventoryController extends Controller
         // Ordenar por fecha y ID para evitar duplicados en la paginación
         $movements = $query->orderBy('movement_date', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate(15)
+            ->paginate(auth()->user()->perPage(15))
             ->withQueryString();
 
         return Inertia::render('Inventory/Movements', [
@@ -144,7 +144,7 @@ class InventoryController extends Controller
             }
         }
 
-        $products = $query->latest()->paginate(20)->withQueryString();
+        $products = $query->latest()->paginate(auth()->user()->perPage(20))->withQueryString();
 
         return Inertia::render('Inventory/Stock', [
             'products' => $products,
@@ -356,7 +356,7 @@ class InventoryController extends Controller
                 'batches' => fn($q) => $q->where('status', 'active')->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')->limit(1),
             ])
             ->orderBy('stock_quantity', 'asc')
-            ->paginate(20);
+            ->paginate(auth()->user()->perPage(20));
 
         return Inertia::render('Inventory/LowStock', [
             'products' => $products,
@@ -378,7 +378,7 @@ class InventoryController extends Controller
             'category',
             'batches' => fn($q) => $q->where('status', 'active')->where('remaining_quantity', '>', 0)->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END, expiry_date ASC')->limit(1),
         ])
-        ->paginate(20);
+        ->paginate(auth()->user()->perPage(20));
 
         return Inertia::render('Inventory/Expired', [
             'products' => $products,

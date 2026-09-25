@@ -53,6 +53,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { router, usePage } from '@inertiajs/vue3'
 import { CheckCircle, AlertCircle, XCircle, Info, X } from 'lucide-vue-next'
 
 const notifications = ref([])
@@ -139,10 +140,30 @@ onMounted(() => {
     info: showInfo,
     remove: removeNotification
   }
+
+  // Aviso cuando el servidor rechaza una página o acción por falta de permisos
+  showPermissionDenied(usePage().props.flash?.permission_denied)
+  removeSuccessListener = router.on('success', (event) => {
+    showPermissionDenied(event.detail.page.props.flash?.permission_denied)
+  })
 })
+
+let removeSuccessListener = null
+
+// El layout se vuelve a montar en cada página, así que el mismo aviso puede
+// llegar por onMounted y por el evento 'success': se muestra una sola vez
+const showPermissionDenied = (message) => {
+  if (!message) return
+  const now = Date.now()
+  const last = window.__lastPermissionDenied
+  if (last && last.message === message && now - last.at < 2000) return
+  window.__lastPermissionDenied = { message, at: now }
+  showWarning('Sin permiso', message)
+}
 
 onUnmounted(() => {
   delete window.$notify
+  removeSuccessListener?.()
 })
 
 // Expose methods for direct component usage

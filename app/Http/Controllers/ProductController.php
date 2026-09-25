@@ -92,7 +92,7 @@ class ProductController extends Controller
             $sortOrder = $request->input('sort_order') === 'asc' ? 'asc' : 'desc';
             $query->orderBy($sortBy, $sortOrder);
 
-            $products = $query->paginate(15)->withQueryString();
+            $products = $query->paginate(auth()->user()->perPage(15))->withQueryString();
 
             // Agregar acciones disponibles y fecha de vencimiento a cada producto
             $products->getCollection()->transform(function ($product) {
@@ -706,7 +706,7 @@ class ProductController extends Controller
                 }
             }
 
-            $products = $query->latest()->paginate(15)->withQueryString();
+            $products = $query->latest()->paginate(auth()->user()->perPage(15))->withQueryString();
 
             // Estadísticas
             $stats = [

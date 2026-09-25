@@ -20,7 +20,6 @@ class ConfigurationController extends Controller
         return Inertia::render('Configuration/Index', [
             'settings' => [
                 'theme' => $user->theme ?? 'light',
-                'language' => $user->language ?? 'es',
                 'notification_settings' => $user->notification_settings ?? [
                     'push' => false,
                     'modules' => [],
@@ -30,7 +29,6 @@ class ConfigurationController extends Controller
                     'date_format' => 'd/m/Y',
                     'time_format' => 'H:i',
                     'currency_symbol' => 'Bs',
-                    'show_tooltips' => true,
                 ],
             ],
         ]);
@@ -43,7 +41,6 @@ class ConfigurationController extends Controller
     {
         $request->validate([
             'theme' => 'nullable|in:light,dark,auto',
-            'language' => 'nullable|in:es,en',
             'notification_settings' => 'nullable|array',
             'notification_settings.push' => 'nullable|boolean',
             'notification_settings.modules' => 'nullable|array',
@@ -53,7 +50,6 @@ class ConfigurationController extends Controller
             'preferences.date_format' => 'nullable|string',
             'preferences.time_format' => 'nullable|string',
             'preferences.currency_symbol' => 'nullable|string',
-            'preferences.show_tooltips' => 'nullable|boolean',
         ]);
 
         $user = Auth::user();
@@ -62,10 +58,6 @@ class ConfigurationController extends Controller
         
         if ($request->has('theme')) {
             $data['theme'] = $request->theme;
-        }
-        
-        if ($request->has('language')) {
-            $data['language'] = $request->language;
         }
         
         if ($request->has('notification_settings')) {
@@ -102,12 +94,14 @@ class ConfigurationController extends Controller
     }
 
     /**
-     * Actualizar configuración global del sistema (nombre y logos)
+     * Actualizar configuración global del sistema (nombre, contacto y logos)
      */
     public function updateSystem(Request $request)
     {
         $request->validate([
             'site_name' => 'nullable|string|max:80',
+            'address'   => 'nullable|string|max:255',
+            'phone'     => 'nullable|string|max:50',
             'logo'      => 'nullable|image|mimes:jpeg,jpg,png,gif,svg,webp|max:2048',
             'logo_icon' => 'nullable|image|mimes:jpeg,jpg,png,gif,svg,webp|max:2048',
         ]);
@@ -118,6 +112,9 @@ class ConfigurationController extends Controller
             if ($request->filled('site_name')) {
                 $settings->site_name = $request->site_name;
             }
+
+            $settings->address = $request->input('address') ?: null;
+            $settings->phone = $request->input('phone') ?: null;
 
             // Crear directorio físico directamente (sin depender del symlink)
             $logosDir = storage_path('app/public/logos');

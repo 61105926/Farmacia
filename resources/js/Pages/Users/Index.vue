@@ -338,8 +338,8 @@ const getRoleDescription = (roleName) => {
   const descriptions = {
     'super-admin': 'Super Administrador',
     'administrador': 'Administrador',
-    'vendedor-ventas': 'Vendedor de Ventas',
-    'vendedor-preventas': 'Vendedor de Preventas',
+    'vendedor-ventas': 'Ventas',
+    'vendedor-preventas': 'Preventas',
     'cobrador': 'Cobrador',
     'bodeguero': 'Bodeguero',
     'contabilidad': 'Contabilidad',

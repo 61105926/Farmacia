@@ -129,22 +129,6 @@
                     <p class="text-xs text-gray-500 mt-1">Solo números</p>
                   </div>
                 </div>
-
-                <!-- Branch -->
-                <div v-if="branches.length > 0">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Sucursal
-                  </label>
-                  <select
-                    v-model="form.branch_id"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="">Sin asignar</option>
-                    <option v-for="branch in branches" :key="branch.id" :value="branch.id">
-                      {{ branch.name }}
-                    </option>
-                  </select>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -165,7 +149,7 @@
                     class="mt-1 h-4 w-4 text-primary-700 focus:ring-primary-500 border-gray-300 rounded"
                   />
                   <label :for="`role-${role.id}`" class="ml-3 cursor-pointer">
-                    <span class="block text-sm font-medium text-gray-900">{{ role.name }}</span>
+                    <span class="block text-sm font-medium text-gray-900">{{ roleLabel(role.name) }}</span>
                     <span class="block text-xs text-gray-500">{{ getRoleDescription(role.name) }}</span>
                   </label>
                 </div>
@@ -221,6 +205,7 @@
 </template>
 
 <script setup>
+import { roleLabel } from '@/utils/roles'
 import { ref } from 'vue'
 import { useForm, Link } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'

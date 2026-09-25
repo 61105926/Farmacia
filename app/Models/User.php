@@ -98,6 +98,21 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
+     * Cantidad de elementos por página elegida en Configuración
+     */
+    public function perPage(int $default = 15): int
+    {
+        $perPage = (int) ($this->preferences['items_per_page'] ?? $default);
+
+        return $perPage >= 5 && $perPage <= 100 ? $perPage : $default;
+    }
+
     /**
      * Obtener notificaciones no leídas
      */

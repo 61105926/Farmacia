@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Cache;
 
 class SystemSetting extends Model
 {
-    protected $fillable = ['site_name', 'logo_path', 'logo_icon_path'];
+    protected $fillable = ['site_name', 'logo_path', 'logo_icon_path', 'address', 'phone'];
+
+    protected $hidden = ['vapid_private_key'];
 
     // Always work with the single settings row
     public static function current(): self

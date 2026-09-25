@@ -415,9 +415,12 @@ const form = useForm({
   phone: props.client.phone || '',
   email: props.client.email || '',
   website: props.client.website || '',
-  price_list_id: props.client.price_list_id || '',
+  // Si la lista asignada ya no existe o está inactiva, queda en "Predeterminada"
+  price_list_id: props.priceLists?.some(l => l.id == props.client.price_list_id) ? props.client.price_list_id : '',
   default_discount: props.client.default_discount || 0,
-  payment_term_id: props.client.payment_term_id || '',
+  payment_term_id: props.paymentTerms?.some(t => t.id == props.client.payment_term_id)
+    ? props.client.payment_term_id
+    : ((props.paymentTerms?.find(t => t.is_default) ?? props.paymentTerms?.[0])?.id ?? ''),
   credit_limit: props.client.credit_limit || 0,
   credit_days: props.client.credit_days || 0,
   salesperson_id: props.client.salesperson_id || '',

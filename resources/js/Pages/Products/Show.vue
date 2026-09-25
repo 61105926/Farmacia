@@ -84,10 +84,6 @@
                     <div class="text-sm text-gray-900">{{ formatField(product.brand) }}</div>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-500">Dosificación</label>
-                    <div class="text-sm text-gray-900">{{ formatField(product.dosage) }}</div>
-                  </div>
-                  <div>
                     <label class="block text-sm font-medium text-gray-500">Presentación</label>
                     <div class="text-sm text-gray-900">{{ formatField(product.presentation) }}</div>
                   </div>

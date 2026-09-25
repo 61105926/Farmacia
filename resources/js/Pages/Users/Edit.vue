@@ -127,43 +127,6 @@
                     <p class="text-xs text-gray-500 mt-1">Solo números</p>
                   </div>
                 </div>
-
-                <!-- Branch -->
-                <div v-if="branches.length > 0">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Sucursal
-                  </label>
-                  <select
-                    v-model="form.branch_id"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-                  >
-                    <option value="">Sin asignar</option>
-                    <option v-for="branch in branches" :key="branch.id" :value="branch.id">
-                      {{ branch.name }}
-                    </option>
-                  </select>
-                </div>
-              </CardContent>
-            </Card>
-
-            <!-- Login Stats -->
-            <Card class="mt-6">
-              <CardHeader>
-                <CardTitle>Estadísticas de Acceso</CardTitle>
-              </CardHeader>
-              <CardContent class="space-y-3">
-                <div>
-                  <p class="text-sm text-gray-600">Último Acceso</p>
-                  <p class="font-medium">{{ user.last_login_at ? formatDate(user.last_login_at) : 'Nunca' }}</p>
-                </div>
-                <div v-if="user.last_login_ip">
-                  <p class="text-sm text-gray-600">IP del Último Acceso</p>
-                  <p class="font-medium">{{ user.last_login_ip }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-600">Intentos Fallidos</p>
-                  <p class="font-medium">{{ user.failed_login_attempts || 0 }}</p>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -184,7 +147,7 @@
                     class="mt-1 h-4 w-4 text-primary-700 focus:ring-primary-500 border-gray-300 rounded"
                   />
                   <label :for="`role-${role.id}`" class="ml-3 cursor-pointer">
-                    <span class="block text-sm font-medium text-gray-900">{{ role.name }}</span>
+                    <span class="block text-sm font-medium text-gray-900">{{ roleLabel(role.name) }}</span>
                     <span class="block text-xs text-gray-500">{{ getRoleDescription(role.name) }}</span>
                   </label>
                 </div>
@@ -265,6 +228,7 @@
 </template>
 
 <script setup>
+import { roleLabel } from '@/utils/roles'
 import { ref } from 'vue'
 import { useForm, Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
@@ -327,16 +291,6 @@ const validateEmail = () => {
 const submit = () => {
   emailError.value = ''
   form.put(`/usuarios/${props.user.id}`)
-}
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('es-CO', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 const unblockUser = () => {

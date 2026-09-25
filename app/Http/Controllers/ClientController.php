@@ -37,7 +37,7 @@ class ClientController extends Controller
                 $query->where('salesperson_id', $salespersonId);
             })
             ->latest()
-            ->paginate(15)
+            ->paginate(auth()->user()->perPage(15))
             ->withQueryString();
 
         return Inertia::render('Clients/Index', [
@@ -59,7 +59,7 @@ class ClientController extends Controller
     {
         return Inertia::render('Clients/Create', [
             'priceLists' => PriceList::active()->get(['id', 'name']),
-            'paymentTerms' => PaymentTerm::active()->get(['id', 'name', 'days']),
+            'paymentTerms' => PaymentTerm::active()->orderBy('id')->get(['id', 'name', 'days', 'is_default']),
             'salespeople' => User::active()
                 ->whereHas('roles', fn($q) => $q->where('name', 'vendedor-preventas'))
                 ->select('id', 'name')
@@ -192,7 +192,7 @@ class ClientController extends Controller
         return Inertia::render('Clients/Edit', [
             'client' => $client,
             'priceLists' => PriceList::active()->get(['id', 'name']),
-            'paymentTerms' => PaymentTerm::active()->get(['id', 'name', 'days']),
+            'paymentTerms' => PaymentTerm::active()->orderBy('id')->get(['id', 'name', 'days', 'is_default']),
             'salespeople' => User::active()
                 ->whereHas('roles', fn($q) => $q->where('name', 'vendedor-preventas'))
                 ->select('id', 'name')
@@ -872,7 +872,7 @@ class ClientController extends Controller
             ->whereRaw('pending_balance > credit_limit')
             ->with(['salesperson:id,name'])
             ->orderByRaw('(pending_balance - credit_limit) DESC')
-            ->paginate(15);
+            ->paginate(auth()->user()->perPage(15));
 
         return Inertia::render('Clients/CreditExceeded', [
             'clients' => $clients,
@@ -895,7 +895,7 @@ class ClientController extends Controller
             ->withSum('receivables as overdue_amount', 'balance')
             ->where('receivables.status', 'overdue')
             ->orderBy('overdue_amount', 'DESC')
-            ->paginate(15);
+            ->paginate(auth()->user()->perPage(15));
 
         return Inertia::render('Clients/OverdueInvoices', [
             'clients' => $clients,
