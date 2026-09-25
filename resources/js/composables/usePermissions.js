@@ -1,6 +1,9 @@
 import { usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
+// Debe coincidir con User::ADMIN_ROLES
+const ADMIN_ROLES = ['super-admin', 'Administrador', 'administrador', 'ADMINISTRADOR', 'admin', 'Admin']
+
 export function usePermissions() {
   const page = usePage()
 
@@ -11,8 +14,8 @@ export function usePermissions() {
   const can = (permission) => {
     if (!user.value) return false
 
-    // Si es super-admin, tiene todos los permisos
-    if (roles.value.includes('super-admin')) return true
+    // Los administradores tienen todos los permisos
+    if (ADMIN_ROLES.some(role => roles.value.includes(role))) return true
 
     // Verificar permisos específicos (permissions es array de strings)
     return permissions.value.includes(permission)

@@ -19,6 +19,11 @@ class CheckPermission
             return redirect()->route('login');
         }
 
+        // Los administradores tienen todos los permisos
+        if ($request->user()->isAdmin()) {
+            return $next($request);
+        }
+
         try {
             if (!$request->user()->hasPermissionTo($permission)) {
                 abort(403, 'No tienes permiso para realizar esta acción.');

@@ -126,6 +126,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Nombres de los roles de administrador (tienen todos los permisos)
+     */
+    public const ADMIN_ROLES = ['super-admin', 'Administrador', 'administrador', 'ADMINISTRADOR', 'admin', 'Admin'];
+
+    /**
+     * Verificar si el usuario es administrador
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasAnyRole(self::ADMIN_ROLES);
+    }
+
+    /**
      * Verificar si el usuario está activo
      */
     public function isActive(): bool
