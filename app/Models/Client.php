@@ -179,13 +179,27 @@ class Client extends Model
     }
 
     /**
-     * Calcular saldo pendiente
+     * Calcular saldo pendiente: lo que el cliente debe en facturas sin pagar.
+     * Se usan las facturas porque los pagos actualizan su saldo.
      */
     public function getPendingBalanceAttribute(): float
     {
-        return $this->receivables()
-            ->whereIn('status', ['pending', 'partial', 'overdue'])
+        return (float) $this->invoices()
+            ->where('status', '!=', 'cancelled')
+            ->whereIn('payment_status', ['unpaid', 'partial'])
             ->sum('balance');
+    }
+
+    /**
+     * Subconsulta del saldo pendiente, para listar clientes con su deuda
+     */
+    public static function pendingBalanceSubquery()
+    {
+        return \DB::table('invoices')
+            ->selectRaw('COALESCE(SUM(balance), 0)')
+            ->whereColumn('invoices.client_id', 'clients.id')
+            ->where('status', '!=', 'cancelled')
+            ->whereIn('payment_status', ['unpaid', 'partial']);
     }
 
     /**

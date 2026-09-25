@@ -86,6 +86,36 @@
         </CardContent>
       </Card>
 
+      <!-- Resumen de los pagos filtrados -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card>
+          <CardContent class="p-4">
+            <p class="text-sm text-gray-600">Total cobrado</p>
+            <p class="text-2xl font-bold text-green-700">{{ formatPrice(summary.total) }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ periodLabel }}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent class="p-4">
+            <p class="text-sm text-gray-600">Cantidad de pagos</p>
+            <p class="text-2xl font-bold text-gray-900">{{ summary.count }}</p>
+            <p v-if="!filters.status" class="text-xs text-gray-500 mt-1">Sin contar anulados ni rechazados</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent class="p-4">
+            <p class="text-sm text-gray-600 mb-1">Por método de pago</p>
+            <div v-if="summary.by_method.length" class="space-y-1">
+              <div v-for="row in summary.by_method" :key="row.method" class="flex justify-between text-sm">
+                <span class="text-gray-700">{{ paymentMethods[row.method] || row.method }} ({{ row.count }})</span>
+                <span class="font-medium text-gray-900">{{ formatPrice(row.total) }}</span>
+              </div>
+            </div>
+            <p v-else class="text-sm text-gray-500">Sin pagos</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <!-- Payments Table -->
       <Card>
         <CardContent class="p-0">
@@ -248,7 +278,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { Card, CardContent } from '@/Components/ui'
@@ -265,6 +295,20 @@ const props = defineProps({
   statuses: Object,
   paymentMethods: Object,
   filters: Object,
+  summary: {
+    type: Object,
+    default: () => ({ count: 0, total: 0, by_method: [] }),
+  },
+})
+
+const periodLabel = computed(() => {
+  const fmt = (d) => d.split('-').reverse().join('/')
+  const from = props.filters.date_from
+  const to = props.filters.date_to
+  if (from && to) return `Del ${fmt(from)} al ${fmt(to)}`
+  if (from) return `Desde el ${fmt(from)}`
+  if (to) return `Hasta el ${fmt(to)}`
+  return 'Todas las fechas'
 })
 
 const filters = ref({

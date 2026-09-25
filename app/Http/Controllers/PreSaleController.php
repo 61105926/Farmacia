@@ -305,6 +305,7 @@ class PresaleController extends Controller
                     $clients = \DB::table('clients')
                         ->where('status', 'active')
                         ->select('id', 'business_name', 'trade_name', 'credit_limit')
+                        ->selectSub(Client::pendingBalanceSubquery(), 'pending_balance')
                         ->get()
                         ->toArray();
                     
@@ -478,7 +479,7 @@ class PresaleController extends Controller
                     throw ValidationException::withMessages([
                         'credit_limit' => sprintf(
                             'Crédito insuficiente. El cliente tiene Bs %.2f disponible y el total de la preventa es Bs %.2f.',
-                            $availableCredit,
+                            max(0, $availableCredit),
                             $totalPresale
                         ),
                     ]);
@@ -696,8 +697,16 @@ class PresaleController extends Controller
         return Inertia::render('PreSales/Edit', [
             'presale' => $presale,
             'clients' => Client::where('status', 'active')
-                ->select('id', 'business_name', 'trade_name')
-                ->get(),
+                ->select('id', 'business_name', 'trade_name', 'credit_limit')
+                ->selectSub(Client::pendingBalanceSubquery(), 'pending_balance')
+                ->get()
+                ->map(fn ($c) => [
+                    'id' => $c->id,
+                    'business_name' => $c->business_name,
+                    'trade_name' => $c->trade_name,
+                    'credit_limit' => (float) $c->credit_limit,
+                    'pending_balance' => (float) $c->getAttributes()['pending_balance'],
+                ]),
             'products' => Product::where('is_active', true)
                 ->select('id', 'name', 'code', 'description', 'sale_price', 'stock_quantity', 'unit_type', 'min_stock', 'expiry_date', 'active_ingredient', 'sku', 'brand')
                 ->get(),
@@ -781,6 +790,25 @@ class PresaleController extends Controller
                 if (!$product || !$product->is_active) {
                     throw ValidationException::withMessages([
                         "items.{$index}.product_id" => "El producto no está activo."
+                    ]);
+                }
+            }
+
+            // Validar límite de crédito del cliente (si tiene uno establecido)
+            if ($client->credit_limit > 0) {
+                $totalPresale = collect($validated['items'])->sum(function ($item) {
+                    $itemTotal = $item['quantity'] * $item['unit_price'];
+                    return $itemTotal - $itemTotal * ($item['discount'] ?? 0) / 100;
+                });
+                $availableCredit = $client->credit_limit - $client->pending_balance;
+
+                if ($totalPresale > $availableCredit) {
+                    throw ValidationException::withMessages([
+                        'credit_limit' => sprintf(
+                            'Crédito insuficiente. El cliente tiene Bs %.2f disponible y el total de la preventa es Bs %.2f.',
+                            max(0, $availableCredit),
+                            $totalPresale
+                        ),
                     ]);
                 }
             }

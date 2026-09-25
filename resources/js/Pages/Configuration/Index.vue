@@ -67,129 +67,6 @@
             </div>
           </div>
 
-          <!-- Notificaciones -->
-          <div v-if="activeSection === 'notifications'" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Notificaciones Push</h2>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Activa las notificaciones push para recibir alertas en tiempo real
-            </p>
-
-            <div class="space-y-4">
-              <!-- Estado de permisos -->
-              <div v-if="!pushPermissionGranted && !pushPermissionDenied" class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div class="flex items-start gap-3">
-                  <Bell class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                  <div class="flex-1">
-                    <h3 class="text-sm font-medium text-blue-900 dark:text-blue-200 mb-1">
-                      Permisos de notificación
-                    </h3>
-                    <p class="text-xs text-blue-700 dark:text-blue-300 mb-3">
-                      Para recibir notificaciones push, necesitas permitir las notificaciones en tu navegador.
-                    </p>
-                    <button
-                      @click="requestPushPermission"
-                      :disabled="requestingPermission"
-                      class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {{ requestingPermission ? 'Solicitando...' : 'Activar Notificaciones' }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Permiso denegado -->
-              <div v-if="pushPermissionDenied" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <div class="flex items-start gap-3">
-                  <Bell class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
-                  <div class="flex-1">
-                    <h3 class="text-sm font-medium text-red-900 dark:text-red-200 mb-1">
-                      Permisos denegados
-                    </h3>
-                    <p class="text-xs text-red-700 dark:text-red-300">
-                      Las notificaciones están bloqueadas. Por favor, habilítalas en la configuración de tu navegador.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Notificaciones activas -->
-              <div v-if="pushPermissionGranted" class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                <div class="flex items-start gap-3">
-                  <Bell class="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
-                  <div class="flex-1">
-                    <h3 class="text-sm font-medium text-green-900 dark:text-green-200 mb-1">
-                      Notificaciones activas
-                    </h3>
-                    <p class="text-xs text-green-700 dark:text-green-300">
-                      Recibirás notificaciones push cuando ocurran eventos importantes en el sistema.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Toggle de notificaciones -->
-              <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <label class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer">
-                  <div class="flex items-center gap-3">
-                    <Bell class="w-5 h-5 text-gray-500" />
-                    <div>
-                      <div class="text-sm font-medium text-gray-900 dark:text-white">Activar Notificaciones Push</div>
-                      <div class="text-xs text-gray-500 dark:text-gray-400">Recibir notificaciones en tiempo real</div>
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    v-model="form.notification_settings.push"
-                    @change="onPushToggle"
-                    :disabled="!pushPermissionGranted || pushBusy"
-                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 disabled:opacity-50"
-                  />
-                </label>
-              </div>
-
-              <!-- Módulos para notificaciones -->
-              <div v-if="pushPermissionGranted && form.notification_settings.push" class="border-t border-gray-200 dark:border-gray-700 pt-4">
-                <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Módulos con notificaciones</h3>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                  Selecciona en qué módulos deseas recibir notificaciones
-                </p>
-                <div class="space-y-3">
-                  <label 
-                    v-for="module in notificationModules" 
-                    :key="module.id"
-                    class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
-                  >
-                    <div class="flex items-center gap-3">
-                      <component :is="module.icon" class="w-5 h-5 text-gray-500" />
-                      <div>
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ module.name }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ module.description }}</div>
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      v-model="form.notification_settings.modules"
-                      :value="module.id"
-                      @change="saveSettings"
-                      class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <!-- Test de notificación -->
-              <div v-if="pushPermissionGranted && form.notification_settings.push" class="pt-4">
-                <button
-                  @click="testNotification"
-                  :disabled="pushBusy"
-                  class="w-full px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white text-sm rounded-md transition-colors"
-                >
-                  {{ pushBusy ? 'Enviando...' : 'Probar Notificación' }}
-                </button>
-              </div>
-            </div>
-          </div>
-
           <!-- Sistema (solo admin) -->
           <div v-if="activeSection === 'system' && isAdmin" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">Configuración del Sistema</h2>
@@ -386,24 +263,16 @@ import { router, useForm, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import {
   Palette,
-  Bell,
   Settings,
   Sun,
   Moon,
   Monitor,
   Check,
-  ShoppingCart,
-  Package,
-  CreditCard,
-  BarChart,
-  Users,
-  UserCheck,
   Building2,
   Upload,
   ImageIcon
 } from 'lucide-vue-next'
 import { useAlert } from '@/composables/useAlert'
-import { isPushSupported, subscribeToPush, unsubscribeFromPush, sendTestPush } from '@/utils/push'
 
 const { showAlert } = useAlert()
 
@@ -425,7 +294,6 @@ const activeSection = ref('appearance')
 const sections = computed(() => {
   const base = [
     { id: 'appearance', name: 'Apariencia', icon: Palette },
-    { id: 'notifications', name: 'Notificaciones', icon: Bell },
     { id: 'preferences', name: 'Preferencias', icon: Settings },
   ]
   if (isAdmin.value) {
@@ -460,10 +328,7 @@ const themes = [
 
 const form = useForm({
   theme: props.settings.theme || 'light',
-  notification_settings: {
-    push: props.settings.notification_settings?.push ?? false,
-    modules: props.settings.notification_settings?.modules ?? [],
-  },
+
   preferences: {
     items_per_page: props.settings.preferences?.items_per_page ?? 15,
     date_format: props.settings.preferences?.date_format ?? 'd/m/Y',
@@ -471,45 +336,6 @@ const form = useForm({
     currency_symbol: props.settings.preferences?.currency_symbol ?? 'Bs',
   }
 })
-
-const notificationModules = [
-  {
-    id: 'sales',
-    name: 'Ventas',
-    description: 'Notificaciones sobre nuevas ventas y actualizaciones',
-    icon: ShoppingCart
-  },
-  {
-    id: 'presales',
-    name: 'Preventas',
-    description: 'Notificaciones sobre preventas creadas o confirmadas',
-    icon: Package
-  },
-  {
-    id: 'inventory',
-    name: 'Inventario',
-    description: 'Alertas de stock bajo y movimientos de productos',
-    icon: Package
-  },
-  {
-    id: 'payments',
-    name: 'Pagos',
-    description: 'Notificaciones sobre pagos recibidos y cuentas por cobrar',
-    icon: CreditCard
-  },
-  {
-    id: 'clients',
-    name: 'Clientes',
-    description: 'Notificaciones sobre actualizaciones de clientes',
-    icon: UserCheck
-  },
-  {
-    id: 'reports',
-    name: 'Reportes',
-    description: 'Notificaciones sobre reportes generados',
-    icon: BarChart
-  }
-]
 
 // System settings form (admin only)
 const systemSettings  = computed(() => page.props.system_settings ?? {})
@@ -553,144 +379,6 @@ const saveSystemSettings = () => {
       showAlert({ type: 'error', title: 'Error', message: 'No se pudo guardar la configuración del sistema' })
     },
   })
-}
-
-const pushPermissionGranted = ref(false)
-const pushPermissionDenied = ref(false)
-const requestingPermission = ref(false)
-const pushBusy = ref(false)
-
-const checkPushPermission = () => {
-  if (!('Notification' in window)) {
-    return
-  }
-
-  if (Notification.permission === 'granted') {
-    pushPermissionGranted.value = true
-    pushPermissionDenied.value = false
-  } else if (Notification.permission === 'denied') {
-    pushPermissionGranted.value = false
-    pushPermissionDenied.value = true
-  } else {
-    pushPermissionGranted.value = false
-    pushPermissionDenied.value = false
-  }
-}
-
-const pushErrorMessage = (error) =>
-  error?.response?.data?.message || error?.message || 'No se pudo activar la notificación push'
-
-const showUnsupported = () => {
-  showAlert({
-    type: 'error',
-    title: 'No compatible',
-    message: window.isSecureContext
-      ? 'Tu navegador no soporta notificaciones push'
-      : 'Las notificaciones push requieren que el sistema se abra con HTTPS'
-  })
-}
-
-const requestPushPermission = async () => {
-  if (!isPushSupported()) {
-    showUnsupported()
-    return
-  }
-
-  requestingPermission.value = true
-
-  try {
-    const permission = await Notification.requestPermission()
-
-    if (permission === 'granted') {
-      pushPermissionGranted.value = true
-      pushPermissionDenied.value = false
-
-      await subscribeToPush()
-      form.notification_settings.push = true
-      saveSettings()
-
-      showAlert({
-        type: 'success',
-        title: 'Permisos concedidos',
-        message: 'Las notificaciones push están ahora activas'
-      })
-    } else {
-      pushPermissionGranted.value = false
-      pushPermissionDenied.value = permission === 'denied'
-
-      showAlert({
-        type: 'error',
-        title: 'Permisos denegados',
-        message: 'No se pueden mostrar notificaciones sin permisos'
-      })
-    }
-  } catch (error) {
-    console.error('Error al activar notificaciones push:', error)
-    showAlert({
-      type: 'error',
-      title: 'Error',
-      message: pushErrorMessage(error)
-    })
-  } finally {
-    requestingPermission.value = false
-  }
-}
-
-const onPushToggle = async () => {
-  const enabled = form.notification_settings.push
-
-  if (enabled && !isPushSupported()) {
-    form.notification_settings.push = false
-    showUnsupported()
-    return
-  }
-
-  pushBusy.value = true
-  try {
-    if (enabled) {
-      await subscribeToPush()
-    } else if (isPushSupported()) {
-      await unsubscribeFromPush()
-    }
-    saveSettings()
-  } catch (error) {
-    console.error('Error al cambiar notificaciones push:', error)
-    form.notification_settings.push = !enabled
-    showAlert({
-      type: 'error',
-      title: 'Error',
-      message: pushErrorMessage(error)
-    })
-  } finally {
-    pushBusy.value = false
-  }
-}
-
-const testNotification = async () => {
-  if (!pushPermissionGranted.value || !form.notification_settings.push) {
-    return
-  }
-
-  pushBusy.value = true
-  try {
-    // Asegura que este navegador esté suscrito antes de probar
-    await subscribeToPush()
-    await sendTestPush()
-    showAlert({
-      type: 'success',
-      title: 'Notificación enviada',
-      message: 'Deberías recibir la notificación de prueba en unos segundos'
-    })
-  } catch (error) {
-    console.error('Error al enviar notificación de prueba:', error)
-    showAlert({
-      type: 'error',
-      title: 'Error',
-      message: pushErrorMessage(error)
-    })
-  } finally {
-    pushBusy.value = false
-  }
 }
 
 const updateTheme = (theme) => {
@@ -781,14 +469,6 @@ onMounted(() => {
   // Aplicar tema al cargar
   if (form.theme) {
     applyTheme(form.theme)
-  }
-  
-  // Verificar permisos de notificación
-  checkPushPermission()
-
-  // Mantener la suscripción de este navegador registrada en el servidor
-  if (pushPermissionGranted.value && form.notification_settings.push && isPushSupported()) {
-    subscribeToPush().catch((error) => console.warn('No se pudo sincronizar la suscripción push:', error))
   }
 })
 </script>

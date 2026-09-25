@@ -221,10 +221,31 @@ class AccountReceivableController extends Controller
             $query->where('payment_date', '<=', $request->get('date_to'));
         }
 
+        // Resumen de los pagos filtrados (todas las páginas). Los anulados y
+        // rechazados no suman al total, salvo que se filtre por ese estado.
+        $summaryQuery = (clone $query)->reorder();
+        if (!$request->filled('status')) {
+            $summaryQuery->whereNotIn('status', ['cancelled', 'rejected']);
+        }
+        $byMethod = $summaryQuery->toBase()
+            ->selectRaw('payment_method, COUNT(*) as count, COALESCE(SUM(amount), 0) as total')
+            ->groupBy('payment_method')
+            ->get();
+        $summary = [
+            'count' => (int) $byMethod->sum('count'),
+            'total' => (float) $byMethod->sum('total'),
+            'by_method' => $byMethod->map(fn ($row) => [
+                'method' => $row->payment_method,
+                'count' => (int) $row->count,
+                'total' => (float) $row->total,
+            ])->sortByDesc('total')->values(),
+        ];
+
         $payments = $query->latest('payment_date')->paginate(auth()->user()->perPage(15))->withQueryString();
 
         return Inertia::render('AccountReceivables/Payments', [
             'payments' => $payments,
+            'summary' => $summary,
             'clients' => Client::where('status', 'active')->get(['id', 'business_name', 'trade_name']),
             'statuses' => Payment::getStatuses(),
             'paymentMethods' => Payment::getPaymentMethods(),

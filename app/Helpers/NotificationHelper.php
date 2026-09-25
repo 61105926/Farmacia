@@ -4,7 +4,6 @@ namespace App\Helpers;
 
 use App\Models\Notification;
 use App\Models\User;
-use App\Services\WebPushService;
 
 class NotificationHelper
 {
@@ -19,7 +18,7 @@ class NotificationHelper
         ?string $link = null,
         ?array $data = null
     ): Notification {
-        $notification = Notification::create([
+        return Notification::create([
             'user_id' => $user->id,
             'title' => $title,
             'message' => $message,
@@ -27,15 +26,6 @@ class NotificationHelper
             'link' => $link,
             'data' => $data,
         ]);
-
-        // Enviar también como notificación push a los dispositivos del usuario
-        try {
-            WebPushService::queue($notification);
-        } catch (\Throwable $e) {
-            \Log::warning('NotificationHelper - no se pudo encolar el push: ' . $e->getMessage());
-        }
-
-        return $notification;
     }
 
     /**

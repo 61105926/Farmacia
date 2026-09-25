@@ -30,12 +30,6 @@ Route::middleware('auth')->group(function () {
     Route::delete('/api/notifications/delete-read', [App\Http\Controllers\NotificationController::class, 'deleteAllRead'])->name('notifications.delete-read');
     Route::delete('/api/notifications/{notification}', [App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
 
-    // Notificaciones push (Web Push)
-    Route::get('/api/push/public-key', [App\Http\Controllers\PushSubscriptionController::class, 'publicKey'])->name('push.public-key');
-    Route::post('/api/push/subscriptions', [App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.subscribe');
-    Route::delete('/api/push/subscriptions', [App\Http\Controllers\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
-    Route::post('/api/push/test', [App\Http\Controllers\PushSubscriptionController::class, 'test'])->name('push.test');
-
     // Rutas de Farmacias (Clientes)
     Route::get('/pharmacies/export', [App\Http\Controllers\PharmacyController::class, 'export'])->name('pharmacies.export');
     Route::post('/pharmacies/{pharmacy}/toggle-status', [App\Http\Controllers\PharmacyController::class, 'toggleStatus'])->name('pharmacies.toggle-status');

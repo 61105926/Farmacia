@@ -69,6 +69,9 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
               />
             </div>
+
+            <!-- Crédito del cliente -->
+            <CreditStatus :client="selectedClient" :total="form.total" />
           </CardContent>
         </Card>
 
@@ -324,6 +327,7 @@ import CardContent from '@/Components/ui/CardContent.vue'
 import ProductSelect from '@/Components/ui/ProductSelect.vue'
 import Modal from '@/Components/ui/Modal.vue'
 import ConfirmModal from '@/Components/ui/ConfirmModal.vue'
+import CreditStatus, { creditExceeded } from '@/Components/ui/CreditStatus.vue'
 
 const props = defineProps({
   clients: Array,
@@ -357,6 +361,16 @@ const form = reactive({
   total_discount: 0,
   total: 0,
 })
+
+const selectedClient = computed(() => props.clients.find(c => c.id == form.client_id) || null)
+
+const notifyCredit = (message) => {
+  if (window.$notify) {
+    window.$notify.error('Crédito insuficiente', message)
+  } else {
+    alert(message)
+  }
+}
 
 const showProductModal = ref(false)
 const pendingProductId = ref('')
@@ -580,6 +594,12 @@ const submitForm = () => {
     return
   }
 
+  // Validar límite de crédito del cliente
+  if (creditExceeded(selectedClient.value, form.total)) {
+    notifyCredit(`El total de la preventa supera el crédito disponible de ${selectedClient.value.business_name}. Reduzca los productos o registre un pago del cliente.`)
+    return
+  }
+
   // Validar que todos los items tengan producto seleccionado
   const itemsWithProducts = form.items.filter(item => item.product_id && item.product_id !== '')
   if (itemsWithProducts.length === 0) {
@@ -632,11 +652,7 @@ const submitForm = () => {
     onError: (errors) => {
       console.error('Errores al crear preventa:', errors)
       if (errors.credit_limit) {
-        if (window.$notify) {
-          window.$notify.error(errors.credit_limit)
-        } else {
-          alert(errors.credit_limit)
-        }
+        notifyCredit(errors.credit_limit)
         return
       }
       if (errors) {
