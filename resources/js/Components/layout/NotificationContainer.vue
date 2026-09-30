@@ -153,7 +153,9 @@ let removeSuccessListener = null
 // El layout se vuelve a montar en cada página, así que el mismo aviso puede
 // llegar por onMounted y por el evento 'success': se muestra una sola vez
 const showPermissionDenied = (message) => {
-  if (!message) return
+  // El servidor convierte los null en [] (SanitizeInertiaData), así que solo
+  // se muestra cuando llega un texto real
+  if (typeof message !== 'string' || message.trim() === '' || message === '[]') return
   const now = Date.now()
   const last = window.__lastPermissionDenied
   if (last && last.message === message && now - last.at < 2000) return
