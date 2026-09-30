@@ -487,7 +487,8 @@ onMounted(async () => {
   }
 
   // Venta directa desde el calendario de preventas: /ventas/crear?preventa={id}
-  if (props.prefillPresaleId) {
+  // Solo con un id real (un valor vacío no debe intentar cargar una preventa)
+  if (Number(props.prefillPresaleId) > 0) {
     // Limpiamos ?preventa para que un refresh no vuelva a precargar
     const url = new URL(window.location.href)
     url.searchParams.delete('preventa')
@@ -843,7 +844,7 @@ const formatCurrency = (amount) => {
 }
 
 const loadPresaleItems = async () => {
-  if (!form.presale_id) {
+  if (!(Number(form.presale_id) > 0)) {
     // Si no hay preventa seleccionada, limpiar los items
     form.items = []
     form.subtotal = 0
