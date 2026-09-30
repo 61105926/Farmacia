@@ -697,7 +697,8 @@ const openCreatePaymentModal = () => {
 
 // Cobro directo desde el dashboard: /cuentas-por-cobrar?pagar={invoice_id}
 onMounted(async () => {
-  if (!props.payInvoice) return
+  // El servidor convierte el null en [] (SanitizeInertiaData): exigir una factura real
+  if (!props.payInvoice?.id) return
 
   // Limpiamos ?pagar de la URL para que un refresh (o el back() tras cobrar)
   // no vuelva a abrir el modal

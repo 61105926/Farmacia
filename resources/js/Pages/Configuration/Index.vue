@@ -375,8 +375,9 @@ const saveSystemSettings = () => {
       // Recargar para que el sidebar y header tomen el nuevo nombre/logo
       setTimeout(() => router.reload({ only: [] }), 800)
     },
-    onError: () => {
-      showAlert({ type: 'error', title: 'Error', message: 'No se pudo guardar la configuración del sistema' })
+    onError: (errors) => {
+      const detail = Object.values(errors || {}).flat().join('\n')
+      showAlert({ type: 'error', title: 'Error', message: detail || 'No se pudo guardar la configuración del sistema' })
     },
   })
 }
@@ -455,11 +456,12 @@ const saveSettings = () => {
         }, 100)
       }
     },
-    onError: () => {
+    onError: (errors) => {
+      const detail = Object.values(errors || {}).flat().join('\n')
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'No se pudo guardar la configuración'
+        message: detail || 'No se pudo guardar la configuración'
       })
     }
   })

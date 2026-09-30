@@ -13,10 +13,11 @@ return Application::configure(dirname(__DIR__))
         health: '/up'
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // No se usan SanitizeInertiaData ni HandleInertiaNullValues: convertían
+        // los null en [] solo en la navegación interna (no en la primera carga),
+        // y los formularios devolvían esos [] al servidor rompiendo la validación
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
-            \App\Http\Middleware\SanitizeInertiaData::class,
-            \App\Http\Middleware\HandleInertiaNullValues::class,
         ]);
 
         $middleware->alias([

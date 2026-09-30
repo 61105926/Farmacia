@@ -320,6 +320,7 @@ class DashboardController extends Controller
         $expiringProductsCount = Product::whereNotNull('expiry_date')
             ->where('expiry_date', '<=', Carbon::today()->addDays(90))
             ->where('is_active', true)
+            ->where('stock_quantity', '>', 0)
             ->count();
         if ($expiringProductsCount > 0) {
             $alerts[] = [
@@ -411,10 +412,12 @@ class DashboardController extends Controller
         $today = Carbon::today();
         $ninetyDaysFromNow = Carbon::today()->addDays(90);
         
-        // Productos vencidos o que vencen en los próximos 90 días
+        // Productos con stock vencidos o que vencen en los próximos 90 días
+        // (sin stock no hay nada que vencer)
         return Product::whereNotNull('expiry_date')
             ->where('expiry_date', '<=', $ninetyDaysFromNow)
             ->where('is_active', true)
+            ->where('stock_quantity', '>', 0)
             ->orderBy('expiry_date', 'asc')
             ->limit(10)
             ->get()

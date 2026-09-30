@@ -12,6 +12,12 @@
       <Card>
         <CardContent class="p-6">
           <form @submit.prevent="submit" class="space-y-5">
+            <div v-if="Object.keys(form.errors).length" class="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              <p class="font-medium">No se pudieron guardar los cambios:</p>
+              <ul class="mt-1 list-disc pl-5">
+                <li v-for="(message, field) in form.errors" :key="field">{{ message }}</li>
+              </ul>
+            </div>
             <div class="grid grid-cols-2 gap-4">
               <!-- N° Lote -->
               <div>
