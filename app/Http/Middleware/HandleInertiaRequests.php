@@ -118,11 +118,13 @@ class HandleInertiaRequests extends Middleware
                         'site_name'     => $s->site_name,
                         'address'       => $s->address,
                         'phone'         => $s->phone,
+                        // URL relativa: no depende de APP_URL (que puede apuntar
+                        // a otra IP/dominio y dejar las imágenes rotas)
                         'logo_url'      => $s->logo_path
-                            ? \Storage::disk('public')->url($s->logo_path)
+                            ? '/storage/' . ltrim($s->logo_path, '/')
                             : null,
                         'logo_icon_url' => $s->logo_icon_path
-                            ? \Storage::disk('public')->url($s->logo_icon_path)
+                            ? '/storage/' . ltrim($s->logo_icon_path, '/')
                             : null,
                     ];
                 } catch (\Exception $e) {
